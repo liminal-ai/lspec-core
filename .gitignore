@@ -1,0 +1,33 @@
+node_modules/
+dist/
+*.tsbuildinfo
+
+# Coverage
+coverage/
+
+# Test scratch
+.test-tmp/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Env
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
+
+# Liminal Spec orchestration artifacts (per-run, not versioned)
+docs/spec-build/epics/*/artifacts/
+docs/spec-build/epics/*/team-impl-log.md
+docs/spec-build/epics/*/impl-run.config.json
