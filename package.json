@@ -3,11 +3,21 @@
   "version": "0.1.0",
   "description": "Liminal Spec Core SDK / CLI Runtime",
   "type": "module",
-  "main": "./dist/sdk/index.js",
-  "types": "./dist/sdk/index.d.ts",
-  "bin": {
-    "lspec": "./dist/bin/lspec.js"
-  },
+	"main": "./dist/sdk/index.js",
+	"types": "./dist/sdk/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/sdk/index.d.ts",
+			"import": "./dist/sdk/index.js"
+		},
+		"./sdk": {
+			"types": "./dist/sdk/index.d.ts",
+			"import": "./dist/sdk/index.js"
+		}
+	},
+	"bin": {
+		"lspec": "./dist/bin/lspec.js"
+	},
   "files": [
     "dist",
     "README.md",
@@ -15,17 +25,19 @@
     "CHANGELOG.md"
   ],
   "scripts": {
-    "format:check": "biome format src tests",
-    "format": "biome format --write src tests",
-    "lint": "biome lint src tests",
-    "check": "biome check src tests",
+    "format:check": "biome format src tests scripts",
+    "format": "biome format --write src tests scripts",
+    "lint": "biome lint src tests scripts",
+    "check": "biome check src tests scripts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "capture:test-baseline": "tsx scripts/capture-test-baseline.ts",
+    "guard:no-test-changes": "tsx scripts/guard-no-test-changes.ts",
     "build": "tsup",
-    "red-verify": "npm run format:check && npm run lint && npm run typecheck",
+    "red-verify": "npm run format:check && npm run lint && npm run typecheck && npm run capture:test-baseline",
     "verify": "npm run red-verify && npm run test",
-    "green-verify": "npm run verify",
+    "green-verify": "npm run verify && npm run guard:no-test-changes",
     "verify-all": "npm run verify && echo 'verify-all: integration suite not yet present (Story 4 owns it) — placeholder pass'"
   },
   "engines": {
@@ -41,6 +53,7 @@
   "devDependencies": {
     "@biomejs/biome": "^2.4.13",
     "@types/node": "^24.12.2",
+    "tsx": "^4.20.6",
     "tsup": "^8.5.1",
     "typescript": "^6.0.3",
     "vitest": "^4.1.5"
