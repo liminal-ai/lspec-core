@@ -1,0 +1,69 @@
+{
+  "name": "@lspec/core",
+  "version": "0.1.0",
+  "description": "Liminal Spec Core SDK / CLI Runtime",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./sdk": {
+      "types": "./dist/sdk/index.d.ts",
+      "import": "./dist/sdk/index.js"
+    }
+  },
+  "bin": {
+    "lspec": "./dist/bin.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "scripts": {
+    "format:check": "biome format src tests",
+    "format": "biome format --write src tests",
+    "lint": "biome lint src tests",
+    "check": "biome check src tests",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "build": "tsup"
+  },
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "dependencies": {
+    "c12": "^3.3.4",
+    "citty": "^0.2.2",
+    "consola": "^3.4.2",
+    "pathe": "^2.0.3",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.4.13",
+    "@types/node": "^24.12.2",
+    "tsup": "^8.5.1",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.5"
+  },
+  "author": "Lee Moore <lee@liminal.ai>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/liminal-ai/lspec-core.git"
+  },
+  "homepage": "https://github.com/liminal-ai/lspec-core#readme",
+  "bugs": {
+    "url": "https://github.com/liminal-ai/lspec-core/issues"
+  },
+  "keywords": [
+    "liminal-spec",
+    "cli",
+    "sdk",
+    "implementation",
+    "runtime"
+  ]
+}
