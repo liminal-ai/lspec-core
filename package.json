@@ -22,7 +22,11 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "build": "tsup"
+    "build": "tsup",
+    "red-verify": "npm run format:check && npm run lint && npm run typecheck",
+    "verify": "npm run red-verify && npm run test",
+    "green-verify": "npm run verify",
+    "verify-all": "npm run verify && echo 'verify-all: integration suite not yet present (Story 4 owns it) — placeholder pass'"
   },
   "engines": {
     "node": ">=24.0.0"

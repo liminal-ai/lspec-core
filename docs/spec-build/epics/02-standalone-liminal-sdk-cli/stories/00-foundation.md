@@ -20,8 +20,8 @@ Move the bundled runtime from `liminal-spec/processes/impl-cli/` into the new `l
 | `tsconfig.json`, `vitest.config.ts`, `tsup.config.ts`, `biome.json` | Present |
 | Stub `src/sdk/index.ts` and `src/bin/lspec.ts`, single smoke test under `tests/` | Present |
 | Base npm scripts: `format:check`, `format`, `lint`, `check`, `typecheck`, `test`, `test:watch`, `build` | Present |
-| Verify-chain scripts: `red-verify`, `verify`, `green-verify`, `verify-all` | NOT YET — Story 0 defines these |
-| Test-immutability guard scripts: `capture:test-baseline`, `guard:no-test-changes` | NOT YET — Story 0 defines these |
+| Verify-chain scripts: `red-verify`, `verify`, `green-verify`, `verify-all` | Present as basic compositions (red-verify = format:check + lint + typecheck; verify = red-verify + test; green-verify = verify; verify-all = verify + integration placeholder). Story 0 enriches green-verify to include the test-immutability guard once capture/guard scripts land. |
+| Test-immutability guard scripts: `capture:test-baseline`, `guard:no-test-changes` | NOT YET — Story 0 adds these tsx scripts and rewires green-verify to include `guard:no-test-changes` |
 | Per-operation test files (~26 files) and migrated source under `src/core/`, `src/infra/` | NOT YET — Story 0 migrates these |
 | `.github/workflows/ci.yml` | NOT YET — Story 0 creates this (the `.github/workflows/` directory does not exist at story start) |
 
@@ -32,7 +32,7 @@ Story 0 extends this baseline; it does not create the package boundary from scra
 - Migrate test suite from `liminal-spec/processes/impl-cli/tests/` into the pre-existing `tests/` tree
 - Convert all `bun:test` imports to `vitest` (and adapt any Bun-specific test helpers to vitest equivalents)
 - Replace the stub `src/sdk/index.ts` and `src/bin/lspec.ts` with the real SDK and CLI entry points wired to the migrated source
-- Define the verify-script chain on top of the pre-existing base scripts: `red-verify`, `verify`, `green-verify`, `verify-all`, plus the `capture:test-baseline` and `guard:no-test-changes` scripts that compose into them
+- Add the `capture:test-baseline` and `guard:no-test-changes` tsx scripts under `scripts/`, and rewire the pre-existing `green-verify` script to include `guard:no-test-changes` (the basic verify chain composition is already present at story start; Story 0's job here is the test-immutability guard, not the chain itself)
 - Confirm the pre-scaffolded `tsup.config.ts` produces correct `.d.ts` and ESM output for the migrated source; extend if needed
 - Create `.github/workflows/ci.yml` that runs `npm run verify` on `push` and `pull_request`, using Node 24 + npm. The `.github/workflows/` directory does not exist at story start; this story creates both the directory and the file.
 - Prove Story 0 parity against the existing bundled runtime suite via the maintainer-run TC-1.5a procedure
