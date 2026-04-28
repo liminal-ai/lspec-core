@@ -1,9 +1,12 @@
-import { spawn } from "node:child_process";
-import { createWriteStream } from "node:fs";
-import { mkdir } from "node:fs/promises";
 import { dirname } from "node:path";
 
 import { z } from "zod";
+
+import {
+	createWriteStream,
+	getSpawnImplementation,
+	mkdir,
+} from "../runtime-deps";
 
 export type ProviderName = "claude-code" | "codex" | "copilot";
 
@@ -295,7 +298,7 @@ export async function runProviderCommand(params: {
 		let silenceTimeout: ReturnType<typeof setTimeout> | undefined;
 		let firstOutputReceived = false;
 
-		const child = spawn(params.executable, params.args, {
+		const child = getSpawnImplementation()(params.executable, params.args, {
 			cwd: params.cwd,
 			env: {
 				...process.env,
@@ -374,12 +377,12 @@ export async function runProviderCommand(params: {
 			}, params.silenceTimeoutMs);
 		};
 
-		child.stdin.on("error", () => {
+		child.stdin?.on("error", () => {
 			// Ignore EPIPE-like noise if the provider exits before stdin closes.
 		});
-		child.stdin.end();
+		child.stdin?.end();
 
-		child.stdout.on("data", (chunk) => {
+		child.stdout?.on("data", (chunk) => {
 			const text = chunk.toString();
 			stdout += text;
 			stdoutStream?.write(text);
@@ -398,7 +401,7 @@ export async function runProviderCommand(params: {
 			});
 		});
 
-		child.stderr.on("data", (chunk) => {
+		child.stderr?.on("data", (chunk) => {
 			const text = chunk.toString();
 			stderr += text;
 			stderrStream?.write(text);

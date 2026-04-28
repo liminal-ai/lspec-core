@@ -1,5 +1,6 @@
 import { constants } from "node:fs";
-import { access, readFile, writeFile } from "node:fs/promises";
+
+import { access, readFile, writeFile } from "./runtime-deps";
 
 export async function pathExists(path: string): Promise<boolean> {
 	try {
@@ -11,7 +12,7 @@ export async function pathExists(path: string): Promise<boolean> {
 }
 
 export async function readTextFile(path: string): Promise<string> {
-	return readFile(path, "utf8");
+	return (await readFile(path, "utf8")) as string;
 }
 
 export async function pathReadable(path: string): Promise<boolean> {

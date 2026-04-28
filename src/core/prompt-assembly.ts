@@ -1,4 +1,3 @@
-import { stat } from "node:fs/promises";
 import { basename } from "node:path";
 
 import { pathExists, readTextFile } from "./fs-utils";
@@ -7,6 +6,7 @@ import {
 	type BasePromptId,
 	type SnippetId,
 } from "./prompt-assets";
+import { stat } from "./runtime-deps";
 
 const MAX_PUBLIC_INSERT_BYTES = 64 * 1024;
 

@@ -1,6 +1,6 @@
-import { mkdir, readdir } from "node:fs/promises";
 import { basename, dirname, join, resolve } from "node:path";
 
+import { mkdir, readdirDirents } from "./runtime-deps";
 import { writeTextFile } from "./fs-utils";
 
 async function nextArtifactPathForGroup(
@@ -34,7 +34,7 @@ async function findMaxArtifactIndex(artifactDir: string): Promise<number> {
 
 	const scanDir = async (directoryPath: string) => {
 		try {
-			const entries = await readdir(directoryPath, { withFileTypes: true });
+			const entries = await readdirDirents(directoryPath);
 			for (const entry of entries) {
 				if (entry.isDirectory()) {
 					continue;

@@ -1,7 +1,7 @@
-import { readdir } from "node:fs/promises";
 import { basename, join } from "node:path";
 
 import { readTextFile } from "./fs-utils";
+import { readdirDirents } from "./runtime-deps";
 
 interface StoryRecord {
 	id: string;
@@ -29,7 +29,7 @@ function numericPrefix(fileName: string): number | null {
 export async function resolveStoryOrder(
 	storiesDir: string,
 ): Promise<StoryOrderResolution> {
-	const entries = await readdir(storiesDir, { withFileTypes: true });
+	const entries = await readdirDirents(storiesDir);
 	const fileNames = entries
 		.filter((entry) => entry.isFile() && entry.name.endsWith(".md"))
 		.map((entry) => entry.name);

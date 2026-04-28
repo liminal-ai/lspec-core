@@ -13,6 +13,14 @@
 		"./sdk": {
 			"types": "./dist/sdk/index.d.ts",
 			"import": "./dist/sdk/index.js"
+		},
+		"./sdk/contracts": {
+			"types": "./dist/sdk/contracts/index.d.ts",
+			"import": "./dist/sdk/contracts/index.js"
+		},
+		"./sdk/errors": {
+			"types": "./dist/sdk/errors/index.d.ts",
+			"import": "./dist/sdk/errors/index.js"
 		}
 	},
 	"bin": {

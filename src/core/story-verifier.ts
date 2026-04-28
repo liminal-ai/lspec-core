@@ -1,5 +1,4 @@
 import { randomUUID } from "node:crypto";
-import { readdir } from "node:fs/promises";
 import { join, resolve } from "node:path";
 
 import { z } from "zod";
@@ -31,6 +30,7 @@ import {
 	type CliError,
 	type StoryVerifierResult,
 } from "./result-contracts";
+import { readdirDirents } from "./runtime-deps";
 import { inspectSpecPack } from "./spec-pack";
 
 const verifierRequirementCoverageSchema = z
@@ -476,7 +476,7 @@ async function loadPriorVerifierContext(input: {
 		);
 	}
 
-	const entries = await readdir(artifactDir, { withFileTypes: true });
+	const entries = await readdirDirents(artifactDir);
 	const verifyFiles = entries
 		.filter(
 			(entry) => entry.isFile() && /^\d{3}-verify\.json$/.test(entry.name),
@@ -506,9 +506,7 @@ async function loadPriorVerifierContext(input: {
 				artifactPath,
 				result: result.data,
 			};
-		} catch {
-			continue;
-		}
+		} catch {}
 	}
 
 	return blockedError(

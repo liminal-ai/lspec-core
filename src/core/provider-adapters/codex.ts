@@ -1,8 +1,7 @@
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { z } from "zod";
+import type { z } from "zod";
 
 import {
 	buildStrictCodexOutputSchema,
@@ -14,6 +13,7 @@ import {
 	type ProviderAdapter,
 	type ProviderExecutionRequest,
 } from "./shared";
+import { mkdtemp, readFile, rm, writeFile } from "../runtime-deps";
 
 interface CodexAdapterOptions {
 	env?: Record<string, string | undefined>;
@@ -25,7 +25,9 @@ export function createCodexAdapter(
 	return {
 		provider: "codex",
 		async execute<TResult>(request: ProviderExecutionRequest<TResult>) {
-			const tempDir = await mkdtemp(join(tmpdir(), "ls-impl-cli-codex-"));
+			const tempDir = (await mkdtemp(
+				join(tmpdir(), "ls-impl-cli-codex-"),
+			)) as string;
 			const outputLastMessagePath = join(tempDir, "output-last-message.json");
 			const outputSchemaPath = join(tempDir, "output-schema.json");
 
@@ -79,11 +81,9 @@ export function createCodexAdapter(
 					return {
 						...execution,
 						stderr: structuredOutputError ?? execution.stderr,
-						errorCode:
-							structuredOutputError &&
-							structuredOutputError.includes("invalid_json_schema")
-								? "INVALID_OUTPUT_SCHEMA"
-								: execution.errorCode,
+						errorCode: structuredOutputError?.includes("invalid_json_schema")
+							? "INVALID_OUTPUT_SCHEMA"
+							: execution.errorCode,
 					};
 				}
 
@@ -118,7 +118,7 @@ export function createCodexAdapter(
 
 async function readOptionalFile(path: string): Promise<string | undefined> {
 	try {
-		return await readFile(path, "utf8");
+		return (await readFile(path, "utf8")) as string;
 	} catch {
 		return undefined;
 	}

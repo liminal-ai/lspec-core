@@ -1,18 +1,27 @@
-import { execFile } from "node:child_process";
 import { resolve } from "node:path";
-import { promisify } from "node:util";
 
-const execFileAsync = promisify(execFile);
+import { getExecFileImplementation } from "./runtime-deps";
 
 export async function resolveGitRepoRoot(cwd: string): Promise<string | null> {
 	try {
-		const { stdout } = await execFileAsync(
-			"git",
-			["rev-parse", "--show-toplevel"],
-			{
-				cwd,
-			},
-		);
+		const stdout = await new Promise<string>((resolveOutput, reject) => {
+			getExecFileImplementation()(
+				"git",
+				["rev-parse", "--show-toplevel"],
+				{
+					cwd,
+					encoding: "utf8",
+				},
+				(error, gitStdout) => {
+					if (error) {
+						reject(error);
+						return;
+					}
+
+					resolveOutput(gitStdout);
+				},
+			);
+		});
 		const repoRoot = stdout.trim();
 		return repoRoot.length > 0 ? repoRoot : null;
 	} catch {

@@ -1,10 +1,10 @@
-import { appendFile, mkdir } from "node:fs/promises";
 import { dirname } from "node:path";
 
 import { z } from "zod";
 
 import type { ProviderName, ProviderLifecycleEvent } from "./provider-adapters";
 import { writeTextFile } from "./fs-utils";
+import { appendFile, mkdir } from "./runtime-deps";
 
 const PROVIDER_OUTPUT_EVENT_INTERVAL_MS = 30_000;
 const runtimeProviderSchema = z.enum(["claude-code", "codex", "copilot"]);

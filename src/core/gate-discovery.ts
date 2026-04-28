@@ -1,8 +1,8 @@
-import { readdir } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 
 import { pathExists, readTextFile } from "./fs-utils";
 import type { CliError } from "./result-contracts";
+import { readdirDirents } from "./runtime-deps";
 
 export interface GateDiscoveryResult {
 	status: "ready" | "needs-user-decision";
@@ -268,7 +268,7 @@ async function ciCandidates(
 		return [];
 	}
 
-	const entries = await readdir(workflowsDir, { withFileTypes: true });
+	const entries = await readdirDirents(workflowsDir);
 	const candidates: GateSourceCandidates = {
 		story: [],
 		epic: [],

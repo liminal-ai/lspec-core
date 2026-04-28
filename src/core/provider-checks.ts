@@ -1,11 +1,8 @@
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
-
 import type { ImplRunConfig, SecondaryHarness } from "./config-schema";
 import { resolveGitRepoRoot } from "./git-repo";
 import type { HarnessAvailability, ProviderMatrix } from "./result-contracts";
+import { getExecFileImplementation } from "./runtime-deps";
 
-const execFileAsync = promisify(execFile);
 const DEFAULT_PROVIDER_CHECK_TIMEOUT_MS = 1_000;
 
 function redactSensitiveText(text: string): string {
@@ -25,14 +22,38 @@ async function runCommand(params: {
 	timeoutMs: number;
 }) {
 	try {
-		const result = await execFileAsync(params.file, params.args, {
-			cwd: params.cwd,
-			env: {
-				...process.env,
-				...params.env,
+		const result = await new Promise<{ stdout: string; stderr: string }>(
+			(resolveResult, reject) => {
+				getExecFileImplementation()(
+					params.file,
+					params.args,
+					{
+						cwd: params.cwd,
+						env: {
+							...process.env,
+							...params.env,
+						},
+						timeout: params.timeoutMs,
+						encoding: "utf8",
+					},
+					(error, stdout, stderr) => {
+						if (error) {
+							Object.assign(error, {
+								stdout,
+								stderr,
+							});
+							reject(error);
+							return;
+						}
+
+						resolveResult({
+							stdout,
+							stderr,
+						});
+					},
+				);
 			},
-			timeout: params.timeoutMs,
-		});
+		);
 		return {
 			success: true as const,
 			stdout: redactSensitiveText(result.stdout.trim()),
