@@ -1,4 +1,8 @@
-import { nextGroupedArtifactPaths } from "../../core/artifact-writer.js";
+import {
+	buildRuntimeProgressPaths,
+	buildStreamOutputPaths,
+	nextGroupedArtifactPaths,
+} from "../../core/artifact-writer.js";
 import {
 	MAX_SELF_REVIEW_PASSES,
 	MIN_SELF_REVIEW_PASSES,
@@ -34,19 +38,50 @@ async function resolvePassArtifactPaths(
 	return allocatedPaths;
 }
 
+async function resolveSelfReviewArtifactPaths(
+	input: StorySelfReviewInput,
+	passes: number,
+): Promise<{ artifactPath: string; passArtifactPaths: string[] }> {
+	if (!input.artifactPath && input.passArtifactPaths.length === 0) {
+		const allocatedPaths = await nextGroupedArtifactPaths(
+			input.specPackRoot,
+			input.storyId,
+			[
+				...Array.from({ length: passes }, (_, index) => {
+					return `self-review-pass-${index + 1}`;
+				}),
+				"self-review-batch",
+			],
+		);
+		const artifactPath = allocatedPaths[allocatedPaths.length - 1];
+		if (typeof artifactPath !== "string") {
+			throw new Error("Unable to allocate story-self-review artifact path.");
+		}
+		return {
+			artifactPath,
+			passArtifactPaths: allocatedPaths.slice(0, -1),
+		};
+	}
+
+	const artifactPath = await resolveOperationArtifactPath({
+		command: "story-self-review",
+		specPackRoot: input.specPackRoot,
+		artifactPath: input.artifactPath,
+		group: input.storyId,
+		fileName: "self-review-batch",
+	});
+	const passArtifactPaths = await resolvePassArtifactPaths({
+		...input,
+		passes,
+	});
+	return { artifactPath, passArtifactPaths };
+}
+
 export async function storySelfReview(
 	input: StorySelfReviewInput,
 ): Promise<StorySelfReviewResult> {
 	return await withSdkExecutionContext(input, async () => {
 		const startedAt = new Date().toISOString();
-		const artifactPath = await resolveOperationArtifactPath({
-			command: "story-self-review",
-			specPackRoot: input.specPackRoot,
-			artifactPath: input.artifactPath,
-			group: input.storyId,
-			fileName: "self-review-batch",
-		});
-
 		const resolvedPasses =
 			Number.isNaN(input.passes) || input.passes <= 0
 				? (
@@ -61,6 +96,13 @@ export async function storySelfReview(
 			resolvedPasses < MIN_SELF_REVIEW_PASSES ||
 			resolvedPasses > MAX_SELF_REVIEW_PASSES
 		) {
+			const artifactPath = await resolveOperationArtifactPath({
+				command: "story-self-review",
+				specPackRoot: input.specPackRoot,
+				artifactPath: input.artifactPath,
+				group: input.storyId,
+				fileName: "self-review-batch",
+			});
 			return await finalizeEnvelope({
 				command: "story-self-review",
 				artifactPath,
@@ -76,23 +118,27 @@ export async function storySelfReview(
 			});
 		}
 
+		let artifactPath = "";
 		try {
-			const passArtifactPaths = await resolvePassArtifactPaths({
-				...input,
-				passes: resolvedPasses,
-			});
+			const resolvedArtifacts = await resolveSelfReviewArtifactPaths(
+				input,
+				resolvedPasses,
+			);
+			artifactPath = resolvedArtifacts.artifactPath;
 			const outcome = await runStorySelfReview({
 				specPackRoot: input.specPackRoot,
 				storyId: input.storyId,
 				provider: input.continuationHandle.provider,
 				sessionId: input.continuationHandle.sessionId,
 				passes: resolvedPasses,
-				passArtifactPaths,
+				passArtifactPaths: resolvedArtifacts.passArtifactPaths,
 				configPath: input.configPath,
 				env: input.env,
 				artifactPath,
-				streamOutputPaths: input.streamOutputPaths,
-				runtimeProgressPaths: input.runtimeProgressPaths,
+				streamOutputPaths:
+					input.streamOutputPaths ?? buildStreamOutputPaths(artifactPath),
+				runtimeProgressPaths:
+					input.runtimeProgressPaths ?? buildRuntimeProgressPaths(artifactPath),
 			});
 			const passArtifacts =
 				outcome.result?.passArtifacts ?? outcome.passArtifacts ?? [];
@@ -111,6 +157,15 @@ export async function storySelfReview(
 				})),
 			});
 		} catch (error) {
+			if (artifactPath.length === 0) {
+				artifactPath = await resolveOperationArtifactPath({
+					command: "story-self-review",
+					specPackRoot: input.specPackRoot,
+					artifactPath: input.artifactPath,
+					group: input.storyId,
+					fileName: "self-review-batch",
+				});
+			}
 			const envelope = buildUnexpectedEnvelope({
 				command: "story-self-review",
 				artifactPath,

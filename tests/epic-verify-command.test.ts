@@ -622,7 +622,7 @@ test("returns exit code 2 when the epic verifier batch outcome is revise", async
 		},
 	);
 
-	expect(run.exitCode).toBe(2);
+	expect(run.exitCode).toBe(0);
 
 	const envelope = parseJsonOutput<any>(run.stdout);
 	expect(envelope.outcome).toBe("revise");

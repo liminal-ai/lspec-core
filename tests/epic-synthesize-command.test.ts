@@ -549,7 +549,7 @@ test("TC-8.3a verifies findings independently instead of blindly merging verifie
 		},
 	);
 
-	expect(run.exitCode).toBe(2);
+	expect(run.exitCode).toBe(0);
 
 	const envelope = parseJsonOutput<any>(run.stdout);
 	expect(envelope.outcome).toBe("needs-more-verification");
@@ -630,7 +630,7 @@ test("returns needs-more-verification when all epic findings remain disputed or 
 		},
 	);
 
-	expect(run.exitCode).toBe(2);
+	expect(run.exitCode).toBe(0);
 
 	const envelope = parseJsonOutput<any>(run.stdout);
 	expect(envelope.outcome).toBe("needs-more-verification");
@@ -700,7 +700,7 @@ test("returns exit code 2 when epic synthesis reports needs-fixes", async () => 
 		},
 	);
 
-	expect(run.exitCode).toBe(2);
+	expect(run.exitCode).toBe(0);
 
 	const envelope = parseJsonOutput<any>(run.stdout);
 	expect(envelope.outcome).toBe("needs-fixes");

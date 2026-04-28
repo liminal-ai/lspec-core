@@ -159,7 +159,7 @@ test("initial story-verify starts one retained verifier session and returns cont
 		},
 	);
 
-	expect(run.exitCode).toBe(2);
+	expect(run.exitCode).toBe(0);
 
 	const envelope = parseJsonOutput<any>(run.stdout);
 	expect(envelope.command).toBe("story-verify");
@@ -269,7 +269,7 @@ test("follow-up story-verify resumes the retained verifier session with implemen
 		],
 		{ env: sharedEnv },
 	);
-	expect(initialRun.exitCode).toBe(2);
+	expect(initialRun.exitCode).toBe(0);
 
 	const followupRun = await runSourceCli(
 		[
@@ -522,7 +522,7 @@ test("follow-up story-verify preserves prior finding ids and accepts directly to
 		],
 		{ env: sharedEnv },
 	);
-	expect(initialRun.exitCode).toBe(2);
+	expect(initialRun.exitCode).toBe(0);
 
 	const followupRun = await runSourceCli(
 		[
@@ -542,7 +542,7 @@ test("follow-up story-verify preserves prior finding ids and accepts directly to
 		{ env: sharedEnv },
 	);
 
-	expect(followupRun.exitCode).toBe(2);
+	expect(followupRun.exitCode).toBe(0);
 	const envelope = parseJsonOutput<any>(followupRun.stdout);
 	expect(envelope.outcome).toBe("revise");
 	expect(envelope.result.priorFindingStatuses).toEqual([
@@ -625,7 +625,7 @@ test("follow-up story-verify surfaces needs-human-ruling as a top-level outcome 
 		],
 		{ env: sharedEnv },
 	);
-	expect(initialRun.exitCode).toBe(2);
+	expect(initialRun.exitCode).toBe(0);
 
 	const followupRun = await runSourceCli(
 		[
@@ -796,7 +796,7 @@ test("follow-up story-verify resumes the retained Copilot verifier session when 
 		],
 		{ env: sharedEnv },
 	);
-	expect(initialRun.exitCode).toBe(2);
+	expect(initialRun.exitCode).toBe(0);
 
 	const followupRun = await runSourceCli(
 		[

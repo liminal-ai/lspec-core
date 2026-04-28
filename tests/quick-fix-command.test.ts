@@ -468,7 +468,7 @@ test("routes quick-fix to needs-more-routing when the provider returns no stdout
 		},
 	);
 
-	expect(run.exitCode).toBe(2);
+	expect(run.exitCode).toBe(0);
 
 	const envelope = parseJsonOutput<any>(run.stdout);
 	expect(envelope.status).toBe("ok");

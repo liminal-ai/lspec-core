@@ -602,18 +602,13 @@ export function statusForOutcome(outcome: string): CliStatus {
 	}
 }
 
-const zeroExitOutcomes = new Set([
-	"ready",
-	"ready-for-verification",
-	"pass",
-	"cleaned",
-	"ready-for-closeout",
-]);
-
-export function exitCodeForStatus(status: CliStatus, outcome?: string): number {
+export function exitCodeForStatus(
+	status: CliStatus,
+	_outcome?: string,
+): number {
 	switch (status) {
 		case "ok":
-			return outcome && !zeroExitOutcomes.has(outcome) ? 2 : 0;
+			return 0;
 		case "needs-user-decision":
 			return 2;
 		case "blocked":

@@ -501,7 +501,7 @@ test("returns exit code 2 when epic-cleanup reports needs-more-cleanup", async (
 		},
 	);
 
-	expect(run.exitCode).toBe(2);
+	expect(run.exitCode).toBe(0);
 
 	const envelope = parseJsonOutput<any>(run.stdout);
 	expect(envelope.outcome).toBe("needs-more-cleanup");

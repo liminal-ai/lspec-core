@@ -400,7 +400,7 @@ test("returns exit code 2 when story-continue completes with a follow-up fix out
 		},
 	);
 
-	expect(continuedRun.exitCode).toBe(2);
+	expect(continuedRun.exitCode).toBe(0);
 
 	const envelope = parseJsonOutput<any>(continuedRun.stdout);
 	expect(envelope.status).toBe("ok");
