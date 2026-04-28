@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { version } from "../src/index.js";
+import { version } from "../src/sdk/index.js";
 
 describe("smoke", () => {
 	it("exports version", () => {

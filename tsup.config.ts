@@ -2,8 +2,8 @@ import { defineConfig } from "tsup";
 
 export default defineConfig({
 	entry: {
-		index: "src/index.ts",
-		bin: "src/bin.ts",
+		"sdk/index": "src/sdk/index.ts",
+		"bin/lspec": "src/bin/lspec.ts",
 	},
 	format: ["esm"],
 	dts: true,

@@ -3,18 +3,10 @@
   "version": "0.1.0",
   "description": "Liminal Spec Core SDK / CLI Runtime",
   "type": "module",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
-    },
-    "./sdk": {
-      "types": "./dist/sdk/index.d.ts",
-      "import": "./dist/sdk/index.js"
-    }
-  },
+  "main": "./dist/sdk/index.js",
+  "types": "./dist/sdk/index.d.ts",
   "bin": {
-    "lspec": "./dist/bin.js"
+    "lspec": "./dist/bin/lspec.js"
   },
   "files": [
     "dist",
