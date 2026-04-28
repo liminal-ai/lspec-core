@@ -12,15 +12,29 @@ Move the bundled runtime from `liminal-spec/processes/impl-cli/` into the new `l
 
 **Objective:** Establish the standalone package boundary, portable toolchain, and verification baseline that every later story depends on.
 
-**Pre-existing foundation:** The package boundary in `lspec-core` is already scaffolded as of the initial repo commit — `package.json` (with `@lspec/core` identity, Node 24 engines, dependency pins, base scripts for `format:check` / `lint` / `typecheck` / `test` / `build`), `tsconfig.json`, `vitest.config.ts`, `tsup.config.ts`, `biome.json`, stub `src/index.ts` and `src/bin.ts`, and a single smoke test under `tests/`. Story 0 extends this baseline with the migrated source and the verify-script chain — it does not create the structure from scratch.
+**Pre-existing foundation:** The package boundary in `lspec-core` is already scaffolded as of the initial repo commit. Specifically:
+
+| Element | Status at story start |
+|---|---|
+| `package.json` (with `@lspec/core` identity, Node 24 engines, dependency pins) | Present |
+| `tsconfig.json`, `vitest.config.ts`, `tsup.config.ts`, `biome.json` | Present |
+| Stub `src/sdk/index.ts` and `src/bin/lspec.ts`, single smoke test under `tests/` | Present |
+| Base npm scripts: `format:check`, `format`, `lint`, `check`, `typecheck`, `test`, `test:watch`, `build` | Present |
+| Verify-chain scripts: `red-verify`, `verify`, `green-verify`, `verify-all` | NOT YET — Story 0 defines these |
+| Test-immutability guard scripts: `capture:test-baseline`, `guard:no-test-changes` | NOT YET — Story 0 defines these |
+| Per-operation test files (~26 files) and migrated source under `src/core/`, `src/infra/` | NOT YET — Story 0 migrates these |
+| `.github/workflows/ci.yml` | NOT YET — Story 0 creates this (the `.github/workflows/` directory does not exist at story start) |
+
+Story 0 extends this baseline; it does not create the package boundary from scratch.
 
 **Scope In:**
 - Migrate runtime source from `liminal-spec/processes/impl-cli/src/` into the pre-existing `src/` tree (organize under `src/core/`, `src/bin/`, `src/sdk/` per the tech design)
 - Migrate test suite from `liminal-spec/processes/impl-cli/tests/` into the pre-existing `tests/` tree
 - Convert all `bun:test` imports to `vitest` (and adapt any Bun-specific test helpers to vitest equivalents)
-- Replace the stub `src/index.ts` and `src/bin.ts` with the real SDK and CLI entry points wired to the migrated source
+- Replace the stub `src/sdk/index.ts` and `src/bin/lspec.ts` with the real SDK and CLI entry points wired to the migrated source
 - Define the verify-script chain on top of the pre-existing base scripts: `red-verify`, `verify`, `green-verify`, `verify-all`, plus the `capture:test-baseline` and `guard:no-test-changes` scripts that compose into them
 - Confirm the pre-scaffolded `tsup.config.ts` produces correct `.d.ts` and ESM output for the migrated source; extend if needed
+- Create `.github/workflows/ci.yml` that runs `npm run verify` on `push` and `pull_request`, using Node 24 + npm. The `.github/workflows/` directory does not exist at story start; this story creates both the directory and the file.
 - Prove Story 0 parity against the existing bundled runtime suite via the maintainer-run TC-1.5a procedure
 
 **Scope Out:**
@@ -91,6 +105,13 @@ Move the bundled runtime from `liminal-spec/processes/impl-cli/` into the new `l
   - When: A reviewer compares the new suite against the bundled suite
   - Then: Divergences are permitted where Story 3 explicitly changed behavior; each divergence is traceable to an AC in Flow 4
 
+**AC-1.6:** A default-CI GitHub Actions workflow exists at `.github/workflows/ci.yml` and runs the verify chain on every push and pull request.
+
+- **TC-1.6a:** ci.yml exists and triggers correctly
+  - Given: The `lspec-core` repository at the end of this story
+  - When: A reviewer inspects `.github/workflows/ci.yml`
+  - Then: The file exists; its `on:` block triggers on `push` and `pull_request`; the job runs on Node 24 with npm and invokes `npm run verify`. (`.github/workflows/` did not exist at story start; this story creates the directory and the file.)
+
 ### Technical Design
 <!-- Jira: Technical Notes or sub-section of Description -->
 
@@ -130,5 +151,6 @@ See the tech design document for full architecture, implementation targets, and 
 - [ ] No `bun:test` imports remain in the new package
 - [ ] All four verification tiers are defined and runnable
 - [ ] Build emits portable JS and `.d.ts` files
+- [ ] `.github/workflows/ci.yml` exists, triggers on push + PR, runs `npm run verify` on Node 24 + npm
 - [ ] Story 0 parity against the bundled runtime suite is documented
 - [ ] No file under `liminal-spec/processes/impl-cli/` or `liminal-spec/processes/codex-impl/` was modified

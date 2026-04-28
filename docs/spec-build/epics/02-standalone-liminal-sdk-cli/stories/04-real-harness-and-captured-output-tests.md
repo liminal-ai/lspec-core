@@ -17,6 +17,9 @@ Add captured real-provider fixtures, parser-contract tests, and an env-gated rea
 - Parser-level contract tests on default CI
 - Env-gated real-provider integration suite
 - Smoke, resume, structured-output, and stall coverage across Claude Code, Codex, and Copilot
+- Create `.github/workflows/integration.yml` (the env-gated workflow that runs the real-harness suite). This story owns the workflow file; Story 0 created the `.github/workflows/` directory.
+- Capture and commit the parser-contract fixtures (used by the parser-contract tests defined in Story 3) sourced from real provider runs, with provenance comments — completing the satisfaction half of Story 3's AC-4.8b
+- Parser-contract tests (defined in Story 3) verify that the captured fixtures parse cleanly through the production parsers, providing the structural assertion that fixtures are sourced from real captured output rather than hand-written
 
 **Scope Out:**
 - Gorilla prompt, reset tool, and evidence template
@@ -70,6 +73,10 @@ Add captured real-provider fixtures, parser-contract tests, and an env-gated rea
   - Given: A change to the parser that breaks compatibility with a real captured sample
   - When: The default CI workflow runs
   - Then: The contract test fails with a clear diff between expected and actual parsed shape
+- **TC-4.8b-evidence:** Captured real-provider fixtures used by parser-contract tests are sourced from real captured output (satisfying half of Story 3's AC-4.8b)
+  - Given: The committed fixture files under `tests/parser-contract/fixtures/<provider>/<scenario>.txt` at the end of this story
+  - When: A reviewer inspects each fixture's leading provenance comment
+  - Then: Each fixture identifies a real provider run by provider, command, and capture date; the dates parse; the parser-contract tests defined in Story 3 (`tests/parser-contract/{claude-code,codex,copilot}.test.ts`) pass against these real fixtures, proving the AC-4.8b rule end-to-end
 
 ### Technical Design
 <!-- Jira: Technical Notes or sub-section of Description -->

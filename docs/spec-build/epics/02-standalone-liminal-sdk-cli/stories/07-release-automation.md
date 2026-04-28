@@ -13,8 +13,8 @@ Automate tagged releases, enforce the three-layer publish gate, keep version mar
 **Objective:** Move from a locally consumable package to a repeatable, gated release process that can publish safely to npm.
 
 **Scope In:**
-- Tag-triggered GitHub Actions release workflow
-- Default CI, real-harness, and gorilla evidence publish gate
+- Create `.github/workflows/publish.yml` (the tag-triggered release workflow). This story owns the workflow file; Stories 0 and 4 created `.github/workflows/ci.yml` and `.github/workflows/integration.yml` respectively.
+- Tag-triggered GitHub Actions release workflow that enforces the three-layer release gate (verify-all + integration evidence + gorilla evidence) before `npm publish`
 - Version and changelog sync
 - First-publish runbook
 - First published-artifact smoke check through `npx`
@@ -63,9 +63,9 @@ The release gate composes three required green signals before any publish, dry-r
   - When: The workflow evaluates its publish gate
   - Then: The publish step does not run; the workflow reports failure
 - **TC-6.5d:** Gorilla evidence required for publish
-  - Given: A release workflow run where no gorilla evidence file is committed at the release candidate's commit, or the committed evidence reports unresolved findings, or its date falls outside the release window
+  - Given: A release workflow run where no `gorilla/evidence/<YYYY-MM-DD>/<provider>-<scenario>.md` files (per the canonical layout declared by Story 5) exist at the release candidate's commit with a directory date within the configured release window, or the committed evidence reports unresolved findings, or every evidence directory's date falls outside the release window (default: 7 days before tag push)
   - When: The workflow evaluates its publish gate
-  - Then: The publish step does not run; the workflow reports failure with a clear message naming the missing or stale evidence
+  - Then: The publish step does not run; the workflow reports failure with a clear message naming the missing or stale evidence directory
 - **TC-6.5e:** All gates green publishes the artifact
   - Given: A release workflow run with all three gates green
   - When: The publish step executes

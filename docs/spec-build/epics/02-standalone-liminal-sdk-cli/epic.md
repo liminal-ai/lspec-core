@@ -103,7 +103,7 @@ The migration replaces several Bun-specific dependencies that don't carry forwar
 5. Maintainer runs the verification suite and confirms parity with the existing bundled runtime via the maintainer-run TC-1.5a procedure
 6. Maintainer commits the new package as the working source of operations
 
-**Note on starting state:** The package boundary itself (`package.json`, `tsconfig.json`, `vitest.config.ts`, `tsup.config.ts`, `biome.json`, stub `src/` and `tests/` directories with smoke test, validated dev environment) is pre-scaffolded as part of the `lspec-core` repo bootstrap — Flow 1 extends this baseline rather than creating it from scratch.
+**Note on starting state:** The package boundary itself (`package.json`, `tsconfig.json`, `vitest.config.ts`, `tsup.config.ts`, `biome.json`, stub `src/` and `tests/` directories with smoke test, base npm scripts for `format:check` / `format` / `lint` / `check` / `typecheck` / `test` / `test:watch` / `build`, validated dev environment) is pre-scaffolded as part of the `lspec-core` repo bootstrap — Flow 1 extends this baseline. The verify-script chain (`red-verify`, `verify`, `green-verify`, `verify-all`), the test-immutability guard scripts, the migrated source and tests, and `.github/workflows/ci.yml` are all NOT part of the bootstrap and are introduced by Story 0.
 
 #### Acceptance Criteria
 
@@ -343,12 +343,16 @@ The hardening covers six independent edges and two known regressions. Each edge 
   - When: The write is interrupted (simulated by killing the process between the temp write and the final rename)
   - Then: The artifact path either contains the prior content or the new content — never a partial, malformed JSON
 
-**AC-4.5:** Artifact-index reservation is concurrency-safe under simultaneous invocation.
+**AC-4.5:** Artifact-index reservation is concurrency-safe under simultaneous invocation, and the artifact directory does not accumulate stale placeholder reservations from crashed callers.
 
 - **TC-4.5a:** Concurrent reservation
   - Given: Two CLI commands invoked simultaneously against the same spec pack
   - When: Both reserve the next artifact index
   - Then: Each receives a distinct index and neither overwrites the other's artifact
+- **TC-4.5c:** Stale placeholder cleanup during reserveIndex
+  - Given: An artifact directory containing zero-byte placeholder files older than the configured stale-reservation timeout (default: 5 minutes)
+  - When: A subsequent `reserveIndex(name)` call is made
+  - Then: The stale placeholders are removed before the new reservation; `reserveIndex` returns the next available index without those slots being treated as reserved; `inspect` remains read-only and is not the operation that performed the cleanup
 
 **AC-4.6:** Subprocess environment inheritance is filtered through an allowlist rather than passing the entire parent environment.
 
@@ -378,6 +382,7 @@ The hardening covers six independent edges and two known regressions. Each edge 
   - Given: The mock fixtures used by the test suite to simulate provider output
   - When: A reviewer inspects fixture provenance
   - Then: Each external-boundary fixture is a captured sample from a real provider run, with provenance documented (provider, command, capture date)
+  - Note on story split: Story 3 satisfies the rule + consuming-test scaffold half (TC-4.8b-rule); Story 4 satisfies the captured-fixture-evidence half (TC-4.8b-evidence). The full TC-4.8b is satisfied at the end of Story 4.
 
 ---
 
@@ -624,7 +629,7 @@ These are the contracts the package exposes to its consumers. They are stack-neu
 
 | Operation | Purpose | Continuation Handle |
 |-----------|---------|---------------------|
-| inspect | Validate spec pack and return inventory | no |
+| inspect | Validate spec pack and return inventory (read-only — see Tech Design Q7 / artifact-writer for placeholder lifecycle handling) | no |
 | preflight | Resolve provider availability and verification gates | no |
 | epic-synthesize | Generate or refresh epic-level synthesis output | no |
 | epic-verify | Run epic-level verification | no |

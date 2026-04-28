@@ -18,6 +18,8 @@ Ship a real fixture spec pack, reset tooling, an agent-readable gorilla prompt, 
 - Reset tool for repeatable runs
 - Gorilla prompt covering every operation
 - Evidence template for agent-run reporting
+- Canonical evidence directory layout: `gorilla/evidence/<YYYY-MM-DD>/<provider>-<scenario>.md` (verified by the release gate in Story 7)
+- `gorilla/self-test-log.md` for the maintainer-driven deliberate-drift sanity check on the gorilla pack itself (separate from release evidence)
 - Demonstrated drift detection from an intentionally introduced mismatch
 
 **Scope Out:**
@@ -78,6 +80,13 @@ Ship a real fixture spec pack, reset tooling, an agent-readable gorilla prompt, 
   - Given: A deliberately introduced parser drift (a mock that no longer matches the real provider output)
   - When: The gorilla run executes the operation that uses that parser
   - Then: The agent's evidence report flags the divergence
+
+**AC-5.9:** The repository declares the canonical layout for gorilla run evidence so the release gate in Story 7 has a stable contract to verify against.
+
+- **TC-5.9a:** Evidence directory layout convention documented
+  - Given: The repository at the end of this story
+  - When: A reviewer inspects `gorilla/` and the gorilla prompt
+  - Then: The prompt and/or `gorilla/README.md` (or equivalent) declares that gorilla runs deposit evidence under `gorilla/evidence/<YYYY-MM-DD>/<provider>-<scenario>.md` (date is the day of the gorilla run; provider in `claude-code` | `codex` | `copilot`; scenario in `smoke` | `resume` | `structured-output` | `stall`); the `gorilla/evidence/` directory exists in the source tree (initially empty or seeded with one example run); the maintainer-driven deliberate-drift sanity check is recorded separately in `gorilla/self-test-log.md`
 
 ### Technical Design
 <!-- Jira: Technical Notes or sub-section of Description -->
@@ -150,5 +159,6 @@ See the tech design document for full architecture, implementation targets, and 
 - [ ] Gorilla prompt covers every operation
 - [ ] Provider coverage is explicit where applicable
 - [ ] Evidence template is structured and parseable
+- [ ] Canonical evidence layout (`gorilla/evidence/<YYYY-MM-DD>/<provider>-<scenario>.md`) is declared in the repo so the release gate has a stable contract
 - [ ] A deliberate drift case is detected by the gorilla flow
 - [ ] No file under `liminal-spec/processes/impl-cli/` or `liminal-spec/processes/codex-impl/` was modified

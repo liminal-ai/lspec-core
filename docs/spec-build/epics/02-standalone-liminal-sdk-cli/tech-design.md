@@ -82,6 +82,8 @@ The design assumes Vitest as the test runner replacing the Bun-coupled stack, `t
 
 **Decision: Single package with two entry points (CLI bin + SDK subpath export).**
 
+The package name is `@lspec/core`; the CLI binary name is `lspec`. Both `npx @lspec/core <subcommand>` (without prior install — npm fetches and runs in one step) and `lspec <subcommand>` (after `npm install -g @lspec/core`, or with `node_modules/.bin` on PATH inside a project) invoke the same CLI. Spec examples use `npx @lspec/core ...` for first-time / install-via-npx contexts and bare `lspec ...` for post-install contexts.
+
 The package is published as one npm artifact with two reachable surfaces: a `bin` entry that exposes the CLI as `lspec`, and an `exports` subpath that exposes the SDK as `@lspec/core/sdk`. Both surfaces compile from the same TypeScript source tree and ship in the same tarball. The CLI command modules import from the SDK; the SDK has no knowledge of the CLI. There is one `package.json`, one `tsconfig.json`, one build configuration.
 
 A minimal monorepo (workspaces with `packages/sdk` and `packages/cli`) was considered and rejected. Workspaces add build orchestration complexity (separate `package.json` and `tsconfig.json` per package, workspace linking during development, compound publish steps) without proportional benefit at this scale. The package boundary the SDK needs is a public-export-surface boundary, not a build boundary. The eventual web application consumer does not force a workspace split because it can import from the SDK subpath of the single published package — there is no use case that requires the SDK without also accepting the CLI dependency tree.
@@ -125,15 +127,23 @@ The `guard:no-test-changes` check uses a captured-baseline pattern, not a git di
 
 ### Q5: Real-Harness CI Shape
 
-**Decision: Two workflow files. `ci.yml` for fast feedback on every PR; `integration.yml` (added in Story 4) for opt-in real-provider runs. The `ci.yml` and `publish.yml` files are pre-scaffolded in `lspec-core` (Node 24 + npm); Story 0 only ensures the verification npm scripts they invoke exist.**
+**Decision: Three workflow files, each owned by the story that introduces the gates it enforces.**
+
+| Workflow | Owning Story | Triggers | Purpose |
+|----------|--------------|----------|---------|
+| `ci.yml` | Story 0 | `push`, `pull_request` | Runs `npm run verify` (the verify chain Story 0 lands). No provider credentials. Fast PR feedback loop. |
+| `integration.yml` | Story 4 | `workflow_dispatch`, scheduled, and as a release-workflow job step | Sets `LSPEC_INTEGRATION=1`, installs the three provider binaries, exposes provider credentials via repository secrets, runs `verify-all`. Opt-in for everyday work; required for releases. |
+| `publish.yml` | Story 7 | `push.tags` | Runs the three-layer release gate (verify-all + integration evidence + gorilla evidence) before `npm publish`. |
+
+Repository scaffolding does NOT include any workflows at story start — `.github/workflows/` does not exist in `lspec-core` until Story 0 creates it. Each story creates its own workflow file as part of its scope; the directory is created on first workflow.
 
 `ci.yml` runs on `push` to any branch and `pull_request` against main. It runs `verify` (which includes parser-contract tests). It does not have access to provider credentials. The full PR loop is fast and free.
 
-`integration.yml` runs on `push` to `main`, on `workflow_dispatch` (manually triggered), and as a job step inside the release workflow. It sets `LSPEC_INTEGRATION=1`, installs the three provider binaries, exposes provider credentials via repository secrets, and runs `verify-all`. Because real provider runs cost money and time, this workflow is opt-in for everyday work and required for releases.
+`integration.yml` runs on `workflow_dispatch` (manually triggered), on a schedule, and as a job step inside the release workflow. It sets `LSPEC_INTEGRATION=1`, installs the three provider binaries, exposes provider credentials via repository secrets, and runs `verify-all`. Because real provider runs cost money and time, this workflow is opt-in for everyday work and required for releases.
 
-A single workflow file with conditional gating was considered but rejected. The credential model is fundamentally different — default workflow cannot have access to provider secrets — and forking that decision into conditional `if:` blocks makes the workflow harder to reason about. Two files map cleanly to two cost profiles.
+A single workflow file with conditional gating was considered but rejected. The credential model is fundamentally different — default workflow cannot have access to provider secrets — and forking that decision into conditional `if:` blocks makes the workflow harder to reason about. Three files map cleanly to three cost profiles and three story owners.
 
-The release workflow (Story 7) — `publish.yml`, also pre-scaffolded — calls into `integration.yml` as a required gate before publishing.
+The release workflow (Story 7) — `publish.yml` — calls into `integration.yml` as a required gate before publishing.
 
 ### Q6: Atomic-Write Implementation
 
@@ -153,7 +163,7 @@ The reservation algorithm computes the next available index by scanning the arti
 
 Directory-based locking (a `<artifacts>/.lock` directory created and removed) was considered but rejected. It introduces a separate state file that needs to be cleaned up on crash, and the failure modes (stale locks from killed processes) are worse than the `O_EXCL` race-and-retry approach.
 
-Because the reservation creates a placeholder file before the caller has content, the artifact-writer flow becomes: reserve index → caller produces content → `writeAtomic` to the reserved path. If the caller crashes between reservation and write, the placeholder is left behind as an empty file at the reserved index. A garbage-collection pass on `inspect` cleans up zero-byte placeholders older than the configured grace window.
+Because the reservation creates a placeholder file before the caller has content, the artifact-writer flow becomes: reserve index → caller produces content → `writeAtomic` to the reserved path. If the caller crashes between reservation and write, the placeholder is left behind as an empty file at the reserved index. The artifact-writer's `reserveIndex(name)` operation, before reserving a new index, performs a lazy garbage-collection pass over the artifact directory: any zero-byte file matching the artifact-name pattern with a modification time older than the configured stale-reservation timeout (default: 5 minutes) is unlinked. This keeps the artifact directory bounded without requiring a separate maintenance operation, and without `inspect` becoming a mutating operation. `inspect` remains read-only — its contract per the Operation Inventory is "Validate spec pack and return inventory", and that contract is preserved.
 
 ### Q8: Error Taxonomy Boundaries
 
@@ -176,6 +186,8 @@ The taxonomy:
 | `IndexReservationError` | `INDEX_RESERVATION_FAILED` | Artifact-index reservation exhausts its retry cap |
 
 `INTERNAL_ERROR` is reserved for genuinely unexpected failures (uncaught throws inside the package's own code that don't have a typed error class). Consumers branch on `error.code`; `instanceof` is the secondary classification mechanism for in-process callers. String matching against `error.message` is forbidden in non-test code.
+
+The taxonomy is used in two complementary ways. First, structured workflow failures appear in the envelope's `errors[]` array as `{ code, message, detail? }` objects, where `code` matches the class names above (`INVALID_SPEC_PACK`, `PROVIDER_TIMEOUT`, etc.). The envelope-everywhere rule from §External Contracts means the SDK does not throw on these failures — it returns an envelope with the appropriate `errors[]` entry and `status` set accordingly. Second, the typed error classes themselves are used as throw types only for programming errors (Zod boundary parse failures, invariant violations) and infrastructure errors that cannot be translated into an envelope status. Both paths use the same stable codes; the taxonomy is the single source of truth.
 
 The taxonomy is defined in `src/sdk/errors/` as one file per class plus an `index.ts` that re-exports. New error classes added in future versions are additive — a major version bump is required to remove or rename a code.
 
@@ -211,7 +223,7 @@ A single rolled-up `.d.ts` was considered but rejected. It would require a bundl
 ┌──────────────────────────────────────────────────────────────────┐
 │ Consumer                                                         │
 │                                                                  │
-│  CLI:  npx lspec inspect --spec-pack-root ./spec-pack --json   │
+│  CLI:  npx @lspec/core inspect --spec-pack-root ./spec-pack    │
 │  SDK:  import { inspect } from '@lspec/core/sdk'                      │
 └─────────────────────────┬────────────────────────────────────────┘
                           │ command invocation / function call
@@ -275,7 +287,9 @@ Each provider adapter spawns a subprocess with a defined argument vector, captur
 
 **Error contract:**
 
-Errors thrown by SDK functions are instances of the typed error classes in §Q8. Errors surfaced through the CLI envelope appear in the `errors` array as `{ code, message, detail? }` objects. Stable error codes are the machine-readable contract; codes are immutable, messages may evolve, details are not parsed by callers.
+SDK functions return an envelope on every code path — `status: ok | blocked | error | needs-user-decision`. Failures that the workflow can identify and report as part of the operation's outcome are surfaced as entries in the envelope's `errors` array (`{ code, message, detail? }`) with the envelope's `status` set accordingly. SDK functions do **not** throw on structured failure — that is a callable-API contract decision, so consumers do not need defensive `try/catch` around every call.
+
+SDK functions throw only on programming errors: invalid input that fails Zod parse at the SDK boundary, invariant violations (corrupted state, impossible branches), and infrastructure errors that the workflow cannot meaningfully translate into an envelope status (for example, the filesystem is not writable). These throws use the typed error classes in §Q8 and are caller bugs, not workflow outcomes. Stable error codes are still the machine-readable contract for the envelope's `errors[]` entries; codes are immutable, messages may evolve, details are not parsed by callers.
 
 | Code | Surfaced By | Meaning |
 |------|-------------|---------|
@@ -420,6 +434,10 @@ The surfaces nest hierarchically: Public Surface depends on Operations, Operatio
 │   │   └── target-codebase/
 │   ├── prompt.md
 │   ├── evidence-template.md
+│   ├── evidence/                                # NEW: Gorilla run evidence, organized by run date
+│   │   └── <YYYY-MM-DD>/                        # one directory per gorilla run
+│   │       └── <provider>-<scenario>.md         # e.g. claude-code-smoke.md, codex-resume.md
+│   ├── self-test-log.md                         # NEW: Maintainer-driven sanity check on the gorilla pack itself (NOT release evidence)
 │   └── reset.ts
 ├── scripts/
 │   ├── capture-test-baseline.ts                 # NEW: red-verify exit step; writes SHA-256 manifest of test files
@@ -435,9 +453,9 @@ The surfaces nest hierarchically: Public Surface depends on Operations, Operatio
 # for GitHub Actions to trigger.
 
 .github/workflows/
-├── ci.yml                                       # PRE-SCAFFOLDED in lspec-core: PR feedback loop (Node 24 + npm)
-├── integration.yml                              # NEW (Story 4): Real-harness opt-in
-└── publish.yml                                  # PRE-SCAFFOLDED in lspec-core: Tag-triggered publish (Story 7 fills the gates)
+├── ci.yml                                       # NEW (Story 0): PR feedback loop, runs `npm run verify` (Node 24 + npm)
+├── integration.yml                              # NEW (Story 4): Real-harness opt-in, env-gated
+└── publish.yml                                  # NEW (Story 7): Tag-triggered publish with three-layer release gate
 ```
 
 The `MIGRATED` marker indicates the file's source content comes from `liminal-spec/processes/impl-cli/` and lands in the new package largely unchanged. `MIGRATED + MODIFIED` indicates the file changes during this epic — typically as part of Story 3 (hardening) — to add typed errors, derived schemas, atomic writes, env allowlist, or one of the regression fixes. `NEW` indicates the file does not exist in the bundled runtime today.
@@ -459,7 +477,7 @@ The `MIGRATED` marker indicates the file's source content comes from `liminal-sp
 | `src/core/gate-discovery.ts` | MIGRATED | Verification gate resolution | `src/infra/fs-utils.ts`, `src/sdk/errors/*` | AC-1.1 |
 | `src/core/prompt-assembly.ts` | MIGRATED + MODIFIED | Prompt composition; schema rendering derived from canonical contracts | `src/core/result-contracts.ts`, `src/sdk/errors/*` | AC-4.3 |
 | `src/core/result-contracts.ts` | MIGRATED + MODIFIED | Canonical schemas; envelope version marker | `src/sdk/contracts/*` | AC-4.1, AC-4.3 |
-| `src/core/artifact-writer.ts` | MIGRATED + MODIFIED | Atomic writes + concurrency-safe index reservation | `src/infra/fs-atomic.ts`, `src/sdk/errors/*` | AC-4.4, AC-4.5 |
+| `src/core/artifact-writer.ts` | MIGRATED + MODIFIED | Atomic writes + concurrency-safe index reservation + lazy GC of stale placeholder reservations (zero-byte files older than the configured stale-reservation timeout) before each new reservation | `src/infra/fs-atomic.ts`, `src/sdk/errors/*` | AC-4.4, AC-4.5 |
 | `src/core/runtime-progress.ts` | MIGRATED + MODIFIED | Progress tracking with atomic snapshot/status writes | `src/infra/fs-atomic.ts` | AC-4.4 |
 | `src/core/{story-implementor,story-verifier,epic-synthesizer,epic-verifier,epic-cleanup,quick-fix}.ts` | MIGRATED + MODIFIED | Story/epic workflow orchestrators with typed errors and derived schemas | `src/core/*`, `src/core/provider-adapters/*` | AC-2.1 through AC-4.8 |
 | `src/core/provider-adapters/*.ts` | MIGRATED + MODIFIED | Provider CLI wrappers with env allowlist; codex.ts session id fix | `src/infra/env-allowlist.ts`, `src/sdk/errors/*` | AC-4.6, AC-4.7 |
@@ -471,15 +489,17 @@ The `MIGRATED` marker indicates the file's source content comes from `liminal-sp
 | `gorilla/fixture-spec-pack/` | NEW | Realistic spec pack for gorilla runs | None | AC-5.4 |
 | `gorilla/prompt.md` | NEW | Agent-readable instruction prompt | None | AC-5.6 |
 | `gorilla/evidence-template.md` | NEW | Evidence report structure | None | AC-5.7, AC-5.8 |
+| `gorilla/evidence/<YYYY-MM-DD>/<provider>-<scenario>.md` | NEW | Per-run evidence files (one per provider × scenario), organized by run date; verified by the release gate | None | AC-5.7, AC-5.8, AC-6.5d |
+| `gorilla/self-test-log.md` | NEW | Maintainer's sanity-check log of running the gorilla pack against a known-broken parser; documents drift detection works (NOT release evidence) | None | AC-5.8 |
 | `gorilla/reset.ts` | NEW | Restore fixture to baseline | None | AC-5.5 |
 | `tests/parser-contract/*.test.ts` | NEW | Captured-output contract tests run on default CI | `src/core/provider-adapters/*` | AC-5.3 |
 | `tests/integration/*.test.ts` | NEW | Real-harness suite, env-gated | `src/sdk/operations/*`, real provider binaries | AC-5.1, AC-5.2 |
 | `scripts/capture-test-baseline.ts` | NEW | Captures SHA-256 manifest of test files at red-verify exit | None | AC-1.3 |
 | `scripts/guard-no-test-changes.ts` | NEW | Compares working tree against captured baseline; fails on divergence | None | AC-1.3 |
 | `scripts/pack-and-install-smoke.ts` | NEW | Pack-and-install smoke verification | None | AC-3.5, AC-6.2 |
-| `.github/workflows/ci.yml` | PRE-SCAFFOLDED in lspec-core | PR feedback loop on Node 24 + npm; Story 0 only ensures the npm scripts it invokes (`format:check`, `lint`, `typecheck`, `test`) exist | None | AC-5.2, AC-5.3 |
+| `.github/workflows/ci.yml` | NEW (Story 0) | PR feedback loop on Node 24 + npm; runs `npm run verify` (which composes the verify-script chain Story 0 lands) | None | AC-1.3, AC-5.2, AC-5.3 |
 | `.github/workflows/integration.yml` | NEW (Story 4) | Real-harness opt-in workflow | None | AC-5.1, AC-5.2 |
-| `.github/workflows/publish.yml` | PRE-SCAFFOLDED in lspec-core | Tag-triggered publish; Story 7 fills the three-layer release gate | None | AC-6.5, AC-6.6 |
+| `.github/workflows/publish.yml` | NEW (Story 7) | Tag-triggered publish; enforces the three-layer release gate before `npm publish` | None | AC-6.5, AC-6.6 |
 | `package.json` | NEW | Distribution metadata | None | AC-1.3, AC-6.1, AC-6.4 |
 
 ### Module Interaction
@@ -487,7 +507,7 @@ The `MIGRATED` marker indicates the file's source content comes from `liminal-sp
 The runtime path for one CLI invocation flows down through the layered surfaces:
 
 ```
-npx lspec story-implement --spec-pack-root ./pack --story-id story-01 --json
+npx @lspec/core story-implement --spec-pack-root ./pack --story-id story-01 --json
         │
         ▼
 src/bin/lspec.ts (citty subcommand registry)
@@ -901,6 +921,20 @@ sequenceDiagram
 | Gorilla prompt | `gorilla/prompt.md` | Markdown prompt instructing the agent: read this fixture, walk every operation, capture evidence per template |
 | Gorilla evidence template | `gorilla/evidence-template.md` | Markdown sections per operation, envelope verification, artifact verification, continuation handle, divergences |
 
+**Gorilla Evidence Layout:**
+
+Gorilla runs produce evidence files under `gorilla/evidence/<YYYY-MM-DD>/`, where the date is the day the gorilla run was completed. Each provider × scenario pair produces one evidence file:
+
+```
+gorilla/evidence/<YYYY-MM-DD>/<provider>-<scenario>.md
+```
+
+Where `<provider>` is `claude-code` | `codex` | `copilot` and `<scenario>` is `smoke` | `resume` | `structured-output` | `stall`. Each file follows the structure in `gorilla/evidence-template.md`: operation walked, envelope produced, artifact verified, continuation handle (where applicable), divergences flagged.
+
+The `gorilla/evidence/` directory is committed to the repo. Old evidence accumulates as a historical record. The release gate (`publish.yml` in Story 7) verifies that at least one evidence directory exists with a date within the configured release window (default: 7 days before tag push).
+
+The maintainer self-test record (`gorilla/self-test-log.md`) is separate — it documents the maintainer running the gorilla pack against a known-broken parser to confirm the agent's evidence report flags the divergence. Self-test is a maintainer-driven sanity check on the gorilla pack itself; it is NOT release evidence.
+
 **TC Mapping for Flow 5:**
 
 | TC | Test File | Test Description |
@@ -971,9 +1005,9 @@ sequenceDiagram
 | What | Where | Stub Signature |
 |------|-------|----------------|
 | Distribution metadata (full) | `package.json` | Full exports map (./, ./sdk, ./sdk/contracts, ./sdk/errors), bin, files allowlist, types entry |
-| Default workflow | `.github/workflows/ci.yml` (pre-scaffolded) | Triggers on push/PR; runs `npm run verify` |
-| Integration workflow | `.github/workflows/integration.yml` (NEW in Story 4) | Triggers on push to main, workflow_dispatch; sets LSPEC_INTEGRATION; installs provider binaries; runs `verify-all` |
-| Release workflow | `.github/workflows/publish.yml` (pre-scaffolded; Story 7 fills the gates) | Triggers on tag push; calls default, calls integration, checks gorilla evidence, publishes |
+| Default workflow | `.github/workflows/ci.yml` (NEW in Story 0) | Triggers on push/PR; runs `npm run verify` |
+| Integration workflow | `.github/workflows/integration.yml` (NEW in Story 4) | Triggers on workflow_dispatch + on a schedule; sets LSPEC_INTEGRATION; installs provider binaries; runs `verify-all` |
+| Release workflow | `.github/workflows/publish.yml` (NEW in Story 7) | Triggers on tag push; calls default, calls integration, checks gorilla evidence, publishes |
 | Pack-and-install smoke script | `scripts/pack-and-install-smoke.ts` | `npm pack` → install into temp dir → run `npx @lspec/core inspect` → assert envelope |
 | Release runbook | `docs/release-runbook.md` | Documents npm token rotation, organization setup, gorilla pre-tag procedure, first-publish rehearsal |
 
@@ -1433,11 +1467,15 @@ The artifact-writer reserves the next available index using `O_CREAT|O_EXCL` sem
  *
  * Implementation:
  *  1. Compute artifactsDir = join(specPackRoot, 'artifacts')
- *  2. Scan dir for max index across files matching <name>-<N>.json
- *  3. Attempt fs.open(<name>-<next>.json, 'wx') to atomically reserve
- *  4. On EEXIST, increment and retry (up to 10 retries)
- *  5. On retry exhaustion, throw IndexReservationError
- *  6. On success, return the reserved path; the file exists as a placeholder
+ *  2. Lazy GC: unlink any zero-byte files matching the <name>-<N>.json pattern
+ *     whose mtime is older than the configured stale-reservation timeout
+ *     (default: 5 minutes). Keeps the artifact directory bounded without
+ *     requiring a separate maintenance operation, and keeps `inspect` read-only.
+ *  3. Scan dir for max index across files matching <name>-<N>.json
+ *  4. Attempt fs.open(<name>-<next>.json, 'wx') to atomically reserve
+ *  5. On EEXIST, increment and retry (up to 10 retries)
+ *  6. On retry exhaustion, throw IndexReservationError
+ *  7. On success, return the reserved path; the file exists as a placeholder
  *
  * Callers are expected to writeAtomic to the reserved path with their content.
  */
@@ -1567,6 +1605,10 @@ Three categories:
 
 The gorilla pack's fixture (`gorilla/fixture-spec-pack/`) is separate from these — it's a complete spec pack used for end-to-end agent runs, not for parser-contract or unit tests.
 
+### Test Implementation Styles (AST/static vs runtime)
+
+A subset of TCs are best implemented as AST-style or static checks rather than runtime assertions, because they assert structural properties of the source rather than runtime behavior. Examples: TC-2.2a (public exports are exactly the enumerated set — walk the SDK module's export tree statically), TC-3.2a (no business logic in command modules — AST-walk command files; assert each function body is parse args + SDK call + render envelope + map exit code + exit), TC-4.2b (no string-matched error detection in non-test code — grep `src/` excluding `tests/` for `error.message.includes(`, `error.message.startsWith(`, regex literals against message text), TC-4.8a (no internal mocks — walk `vi.mock`/`vi.spyOn` declarations and cross-reference targeted modules), and TC-2.6a/TC-2.6b (Zod 4 syntax — grep for v3-only constructor params). These tests use TypeScript's compiler API, `ts-morph`, or a focused grep+exclude-list approach. They are conservative by default — false positives over false negatives. Brittle ad-hoc greps are not acceptable; either the check is structurally sound (operating on parsed source) or it's review-by-inspection (called out as such in the test plan).
+
 ---
 
 ## Verification Scripts
@@ -1644,6 +1686,7 @@ The work decomposes into eight chunks aligned with the epic's eight stories. Eac
 - `tests/parity.test.ts` (NEW — Story 3 exit divergence assertion only; TC-1.5a is a maintainer-run check, not in-repo)
 - `scripts/capture-test-baseline.ts` (NEW skeleton)
 - `scripts/guard-no-test-changes.ts` (NEW skeleton)
+- `.github/workflows/ci.yml` (NEW — created by Story 0; triggers on `push` + `pull_request`; runs `npm run verify` on Node 24 + npm. `.github/workflows/` does not exist at story start.)
 - `parity-report.md` artifact under `docs/spec-build/epics/02-standalone-liminal-sdk-cli/` (committed at Story 0 exit by the maintainer)
 
 **Exit Criteria:** `npm run verify` passes against the migrated suite; foundation tests pass; `tsup` produces a working dist/. Parity report is committed.
@@ -1787,8 +1830,7 @@ The work decomposes into eight chunks aligned with the epic's eight stories. Eac
 - `tests/integration/gating.test.ts` (NEW)
 - `scripts/capture-provider-output.ts` (NEW)
 - `vitest.config.ts` (MODIFIED — add integration project)
-- `.github/workflows/ci.yml` (PRE-SCAFFOLDED — Story 4 only ensures the package's npm scripts it invokes exist; no workflow file edit needed at story exit)
-- `.github/workflows/integration.yml` (NEW — Story 4)
+- `.github/workflows/integration.yml` (NEW — Story 4 creates this file; triggers on `workflow_dispatch` + schedule; sets `LSPEC_INTEGRATION=1`; installs provider binaries; runs `verify-all`)
 
 **Exit Criteria:** Default CI runs parser-contract tests on every PR. Integration workflow runs `verify-all` against real providers. All 8 TCs covered. Twelve captured fixtures committed with provenance.
 
@@ -1870,7 +1912,7 @@ The work decomposes into eight chunks aligned with the epic's eight stories. Eac
 **Non-TC Decided Tests:** Release workflow YAML lint; runbook structural completeness check (sections present).
 
 **Files:**
-- `.github/workflows/publish.yml` (PRE-SCAFFOLDED — Story 7 fills in the three-layer release gate inside the existing workflow rather than creating a new file)
+- `.github/workflows/publish.yml` (NEW — Story 7 creates this file; triggers on tag push; enforces the three-layer release gate before `npm publish`)
 - `CHANGELOG.md` (NEW)
 - `docs/release-runbook.md` (NEW)
 - `tests/dist/version-sync.test.ts` (NEW)

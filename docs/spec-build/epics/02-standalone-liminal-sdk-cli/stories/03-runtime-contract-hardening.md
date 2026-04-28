@@ -14,10 +14,10 @@ Harden the public runtime surface by versioning contracts, replacing string-matc
 
 **Scope In:**
 - Envelope and persisted-state version markers
-- Typed error taxonomy
+- Typed error taxonomy (envelope-everywhere for structured failures; throws reserved for programming errors and infrastructure failures)
 - Canonical schema derivation
 - Atomic writes for artifacts, progress, and status
-- Concurrency-safe artifact-index reservation
+- Concurrency-safe artifact-index reservation, including lazy garbage-collection of stale zero-byte placeholders inside the artifact-writer (so `inspect` remains read-only per the operation inventory)
 - Subprocess env allowlist
 - Fixes for Codex retained-session reuse and Codex preflight auth-unknown fallback
 
@@ -74,12 +74,16 @@ Harden the public runtime surface by versioning contracts, replacing string-matc
   - When: The write is interrupted (simulated by killing the process between the temp write and the final rename)
   - Then: The artifact path either contains the prior content or the new content — never a partial, malformed JSON
 
-**AC-4.5:** Artifact-index reservation is concurrency-safe under simultaneous invocation.
+**AC-4.5:** Artifact-index reservation is concurrency-safe under simultaneous invocation, and the artifact directory does not accumulate stale placeholder reservations from crashed callers.
 
 - **TC-4.5a:** Concurrent reservation
   - Given: Two CLI commands invoked simultaneously against the same spec pack
   - When: Both reserve the next artifact index
   - Then: Each receives a distinct index and neither overwrites the other's artifact
+- **TC-4.5c:** Stale placeholder cleanup during reserveIndex
+  - Given: An artifact directory containing zero-byte placeholder files older than the configured stale-reservation timeout (default: 5 minutes)
+  - When: A subsequent `reserveIndex(name)` call is made
+  - Then: The stale placeholders are removed before the new reservation; `reserveIndex` returns the next available index without those slots being treated as reserved; `inspect` is not the operation that performs the cleanup (it remains read-only per the operation inventory)
 
 **AC-4.6:** Subprocess environment inheritance is filtered through an allowlist rather than passing the entire parent environment.
 
@@ -105,11 +109,15 @@ Harden the public runtime surface by versioning contracts, replacing string-matc
   - Given: The package's test suite
   - When: A reviewer inspects mock declarations
   - Then: All mocks target external boundaries (provider subprocess, filesystem at the very edge, network); no mock targets an internal module
-- **TC-4.8b:** External mock fixtures sourced from captured real output
-  - Given: The mock fixtures used by the test suite to simulate provider output
-  - When: A reviewer inspects fixture provenance
-  - Then: Each external-boundary fixture is a captured sample from a real provider run, with provenance documented (provider, command, capture date)
-  - Note: Story 3 owns the rule and the consuming test shape. Story 4 creates and commits the captured real-provider fixtures that fully exercise this TC.
+- **TC-4.8b-rule:** Fixture-provenance rule + consuming test shape (Story 3 satisfies this half)
+  - Given: The package's mock-fixture loader and the parser-contract test scaffold
+  - When: A reviewer inspects how fixtures are consumed
+  - Then: The loader requires each fixture file to declare a provenance comment (provider, command, capture date) at the top and refuses to load fixtures missing it; `tests/parser-contract/fixtures.test.ts` walks `tests/parser-contract/fixtures/` and asserts every present file has a parsable provenance comment; the parser-contract test files (`tests/parser-contract/{claude-code,codex,copilot}.test.ts`) exist and structurally consume any fixtures that land under the corresponding directory; no error-detection branch in `src/` matches against fixture content via string substrings (this is enforced by the rule, not by fixture presence)
+  - Note: Story 3 lands the rule, the loader, the provenance check, and the parser-contract test scaffolding. The fixture directories (`tests/parser-contract/fixtures/<provider>/`) exist but may be empty at Story 3 exit; the parser-contract test files report a "no fixtures yet" pass in that case. Story 4 creates and commits the captured real-provider fixtures that exercise the rule end-to-end (see Story 4 AC-5.3 plus the satisfaction half below).
+- **TC-4.8b-evidence:** Captured real-provider fixtures committed (Story 4 satisfies this half)
+  - Given: The committed fixture files at the end of Story 4
+  - When: A reviewer inspects each fixture under `tests/parser-contract/fixtures/<provider>/<scenario>.txt`
+  - Then: Each fixture's leading provenance comment names a real provider run (provider, command, capture date), the dates parse, and the parser-contract tests defined in Story 3 pass against the real captured content (proving the rule end-to-end). See Story 4 for the satisfying scope and TCs.
 
 ### Technical Design
 <!-- Jira: Technical Notes or sub-section of Description -->
@@ -171,4 +179,5 @@ See the tech design document for full architecture, implementation targets, and 
 - [ ] Subprocess env allowlist is documented and tested
 - [ ] Both known regressions are fixed and covered
 - [ ] Mock-discipline checks are present and passing
+- [ ] AC-4.8b is structurally enforced (TC-4.8b-rule satisfied by Story 3); full evidence is proven once Story 4 fixtures land (TC-4.8b-evidence)
 - [ ] No file under `liminal-spec/processes/impl-cli/` or `liminal-spec/processes/codex-impl/` was modified

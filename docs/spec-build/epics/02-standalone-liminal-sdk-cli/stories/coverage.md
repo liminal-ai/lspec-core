@@ -9,6 +9,7 @@
 | AC-1.3 | TC-1.3a, TC-1.3b | Story 0 |
 | AC-1.4 | TC-1.4a, TC-1.4b | Story 0 |
 | AC-1.5 | TC-1.5a, TC-1.5b | Story 0 |
+| AC-1.6 | TC-1.6a | Story 0 |
 | AC-2.1 | TC-2.1a | Story 1 |
 | AC-2.2 | TC-2.2a, TC-2.2b | Story 1 |
 | AC-2.3 | TC-2.3a | Story 1 |
@@ -21,13 +22,13 @@
 | AC-3.4 | TC-3.4a, TC-3.4b | Story 2 |
 | AC-3.5 | TC-3.5a, TC-3.5b | Story 2 |
 | AC-4.1 | TC-4.1a, TC-4.1b | Story 3 |
-| AC-4.2 | TC-4.2a, TC-4.2b | Story 3 |
+| AC-4.2 | TC-4.2a, TC-4.2b, TC-4.2c | Story 3 |
 | AC-4.3 | TC-4.3a, TC-4.3b | Story 3 |
 | AC-4.4 | TC-4.4a | Story 3 |
-| AC-4.5 | TC-4.5a | Story 3 |
+| AC-4.5 | TC-4.5a, TC-4.5c | Story 3 |
 | AC-4.6 | TC-4.6a | Story 3 |
 | AC-4.7 | TC-4.7a, TC-4.7b | Story 3 |
-| AC-4.8 | TC-4.8a, TC-4.8b | Story 3 |
+| AC-4.8 | TC-4.8a, TC-4.8b-rule (Story 3), TC-4.8b-evidence (Story 4) | Story 3 + Story 4 |
 | AC-5.1 | TC-5.1a, TC-5.1b, TC-5.1c, TC-5.1d | Story 4 |
 | AC-5.2 | TC-5.2a, TC-5.2b | Story 4 |
 | AC-5.3 | TC-5.3a, TC-5.3b | Story 4 |
@@ -36,6 +37,7 @@
 | AC-5.6 | TC-5.6a, TC-5.6b | Story 5 |
 | AC-5.7 | TC-5.7a, TC-5.7b | Story 5 |
 | AC-5.8 | TC-5.8a | Story 5 |
+| AC-5.9 | TC-5.9a | Story 5 |
 | AC-6.1 | TC-6.1a | Story 6 |
 | AC-6.2 | TC-6.2a, TC-6.2b | Story 6 |
 | AC-6.3 | TC-6.3a | Story 6 |

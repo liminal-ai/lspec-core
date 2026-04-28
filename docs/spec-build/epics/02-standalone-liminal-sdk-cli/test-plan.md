@@ -93,7 +93,7 @@ SDK function behavior tests with mocked filesystem and subprocess.
 
 | TC | Test Name | Setup | Action | Assert |
 |----|-----------|-------|--------|--------|
-| TC-2.4a | TC-2.4a: SDK never calls process.exit | Spy on `process.exit`; render fixture spec pack | Invoke each SDK function for each terminal status (ok/blocked/error/needs-user-decision) | `process.exit` never called; envelope returned to caller |
+| TC-2.4a | TC-2.4a: SDK never calls process.exit, writes stdout, or throws on structured failure | Spy on `process.exit` and `process.stdout.write`; render fixture spec pack | Invoke each SDK function for each terminal status (ok/blocked/error/needs-user-decision) | `process.exit` never called; nothing written to stdout; envelope returned to caller on every terminal status; no throw on any structured failure |
 | TC-2.4b | TC-2.4b: SDK callable from a script | Build dist; install package locally; run a small Node script importing from `@lspec/core/sdk` | Script calls `inspect({ specPackRoot })` against fixture | Script terminates with valid envelope and exit 0 |
 | TC-2.5a | TC-2.5a: dependency-injection adapters are honored | Provide `fs` and `spawn` adapters that record calls | Invoke an SDK operation that touches both | Adapter calls captured; default fs and child_process not invoked |
 
@@ -162,7 +162,8 @@ Per-operation envelope-shape tests (ten files, one per operation). Non-TC defens
 
 | TC | Test Name | Setup | Action | Assert |
 |----|-----------|-------|--------|--------|
-| TC-4.2a | TC-4.2a: typed error classes for every failure path | Trigger each failure path with controlled inputs | Catch the error | `error instanceof ImplCliError === true`; `error.code` is a stable string from the taxonomy |
+| TC-4.2a | TC-4.2a: structured failure paths surface in envelope.errors with stable codes | Trigger each structured failure path with controlled inputs against a fixture spec pack | Read the returned envelope (no `try/catch` needed — SDK does not throw) | `envelope.status === 'error'` (or `'blocked'` / `'needs-user-decision'` per the failure semantics); `envelope.errors[0].code` is a stable string from the taxonomy; `envelope.errors[0]` matches `{ code, message, detail? }` shape; the SDK function did NOT throw |
+| TC-4.2c | TC-4.2c: SDK throws typed errors for programming-error inputs | Construct an SDK function call with input that fails Zod parse at the boundary (e.g., wrong type, missing required key) | Invoke the SDK function and expect a throw | Function throws an instance of the relevant typed error class from §Q8 (e.g. `InvalidInputError` / `InvalidSpecPackError`); `error.code` matches the taxonomy; the throw is the documented signal that the caller's input was wrong, not that the workflow failed |
 
 #### `tests/code-quality/no-string-error-detection.test.ts`
 
@@ -188,6 +189,7 @@ Per-operation envelope-shape tests (ten files, one per operation). Non-TC defens
 | TC | Test Name | Setup | Action | Assert |
 |----|-----------|-------|--------|--------|
 | TC-4.5a | TC-4.5a: concurrent reservations receive distinct indexes | Set up empty artifacts directory | Call `nextArtifactPath` from two concurrent promises with the same name | Each resolves to a distinct index path; both placeholder files exist; neither overwrites the other |
+| TC-4.5c | TC-4.5c: stale placeholder cleanup during reserveIndex | Pre-populate artifacts directory with zero-byte placeholder files for the same `<name>` whose mtimes are older than the configured stale-reservation timeout (default: 5 minutes; use `fs.utimes` to backdate them in test); also create one fresh zero-byte placeholder within the timeout | Call `nextArtifactPath(specPackRoot, name)` | Stale placeholders are unlinked from the directory; the fresh placeholder is preserved; the returned reserved index does NOT skip the slots formerly occupied by stale placeholders; `inspect` is not invoked anywhere in this test path (cleanup happens in `reserveIndex` itself) |
 
 #### `tests/infra/env-allowlist.test.ts`
 
@@ -337,7 +339,7 @@ This is a manual pre-release verification, not an automated test. Documented in 
 | TC-6.5a | TC-6.5a: workflow triggers on tag | Read `.github/workflows/publish.yml` | Inspect `on:` block | Triggers include `push.tags`; does not include `push.branches: ['**']` |
 | TC-6.5b | TC-6.5b: default-CI gate blocks publish on failure | Inspect publish.yml jobs | Check job dependencies and conditions | Publish job depends on default-CI job; publish step has `if: success()` |
 | TC-6.5c | TC-6.5c: integration gate blocks publish on failure | Inspect publish.yml | Check integration job presence and gating | Publish job depends on integration job; publish step gated on integration success |
-| TC-6.5d | TC-6.5d: gorilla evidence required for publish | Inspect publish.yml | Check evidence-verification step | Step verifies `gorilla/evidence/<release-window>/*.md` exists at HEAD; checks date is within release window; fails with named-gate error message if absent or stale |
+| TC-6.5d | TC-6.5d: gorilla evidence required for publish | Inspect publish.yml | Check evidence-verification step | Step verifies that at least one `gorilla/evidence/<YYYY-MM-DD>/` directory exists at HEAD where the directory date is within the configured release window (default 7 days before tag push); the directory contains one or more `<provider>-<scenario>.md` files per the canonical layout; fails with named-gate error message if absent or stale |
 | TC-6.5e | TC-6.5e: all gates green publishes | Simulate a successful workflow run via dry-run mode | Run release workflow on a test tag | Publish runs; version on registry matches tag |
 
 #### Manual / `tests/release/runbook.test.ts`
@@ -572,11 +574,11 @@ Note: TC-1.1a covers four assertions in one test; TC-1.3a covers four script nam
 |-----------|-----------|-------------|
 | `tests/sdk/envelope.test.ts` | 1 | TC-4.1a |
 | `tests/infra/persisted-state.test.ts` | 1 | TC-4.1b |
-| `tests/sdk/errors.test.ts` | 1 | TC-4.2a |
+| `tests/sdk/errors.test.ts` | 2 | TC-4.2a, TC-4.2c |
 | `tests/code-quality/no-string-error-detection.test.ts` | 1 | TC-4.2b |
 | `tests/core/schema-derivation.test.ts` | 2 | TC-4.3a, TC-4.3b |
 | `tests/infra/fs-atomic.test.ts` | 1 | TC-4.4a |
-| `tests/infra/index-reservation.test.ts` | 1 | TC-4.5a |
+| `tests/infra/index-reservation.test.ts` | 2 | TC-4.5a, TC-4.5c |
 | `tests/infra/env-allowlist.test.ts` | 1 | TC-4.6a |
 | `tests/sdk/codex-resume.test.ts` | 1 | TC-4.7a |
 | `tests/sdk/preflight.test.ts` | 1 | TC-4.7b |
