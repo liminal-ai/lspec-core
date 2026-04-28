@@ -10,6 +10,8 @@ jobs:
   quality:
     name: Quality Gates
     runs-on: ubuntu-latest
+    # Skip until Story 0 lands package.json; runs normally once it exists
+    if: ${{ hashFiles('package.json') != '' }}
 
     steps:
       - uses: actions/checkout@v4
