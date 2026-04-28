@@ -840,7 +840,7 @@ sequenceDiagram
 | Atomic write utility | `src/infra/fs-atomic.ts` | `export async function writeAtomic(path: string, content: string \| Buffer): Promise<void> { throw new NotImplementedError('writeAtomic') }` |
 | Env allowlist | `src/infra/env-allowlist.ts` | `export function filterEnv(parentEnv: NodeJS.ProcessEnv, overrides?: Record<string, string \| undefined>): Record<string, string> { throw new NotImplementedError('filterEnv') }; export const DEFAULT_ALLOWLIST: readonly string[]` |
 | Error base class | `src/sdk/errors/base.ts` | `export abstract class ImplCliError extends Error { abstract readonly code: string; constructor(message: string, public readonly detail?: string) { super(message); this.name = this.constructor.name } }` |
-| Error classes | `src/sdk/errors/classes.ts` | `export class InvalidSpecPackError extends ImplCliError { readonly code = 'INVALID_SPEC_PACK' as const }`, ... (eleven classes) |
+| Error classes | `src/sdk/errors/classes.ts` | `export class InvalidSpecPackError extends ImplCliError { readonly code = 'INVALID_SPEC_PACK' as const }`, ... (twelve classes including `InvalidInputError`) |
 | Modified artifact writer | `src/core/artifact-writer.ts` | Updated `nextArtifactPath` uses `O_EXCL` retry loop; `writeJsonArtifact` delegates to `writeAtomic` |
 | Modified runtime progress | `src/core/runtime-progress.ts` | All snapshot/status writes go through `writeAtomic`; JSONL appends use `fs.appendFile` |
 | Modified codex adapter | `src/core/provider-adapters/codex.ts` | Session id extraction fix + `--resume` subcommand path |
@@ -2022,7 +2022,7 @@ The test plan document holds the per-test-file totals; this table is the index s
 - [~] Vitest version is deferred to Story 0 (latest stable at implementation time); the design does not pin a major because the implementation date determines what "current" means. Story 0 must research and pin
 - [x] Verification scripts defined (`red-verify`, `verify`, `green-verify`, `verify-all`) with specific command composition and the captured-baseline immutability pattern
 - [x] Test segmentation strategy decided (unit / parser-contract / command / sdk / integration / gorilla, runner architecture, where each suite lives)
-- [x] Error contract defined (eleven concrete classes with stable codes, plus reserved INTERNAL_ERROR)
+- [x] Error contract defined (twelve concrete classes with stable codes, plus reserved INTERNAL_ERROR)
 - [x] Environment and runtime prerequisites documented (Node 24+, three provider binaries, env-flag gating)
 
 ### Residual Concerns (carry into implementation)

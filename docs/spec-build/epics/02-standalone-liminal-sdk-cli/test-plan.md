@@ -540,8 +540,9 @@ Each chunk's test count is the sum of its file totals below. Running totals prop
 | `tests/verification-scripts.test.ts` | 4 | TC-1.3b (×4 sub-cases) |
 | `tests/build-output.test.ts` | 1 | TC-1.4b |
 | `tests/parity.test.ts` | 1 | TC-1.5b (TC-1.5a is a maintainer-run parity check, not an automated test in `lspec-core`; see §Manual: TC-1.5a) |
+| `tests/foundation.test.ts` (CI workflow assertions) | 1 | TC-1.6a |
 | Migrated tests | ~226 | (all from liminal-spec/processes/impl-cli/tests/) |
-| **Chunk 0 Total** | **~236** | |
+| **Chunk 0 Total** | **~237** | |
 
 Note: TC-1.1a covers four assertions in one test; TC-1.3a covers four script names in one test; testing the assertions in a single test counts as one test. Test count totals reflect Vitest test definitions, not assertion count.
 
@@ -594,7 +595,7 @@ Note: TC-1.1a covers four assertions in one test; TC-1.3a covers four script nam
 | Atomic-write with concurrent writers to different paths | 1 | (non-TC) |
 | Persisted-state version backward-compat read | 1 | (non-TC) |
 | Quick-fix typed arg errors | 1 | (non-TC; replaces string-matched detection) |
-| **Chunk 3 Total** | **23** | |
+| **Chunk 3 Total** | **25** | |
 
 ### Chunk 4: Real-Harness + Captured-Output Contract
 
@@ -623,7 +624,8 @@ Note: TC-1.1a covers four assertions in one test; TC-1.3a covers four script nam
 | `tests/gorilla/template.test.ts` | 2 | TC-5.7a, TC-5.7b |
 | Reset idempotency | 1 | (non-TC) |
 | Fixture validates with `inspect` operation | 1 | (non-TC) |
-| **Chunk 5 Total** | **9** | |
+| `tests/gorilla/evidence-layout.test.ts` | 1 | TC-5.9a |
+| **Chunk 5 Total** | **10** | |
 
 Note: TC-5.8a is manual pre-release verification, not an automated test; not counted here.
 
