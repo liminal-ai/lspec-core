@@ -28,7 +28,7 @@
 | AC-4.5 | TC-4.5a, TC-4.5c | Story 3 |
 | AC-4.6 | TC-4.6a | Story 3 |
 | AC-4.7 | TC-4.7a, TC-4.7b | Story 3 |
-| AC-4.8 | TC-4.8a, TC-4.8b-rule (Story 3), TC-4.8b-evidence (Story 4) | Story 3 + Story 4 |
+| AC-4.8 | TC-4.8a, TC-4.8b.1 (Story 3), TC-4.8b.2 (Story 4) | Story 3 + Story 4 |
 | AC-5.1 | TC-5.1a, TC-5.1b, TC-5.1c, TC-5.1d | Story 4 |
 | AC-5.2 | TC-5.2a, TC-5.2b | Story 4 |
 | AC-5.3 | TC-5.3a, TC-5.3b | Story 4 |

@@ -163,7 +163,7 @@ Per-operation envelope-shape tests (ten files, one per operation). Non-TC defens
 | TC | Test Name | Setup | Action | Assert |
 |----|-----------|-------|--------|--------|
 | TC-4.2a | TC-4.2a: structured failure paths surface in envelope.errors with stable codes | Trigger each structured failure path with controlled inputs against a fixture spec pack | Read the returned envelope (no `try/catch` needed — SDK does not throw) | `envelope.status === 'error'` (or `'blocked'` / `'needs-user-decision'` per the failure semantics); `envelope.errors[0].code` is a stable string from the taxonomy; `envelope.errors[0]` matches `{ code, message, detail? }` shape; the SDK function did NOT throw |
-| TC-4.2c | TC-4.2c: SDK throws typed errors for programming-error inputs | Construct an SDK function call with input that fails Zod parse at the boundary (e.g., wrong type, missing required key) | Invoke the SDK function and expect a throw | Function throws an instance of the relevant typed error class from §Q8 (e.g. `InvalidInputError` / `InvalidSpecPackError`); `error.code` matches the taxonomy; the throw is the documented signal that the caller's input was wrong, not that the workflow failed |
+| TC-4.2c | TC-4.2c: SDK throws typed errors for programming-error inputs | Construct an SDK function call with input that fails Zod parse at the boundary (e.g., wrong type, missing required key) | Invoke the SDK function and expect a throw | Function throws an instance of `InvalidInputError` (the §Q8 class for boundary parse failures); `error.code` matches the taxonomy; the throw is the documented signal that the caller's input was wrong, not that the workflow failed |
 
 #### `tests/code-quality/no-string-error-detection.test.ts`
 
@@ -696,22 +696,22 @@ Tests beyond 1:1 TC coverage. These are defensive, edge-case, or stress tests th
 
 | Chunk | New TC Tests | New Non-TC Tests | Migrated Tests | Chunk Total | Cumulative |
 |-------|--------------|------------------|----------------|-------------|------------|
-| 0 — Toolchain Migration | 10 | — | ~226 | ~236 | ~236 |
-| 1 — SDK Surface | 9 | 10 | — | 19 | ~255 |
-| 2 — CLI Surface | 10 | 2 | — | 12 | ~267 |
-| 3 — Hardening | 13 | 10 | — | 23 | ~290 |
-| 4 — Real-Harness | 16 | 2 | — | 28 | ~318 |
-| 5 — Gorilla | 7 | 2 | — | 9 | ~327 |
-| 6 — Distribution | 4 | 3 | — | 7 | ~334 |
-| 7 — Release | 7 | 1 | — | 8 | ~342 |
-| **Totals** | **76** | **30** | **~226** | **~342** | **~342** |
+| 0 — Toolchain Migration | 11 | — | ~226 | ~237 | ~237 |
+| 1 — SDK Surface | 9 | 10 | — | 19 | ~256 |
+| 2 — CLI Surface | 10 | 2 | — | 12 | ~268 |
+| 3 — Hardening | 15 | 10 | — | 25 | ~293 |
+| 4 — Real-Harness | 16 | 2 | — | 28 | ~321 |
+| 5 — Gorilla | 8 | 2 | — | 10 | ~331 |
+| 6 — Distribution | 4 | 3 | — | 7 | ~338 |
+| 7 — Release | 7 | 1 | — | 8 | ~346 |
+| **Totals** | **80** | **30** | **~226** | **~346** | **~346** |
 
 TC-1.5a is a maintainer-run parity check (one-shot, out-of-band) and is not counted as an automated test. See §Manual: TC-1.5a.
 
 ### Cross-Check
 
 - Per-file totals in §Per-Chunk Test Tables sum to per-chunk totals here. ✓
-- Per-chunk totals here sum to ~342 cumulative. ✓
+- Per-chunk totals here sum to ~346 cumulative. ✓
 - The tech-design index summary table (§Test Count Reconciliation in tech-design.md) reports the same per-chunk numbers. ✓
 - This test plan is the source of truth for per-file totals; the tech-design index summary mirrors them. Any future change to per-file counts updates here first, then propagates to the index summary in a single mechanical pass.
 
@@ -719,13 +719,13 @@ TC-1.5a is a maintainer-run parity check (one-shot, out-of-band) and is not coun
 
 | Flow | TC Count in Epic | TCs Mapped Here | Coverage |
 |------|------------------|-----------------|----------|
-| Flow 1 — Toolchain | 10 | 9 + 1 manual | Complete (TC-1.5a is a maintainer-run parity check; see §Manual: TC-1.5a) |
+| Flow 1 — Toolchain | 11 | 10 + 1 manual | Complete (TC-1.5a is a maintainer-run parity check; see §Manual: TC-1.5a) |
 | Flow 2 — SDK | 9 | 9 | Complete (includes AC-2.6 Zod 3 → Zod 4 migration: TC-2.6a, TC-2.6b) |
 | Flow 3 — CLI | 7 | 7 | Complete |
-| Flow 4 — Hardening | 13 | 13 | Complete |
-| Flow 5 — Integration | 16 | 15 + 1 manual | Complete (TC-5.8a is manual pre-release verification) |
+| Flow 4 — Hardening | 15 | 15 | Complete |
+| Flow 5 — Integration | 17 | 16 + 1 manual | Complete (TC-5.8a is manual pre-release verification) |
 | Flow 6 — Distribution & Release | 12 | 11 + 1 manual | Complete (TC-6.7a is manual post-publish smoke) |
-| **Totals** | **67** | **64 automated + 3 manual** | **67/67 covered** |
+| **Totals** | **71** | **68 automated + 3 manual** | **71/71 covered** |
 
 Every TC from the epic has a home in this document. Three TCs are manual verification rather than automated tests; each is noted explicitly with its manual procedure.
 

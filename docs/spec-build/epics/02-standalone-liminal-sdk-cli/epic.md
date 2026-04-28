@@ -162,6 +162,13 @@ The migration replaces several Bun-specific dependencies that don't carry forwar
   - When: A reviewer compares the new suite against the bundled suite
   - Then: Divergences are permitted where Story 3 explicitly changed behavior; each divergence is traceable to an AC in Flow 4
 
+**AC-1.6:** A default-CI GitHub Actions workflow exists at `.github/workflows/ci.yml` and runs the verify chain on every push and pull request.
+
+- **TC-1.6a:** ci.yml exists and triggers correctly
+  - Given: The `lspec-core` repository at the end of this story
+  - When: A reviewer inspects `.github/workflows/ci.yml`
+  - Then: The file exists; its `on:` block triggers on `push` and `pull_request`; the job runs on Node 24 with npm and invokes `npm run verify`. (`.github/workflows/` did not exist at story start; this story creates the directory and the file.)
+
 ---
 
 ### 2. SDK Programmatic Surface
@@ -314,16 +321,20 @@ The hardening covers six independent edges and two known regressions. Each edge 
   - When: The file is parsed
   - Then: A version marker field is present at the document root
 
-**AC-4.2:** Errors surface as instances of a typed error taxonomy. String matching is not used to classify errors.
+**AC-4.2:** Errors are classified by a stable `code` taxonomy, not by string-matching message text. Codes appear in two surfaces: (i) as the `code` field on entries in the envelope's `errors[]` array for structured workflow failures (returned, never thrown), and (ii) as the `code` field on typed throw classes for programming/invariant errors only (Zod boundary parse failures, invariant violations).
 
-- **TC-4.2a:** Typed error classes
-  - Given: Any failure path in the package
-  - When: An error is propagated
-  - Then: The error is an instance of a defined class in the package's error taxonomy with a stable `code` field
+- **TC-4.2a:** Stable codes on envelope errors[]
+  - Given: Any structured failure path in the package (invalid spec pack, missing run-config, gate unresolved, provider unavailable, etc.)
+  - When: The SDK function is invoked against inputs that trigger the failure
+  - Then: The function returns an envelope (does not throw); `envelope.errors[0].code` is a stable string from the taxonomy in §Q8; `envelope.errors[0]` matches `{ code, message, detail? }` shape
 - **TC-4.2b:** No string-matched error detection
   - Given: The new package source
   - When: A reviewer searches for substring matching against error message text in non-test code
   - Then: No matches are found in branching logic; classification flows through `instanceof` or the `code` field only
+- **TC-4.2c:** Typed throws for boundary parse failures
+  - Given: An SDK function call whose input fails Zod boundary parse (e.g., wrong type, missing required key)
+  - When: The function is invoked
+  - Then: The function throws an instance of `InvalidInputError` (the §Q8 class for boundary parse failures); `error.code` matches the taxonomy; the throw is the documented signal that the caller's input was wrong, not that the workflow failed
 
 **AC-4.3:** Provider-payload schemas are derived from the canonical result-contract schemas, not redeclared independently.
 
@@ -382,7 +393,7 @@ The hardening covers six independent edges and two known regressions. Each edge 
   - Given: The mock fixtures used by the test suite to simulate provider output
   - When: A reviewer inspects fixture provenance
   - Then: Each external-boundary fixture is a captured sample from a real provider run, with provenance documented (provider, command, capture date)
-  - Note on story split: Story 3 satisfies the rule + consuming-test scaffold half (TC-4.8b-rule); Story 4 satisfies the captured-fixture-evidence half (TC-4.8b-evidence). The full TC-4.8b is satisfied at the end of Story 4.
+  - Note on story split: Story 3 satisfies the rule + consuming-test scaffold half (TC-4.8b.1); Story 4 satisfies the captured-fixture-evidence half (TC-4.8b.2). The full TC-4.8b is satisfied at the end of Story 4.
 
 ---
 
@@ -490,6 +501,13 @@ The automated suite is opt-in via env flag and runs in a separate workflow from 
   - Given: A deliberately introduced parser drift (a mock that no longer matches the real provider output)
   - When: The gorilla run executes the operation that uses that parser
   - Then: The agent's evidence report flags the divergence
+
+**AC-5.9:** The repository declares the canonical layout for gorilla run evidence so the release gate in Story 7 has a stable contract to verify against.
+
+- **TC-5.9a:** Evidence directory layout convention documented
+  - Given: The repository at the end of this story
+  - When: A reviewer inspects `gorilla/` and the gorilla prompt
+  - Then: The prompt and/or `gorilla/README.md` (or equivalent) declares that gorilla runs deposit evidence under `gorilla/evidence/<YYYY-MM-DD>/<provider>-<scenario>.md` (date is the day of the gorilla run; provider in `claude-code` | `codex` | `copilot`; scenario in `smoke` | `resume` | `structured-output` | `stall`); the `gorilla/evidence/` directory exists in the source tree (initially empty or seeded with one example run); the maintainer-driven deliberate-drift sanity check is recorded separately in `gorilla/self-test-log.md`
 
 ---
 
@@ -709,7 +727,7 @@ Questions for the Tech Lead to address during design:
 
 Move the runtime source from `liminal-spec/processes/impl-cli/` into the new `lspec-core` repo (sibling to `liminal-spec`), replace the Bun-coupled toolchain with Vitest plus a portable Node 24 + TypeScript build, define the four verification scripts, and confirm parity with the existing test suite via the maintainer-run parity check. No operational behavior changes. Establishes shared infrastructure that every later story builds on.
 
-**ACs covered:** AC-1.1 through AC-1.5
+**ACs covered:** AC-1.1 through AC-1.6
 
 ### Story 1: SDK Programmatic Surface
 
@@ -741,7 +759,7 @@ Capture real provider output samples for the scenarios most prone to drift and c
 
 Construct a small but realistic fixture spec pack and target codebase. Build the reset tool. Write the agent prompt covering every operation across each applicable provider. Define the evidence template. Run the gorilla pack end to end with a real agent and confirm it catches at least one deliberately introduced drift case.
 
-**ACs covered:** AC-5.4 through AC-5.8
+**ACs covered:** AC-5.4 through AC-5.9
 
 ### Story 6: Package Distribution Surface
 

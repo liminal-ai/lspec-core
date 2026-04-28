@@ -10,7 +10,7 @@ This document translates Epic 02 into implementable architecture for `@lspec/cor
 | Developers | Clear blueprint for implementation |
 | Story Tech Sections | Source of implementation targets, interfaces, and test mappings |
 
-**Prerequisite:** Epic 02 is complete with 38 ACs across six flows, eight recommended stories, and ten Tech Design Questions awaiting answers in this document.
+**Prerequisite:** Epic 02 is complete with 40 ACs across six flows, eight recommended stories, and ten Tech Design Questions awaiting answers in this document.
 
 ---
 
@@ -167,12 +167,13 @@ Because the reservation creates a placeholder file before the caller has content
 
 ### Q8: Error Taxonomy Boundaries
 
-**Decision: Enumerated abstract base class `ImplCliError` with eleven concrete subclasses, each carrying a stable `code` field. Codes are immutable; messages may evolve.**
+**Decision: Enumerated abstract base class `ImplCliError` with twelve concrete subclasses, each carrying a stable `code` field. Codes are immutable; messages may evolve.**
 
 The taxonomy:
 
 | Class | Code | Thrown When |
 |-------|------|-------------|
+| `InvalidInputError` | `INVALID_INPUT` | SDK input fails Zod boundary parse — caller passed wrong type, missing required key, or schema-incompatible value |
 | `InvalidSpecPackError` | `INVALID_SPEC_PACK` | Spec pack inspection fails or required artifacts are missing |
 | `InvalidRunConfigError` | `INVALID_RUN_CONFIG` | `impl-run.config.json` fails schema validation or is unreadable |
 | `VerificationGateUnresolvedError` | `VERIFICATION_GATE_UNRESOLVED` | Verification gates can't be resolved automatically and need user input |
@@ -648,6 +649,7 @@ sequenceDiagram
 | TC-1.4b | `tests/build-output.test.ts` | `node dist/bin/lspec.js --help` runs without errors |
 | TC-1.5a | (manual maintainer-run parity check; not automated in `lspec-core`) | Maintainer runs the bundled suite from `liminal-spec` and the migrated suite from `lspec-core` independently, walks per-test-name correspondence, and commits a `parity-report.md` artifact. See test-plan §Manual: TC-1.5a. |
 | TC-1.5b | `tests/parity.test.ts` (post-Story 3) | Documented divergences trace to Flow 4 ACs |
+| TC-1.6a | `tests/foundation.test.ts` | `.github/workflows/ci.yml` exists; triggers on push and pull_request; runs on Node 24 with npm; invokes `npm run verify` |
 
 ---
 
@@ -850,8 +852,9 @@ sequenceDiagram
 |----|-----------|------------------|
 | TC-4.1a | `tests/sdk/envelope.test.ts` | Every command's envelope includes `version: 1` |
 | TC-4.1b | `tests/infra/persisted-state.test.ts` | Run-config, progress snapshot, status file all carry version markers |
-| TC-4.2a | `tests/sdk/errors.test.ts` | Every failure path produces an `instanceof ImplCliError` with stable `code` |
+| TC-4.2a | `tests/sdk/errors.test.ts` | Every structured failure path returns an envelope (no throw); `envelope.errors[0].code` is a stable string from the §Q8 taxonomy |
 | TC-4.2b | `tests/code-quality/no-string-error-detection.test.ts` | grep finds no substring matches against error message text in non-test code branching |
+| TC-4.2c | `tests/sdk/errors.test.ts` | SDK throws typed error class instance for inputs that fail Zod boundary parse; throw is the signal for caller programming errors only |
 | TC-4.3a | `tests/core/schema-derivation.test.ts` | Each provider-payload schema is `omit(canonicalSchema, [...])` or `pick(...)`, not standalone |
 | TC-4.3b | `tests/core/schema-derivation.test.ts` | Modifying a canonical field surfaces in derived payload schema at build time |
 | TC-4.4a | `tests/infra/fs-atomic.test.ts` | Stub `fs.rename` to throw; assert no partial file at destination; assert prior content preserved |
@@ -955,6 +958,7 @@ The maintainer self-test record (`gorilla/self-test-log.md`) is separate — it 
 | TC-5.7a | `tests/gorilla/template.test.ts` | Evidence template has sections for: operation, envelope, artifact, continuation, divergences |
 | TC-5.7b | (manual; reviewed by maintainer) | Sample populated evidence report passes the template parser |
 | TC-5.8a | (manual; pre-release verification) | Inject deliberate parser drift; run gorilla pack; agent's report flags the divergence |
+| TC-5.9a | `tests/gorilla/evidence-layout.test.ts` | `gorilla/evidence/` directory present; gorilla prompt and/or `gorilla/README.md` declares the `gorilla/evidence/<YYYY-MM-DD>/<provider>-<scenario>.md` convention with the documented provider and scenario enums; self-test log lives at `gorilla/self-test-log.md` |
 
 ---
 
@@ -1664,9 +1668,9 @@ The work decomposes into eight chunks aligned with the epic's eight stories. Eac
 
 **Scope:** Establish the package directory, migrate from Bun to Vitest, set up the build pipeline, define verification scripts, achieve test parity with the bundled runtime.
 
-**ACs:** AC-1.1 through AC-1.5
+**ACs:** AC-1.1 through AC-1.6
 
-**TCs:** TC-1.1a, TC-1.1b, TC-1.2a, TC-1.2b, TC-1.3a, TC-1.3b, TC-1.4a, TC-1.4b, TC-1.5b automated; TC-1.5a manual maintainer-run parity check (10 TCs total, 9 automated)
+**TCs:** TC-1.1a, TC-1.1b, TC-1.2a, TC-1.2b, TC-1.3a, TC-1.3b, TC-1.4a, TC-1.4b, TC-1.5b, TC-1.6a automated; TC-1.5a manual maintainer-run parity check (11 TCs total, 10 automated)
 
 **Relevant Tech Design Sections:** §Module Architecture (file tree), §Verification Scripts, §Stack Additions
 
@@ -1691,8 +1695,8 @@ The work decomposes into eight chunks aligned with the epic's eight stories. Eac
 
 **Exit Criteria:** `npm run verify` passes against the migrated suite; foundation tests pass; `tsup` produces a working dist/. Parity report is committed.
 
-**Test Count:** 10 automated tests (TC-1.3b counts each verification tier as a sub-case; TC-1.5a is manual) + ~226 migrated tests = ~236 tests
-**Running Total:** ~236 tests
+**Test Count:** 11 automated tests (TC-1.3b counts each verification tier as a sub-case; TC-1.5a is manual) + ~226 migrated tests = ~237 tests
+**Running Total:** ~237 tests
 
 ---
 
@@ -1721,7 +1725,7 @@ The work decomposes into eight chunks aligned with the epic's eight stories. Eac
 **Exit Criteria:** `green-verify` passes. SDK is importable from `@lspec/core/sdk`. Every operation reachable as a function. No Zod 3 constructor params remain in `src/`.
 
 **Test Count:** 9 TC tests + 10 non-TC envelope tests = 19 new tests
-**Running Total:** ~255 tests
+**Running Total:** ~256 tests
 
 ---
 
@@ -1753,7 +1757,7 @@ The work decomposes into eight chunks aligned with the epic's eight stories. Eac
 **Exit Criteria:** `green-verify` passes. `npx @lspec/core --help` lists every operation. `npm pack` + install produces a working CLI in a sandbox.
 
 **Test Count:** 10 TC tests (TC-3.3a expands to 4 sub-cases for each status value) + 2 non-TC tests = 12 new tests
-**Running Total:** ~267 tests
+**Running Total:** ~268 tests
 
 ---
 
@@ -1763,7 +1767,7 @@ The work decomposes into eight chunks aligned with the epic's eight stories. Eac
 
 **ACs:** AC-4.1 through AC-4.8
 
-**TCs:** TC-4.1a, TC-4.1b, TC-4.2a, TC-4.2b, TC-4.3a, TC-4.3b, TC-4.4a, TC-4.5a, TC-4.6a, TC-4.7a, TC-4.7b, TC-4.8a, TC-4.8b (13 TCs)
+**TCs:** TC-4.1a, TC-4.1b, TC-4.2a, TC-4.2b, TC-4.2c, TC-4.3a, TC-4.3b, TC-4.4a, TC-4.5a, TC-4.5c, TC-4.6a, TC-4.7a, TC-4.7b, TC-4.8a, TC-4.8b (15 TCs)
 
 **Relevant Tech Design Sections:** §Flow 4, §Interface Definitions — Error Class Hierarchy, §Interface Definitions — Atomic Write Utility, §Interface Definitions — Concurrency-Safe Index Reservation, §Interface Definitions — Env Allowlist
 
@@ -1797,10 +1801,10 @@ The work decomposes into eight chunks aligned with the epic's eight stories. Eac
 - `tests/sdk/preflight.test.ts` (NEW)
 - `tests/parser-contract/fixtures.test.ts` (NEW — provenance check)
 
-**Exit Criteria:** `green-verify` passes. All 13 TCs covered. The two regressions have explicit test coverage. No internal mocks anywhere.
+**Exit Criteria:** `green-verify` passes. All 15 TCs covered. The two regressions have explicit test coverage. No internal mocks anywhere.
 
-**Test Count:** 13 TC tests + 10 non-TC stress/edge tests = 23 new tests
-**Running Total:** ~290 tests
+**Test Count:** 15 TC tests + 10 non-TC stress/edge tests = 25 new tests
+**Running Total:** ~293 tests
 
 ---
 
@@ -1835,7 +1839,7 @@ The work decomposes into eight chunks aligned with the epic's eight stories. Eac
 **Exit Criteria:** Default CI runs parser-contract tests on every PR. Integration workflow runs `verify-all` against real providers. All 8 TCs covered. Twelve captured fixtures committed with provenance.
 
 **Test Count:** 16 TC tests (each scenario × 3 providers, plus 2 gating tests) + 2 non-TC = 28 new tests; 12 captured fixtures committed
-**Running Total:** ~318 tests
+**Running Total:** ~321 tests
 
 ---
 
@@ -1843,9 +1847,9 @@ The work decomposes into eight chunks aligned with the epic's eight stories. Eac
 
 **Scope:** Construct fixture spec pack. Build reset tool. Write agent prompt. Define evidence template. Run gorilla pack end-to-end.
 
-**ACs:** AC-5.4 through AC-5.8
+**ACs:** AC-5.4 through AC-5.9
 
-**TCs:** TC-5.4a, TC-5.4b, TC-5.5a, TC-5.6a, TC-5.6b, TC-5.7a, TC-5.7b automated; TC-5.8a manual pre-release (8 TCs total, 7 automated)
+**TCs:** TC-5.4a, TC-5.4b, TC-5.5a, TC-5.6a, TC-5.6b, TC-5.7a, TC-5.7b, TC-5.9a automated; TC-5.8a manual pre-release (9 TCs total, 8 automated)
 
 **Relevant Tech Design Sections:** §Flow 5, §Tech Design Questions — Q3
 
@@ -1868,8 +1872,8 @@ The work decomposes into eight chunks aligned with the epic's eight stories. Eac
 
 **Exit Criteria:** `green-verify` passes. End-to-end gorilla run completes with valid evidence. Deliberate-drift verification (TC-5.8a) executed and documented.
 
-**Test Count:** 7 automated TC tests + 2 non-TC = 9 new tests; TC-5.8a executed as manual pre-release verification
-**Running Total:** ~327 tests
+**Test Count:** 8 automated TC tests + 2 non-TC = 10 new tests; TC-5.8a executed as manual pre-release verification
+**Running Total:** ~331 tests
 
 ---
 
@@ -1895,7 +1899,7 @@ The work decomposes into eight chunks aligned with the epic's eight stories. Eac
 **Exit Criteria:** `npm pack` produces a clean tarball. Installation into a sandbox succeeds. TypeScript consumers can import SDK types without manual declarations.
 
 **Test Count:** 4 TC tests + 3 non-TC = 7 new tests
-**Running Total:** ~334 tests
+**Running Total:** ~338 tests
 
 ---
 
@@ -1922,7 +1926,7 @@ The work decomposes into eight chunks aligned with the epic's eight stories. Eac
 **Exit Criteria:** `green-verify` passes. Release workflow validated against simulated tag push. First-publish smoke confirms registry artifact installs cleanly.
 
 **Test Count:** 7 automated TC tests + 1 non-TC = 8 new tests; TC-6.7a executed as manual post-publish verification
-**Running Total:** ~342 tests
+**Running Total:** ~346 tests
 
 ---
 
@@ -1952,17 +1956,17 @@ Chunk 1 (SDK) and Chunk 2 (CLI) can proceed in parallel after Chunk 0; both depe
 
 | Chunk | New TC Tests | New Non-TC Tests | Migrated Tests | Cumulative |
 |-------|--------------|------------------|----------------|------------|
-| 0 | 10 | — | ~226 | ~236 |
-| 1 | 9 | 10 | — | ~255 |
-| 2 | 10 | 2 | — | ~267 |
-| 3 | 13 | 10 | — | ~290 |
-| 4 | 16 | 2 | — | ~318 |
-| 5 | 7 | 2 | — | ~327 |
-| 6 | 4 | 3 | — | ~334 |
-| 7 | 7 | 1 | — | ~342 |
-| **Total** | **76** | **30** | **~226** | **~342** |
+| 0 | 11 | — | ~226 | ~237 |
+| 1 | 9 | 10 | — | ~256 |
+| 2 | 10 | 2 | — | ~268 |
+| 3 | 15 | 10 | — | ~293 |
+| 4 | 16 | 2 | — | ~321 |
+| 5 | 8 | 2 | — | ~331 |
+| 6 | 4 | 3 | — | ~338 |
+| 7 | 7 | 1 | — | ~346 |
+| **Total** | **80** | **30** | **~226** | **~346** |
 
-The test plan document holds the per-test-file totals; this table is the index summary. Reconciliation pass before handoff: per-file totals in test-plan.md sum to per-chunk totals here, per-chunk totals sum to ~342 cumulative. Three TCs (TC-1.5a maintainer-run parity check, TC-5.8a deliberate-drift detection, and TC-6.7a first-publish smoke) are manual verification rather than automated tests; they are covered procedurally and not counted toward the running automated total.
+The test plan document holds the per-test-file totals; this table is the index summary. Reconciliation pass before handoff: per-file totals in test-plan.md sum to per-chunk totals here, per-chunk totals sum to ~346 cumulative. Three TCs (TC-1.5a maintainer-run parity check, TC-5.8a deliberate-drift detection, and TC-6.7a first-publish smoke) are manual verification rather than automated tests; they are covered procedurally and not counted toward the running automated total.
 
 ---
 

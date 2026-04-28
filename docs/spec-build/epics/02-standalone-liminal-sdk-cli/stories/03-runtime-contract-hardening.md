@@ -45,16 +45,20 @@ Harden the public runtime surface by versioning contracts, replacing string-matc
   - When: The file is parsed
   - Then: A version marker field is present at the document root
 
-**AC-4.2:** Errors surface as instances of a typed error taxonomy. String matching is not used to classify errors.
+**AC-4.2:** Errors are classified by a stable `code` taxonomy, not by string-matching message text. Codes appear in two surfaces: (i) as the `code` field on entries in the envelope's `errors[]` array for structured workflow failures (returned, never thrown), and (ii) as the `code` field on typed throw classes for programming/invariant errors only (Zod boundary parse failures, invariant violations).
 
-- **TC-4.2a:** Typed error classes
-  - Given: Any failure path in the package
-  - When: An error is propagated
-  - Then: The error is an instance of a defined class in the package's error taxonomy with a stable `code` field
+- **TC-4.2a:** Stable codes on envelope errors[]
+  - Given: Any structured failure path in the package (invalid spec pack, missing run-config, gate unresolved, provider unavailable, etc.)
+  - When: The SDK function is invoked against inputs that trigger the failure
+  - Then: The function returns an envelope (does not throw); `envelope.errors[0].code` is a stable string from the taxonomy in §Q8; `envelope.errors[0]` matches `{ code, message, detail? }` shape
 - **TC-4.2b:** No string-matched error detection
   - Given: The new package source
   - When: A reviewer searches for substring matching against error message text in non-test code
   - Then: No matches are found in branching logic; classification flows through `instanceof` or the `code` field only
+- **TC-4.2c:** Typed throws for boundary parse failures
+  - Given: An SDK function call whose input fails Zod boundary parse (e.g., wrong type, missing required key)
+  - When: The function is invoked
+  - Then: The function throws an instance of `InvalidInputError` (the §Q8 class for boundary parse failures); `error.code` matches the taxonomy; the throw is the documented signal that the caller's input was wrong, not that the workflow failed
 
 **AC-4.3:** Provider-payload schemas are derived from the canonical result-contract schemas, not redeclared independently.
 
@@ -109,12 +113,12 @@ Harden the public runtime surface by versioning contracts, replacing string-matc
   - Given: The package's test suite
   - When: A reviewer inspects mock declarations
   - Then: All mocks target external boundaries (provider subprocess, filesystem at the very edge, network); no mock targets an internal module
-- **TC-4.8b-rule:** Fixture-provenance rule + consuming test shape (Story 3 satisfies this half)
+- **TC-4.8b.1:** Fixture-provenance rule + consuming test shape (Story 3 satisfies this half)
   - Given: The package's mock-fixture loader and the parser-contract test scaffold
   - When: A reviewer inspects how fixtures are consumed
   - Then: The loader requires each fixture file to declare a provenance comment (provider, command, capture date) at the top and refuses to load fixtures missing it; `tests/parser-contract/fixtures.test.ts` walks `tests/parser-contract/fixtures/` and asserts every present file has a parsable provenance comment; the parser-contract test files (`tests/parser-contract/{claude-code,codex,copilot}.test.ts`) exist and structurally consume any fixtures that land under the corresponding directory; no error-detection branch in `src/` matches against fixture content via string substrings (this is enforced by the rule, not by fixture presence)
   - Note: Story 3 lands the rule, the loader, the provenance check, and the parser-contract test scaffolding. The fixture directories (`tests/parser-contract/fixtures/<provider>/`) exist but may be empty at Story 3 exit; the parser-contract test files report a "no fixtures yet" pass in that case. Story 4 creates and commits the captured real-provider fixtures that exercise the rule end-to-end (see Story 4 AC-5.3 plus the satisfaction half below).
-- **TC-4.8b-evidence:** Captured real-provider fixtures committed (Story 4 satisfies this half)
+- **TC-4.8b.2:** Captured real-provider fixtures committed (Story 4 satisfies this half)
   - Given: The committed fixture files at the end of Story 4
   - When: A reviewer inspects each fixture under `tests/parser-contract/fixtures/<provider>/<scenario>.txt`
   - Then: Each fixture's leading provenance comment names a real provider run (provider, command, capture date), the dates parse, and the parser-contract tests defined in Story 3 pass against the real captured content (proving the rule end-to-end). See Story 4 for the satisfying scope and TCs.
@@ -179,5 +183,5 @@ See the tech design document for full architecture, implementation targets, and 
 - [ ] Subprocess env allowlist is documented and tested
 - [ ] Both known regressions are fixed and covered
 - [ ] Mock-discipline checks are present and passing
-- [ ] AC-4.8b is structurally enforced (TC-4.8b-rule satisfied by Story 3); full evidence is proven once Story 4 fixtures land (TC-4.8b-evidence)
+- [ ] AC-4.8b is structurally enforced (TC-4.8b.1 satisfied by Story 3); full evidence is proven once Story 4 fixtures land (TC-4.8b.2)
 - [ ] No file under `liminal-spec/processes/impl-cli/` or `liminal-spec/processes/codex-impl/` was modified
