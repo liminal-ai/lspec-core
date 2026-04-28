@@ -12,21 +12,26 @@ Move the bundled runtime from `liminal-spec/processes/impl-cli/` into the new `l
 
 **Objective:** Establish the standalone package boundary, portable toolchain, and verification baseline that every later story depends on.
 
+**Pre-existing foundation:** The package boundary in `lspec-core` is already scaffolded as of the initial repo commit — `package.json` (with `@lspec/core` identity, Node 24 engines, dependency pins, base scripts for `format:check` / `lint` / `typecheck` / `test` / `build`), `tsconfig.json`, `vitest.config.ts`, `tsup.config.ts`, `biome.json`, stub `src/index.ts` and `src/bin.ts`, and a single smoke test under `tests/`. Story 0 extends this baseline with the migrated source and the verify-script chain — it does not create the structure from scratch.
+
 **Scope In:**
-- Create a dedicated package directory with `src/`, `tests/`, `package.json`, `tsconfig.json`, and Vitest configuration
-- Migrate tests from `bun:test` to Vitest
-- Define `red-verify`, `verify`, `green-verify`, and `verify-all`
-- Build portable JavaScript and `.d.ts` outputs
-- Prove Story 0 parity against the existing bundled runtime suite
+- Migrate runtime source from `liminal-spec/processes/impl-cli/src/` into the pre-existing `src/` tree (organize under `src/core/`, `src/bin/`, `src/sdk/` per the tech design)
+- Migrate test suite from `liminal-spec/processes/impl-cli/tests/` into the pre-existing `tests/` tree
+- Convert all `bun:test` imports to `vitest` (and adapt any Bun-specific test helpers to vitest equivalents)
+- Replace the stub `src/index.ts` and `src/bin.ts` with the real SDK and CLI entry points wired to the migrated source
+- Define the verify-script chain on top of the pre-existing base scripts: `red-verify`, `verify`, `green-verify`, `verify-all`, plus the `capture:test-baseline` and `guard:no-test-changes` scripts that compose into them
+- Confirm the pre-scaffolded `tsup.config.ts` produces correct `.d.ts` and ESM output for the migrated source; extend if needed
+- Prove Story 0 parity against the existing bundled runtime suite via the maintainer-run TC-1.5a procedure
 
 **Scope Out:**
 - Intentional runtime behavior changes
 - Contract hardening and regression fixes from later stories
 - Skill migration to the published package
+- Package boundary creation (already scaffolded — see "Pre-existing foundation" above)
 
 **Dependencies:**
 - Existing `liminal-spec/processes/impl-cli/` source and test suite remain available as the parity baseline
-- Portable build pipeline selected for the new package
+- Pre-scaffolded package boundary in `lspec-core` (validated locally: install / typecheck / lint / format / test / build all pass before this story starts)
 
 ### Acceptance Criteria
 <!-- Jira: Acceptance Criteria field -->

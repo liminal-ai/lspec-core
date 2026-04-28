@@ -96,11 +96,14 @@ This flow establishes the package boundary that everything else hangs from. The 
 
 The migration replaces several Bun-specific dependencies that don't carry forward to a published package: the Bun test runner, the `bun:test` shim, Bun-only build invocations. The replacement is a Vitest test suite, a portable build pipeline, and verification scripts at the four standard tiers (`red-verify`, `verify`, `green-verify`, `verify-all`).
 
-1. Maintainer creates the new package directory and copies source files
-2. Maintainer replaces toolchain configuration with the portable equivalents
+1. Maintainer migrates runtime source files from `liminal-spec/processes/impl-cli/src/` into the pre-scaffolded `lspec-core/src/` tree
+2. Maintainer migrates test files from `liminal-spec/processes/impl-cli/tests/` into the pre-scaffolded `lspec-core/tests/` tree
 3. Maintainer adapts test imports from `bun:test` to Vitest
-4. Maintainer runs the verification suite and confirms parity with the existing bundled runtime
-5. Maintainer commits the new package as the working source of operations
+4. Maintainer extends the pre-scaffolded `package.json` with the verify-script chain (`red-verify`, `verify`, `green-verify`, `verify-all`) and the test-immutability guard scripts
+5. Maintainer runs the verification suite and confirms parity with the existing bundled runtime via the maintainer-run TC-1.5a procedure
+6. Maintainer commits the new package as the working source of operations
+
+**Note on starting state:** The package boundary itself (`package.json`, `tsconfig.json`, `vitest.config.ts`, `tsup.config.ts`, `biome.json`, stub `src/` and `tests/` directories with smoke test, validated dev environment) is pre-scaffolded as part of the `lspec-core` repo bootstrap — Flow 1 extends this baseline rather than creating it from scratch.
 
 #### Acceptance Criteria
 
