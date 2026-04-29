@@ -388,6 +388,10 @@ async function createStallProxy(): Promise<{
 	const sockets = new Set<Socket>();
 	const server = createServer((socket) => {
 		sockets.add(socket);
+		socket.on("error", () => {
+			// Provider clients can reset the proxy socket when their own timeout fires.
+			// The stall proxy is intentionally inert, so connection reset is expected.
+		});
 		socket.on("close", () => sockets.delete(socket));
 	});
 

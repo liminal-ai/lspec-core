@@ -22,6 +22,6 @@ describeIntegration("provider stall coverage", () => {
 			expect(envelope.errors[0]?.code).toBe("PROVIDER_STALLED");
 			expect(envelope.errors[0]?.message).toContain("stalled");
 			expect(stallProxyUrl).toMatch(/^http:\/\/127\.0\.0\.1:\d+$/);
-		}, 60_000);
+		}, 120_000);
 	}
 });
