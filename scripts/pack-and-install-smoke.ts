@@ -62,8 +62,16 @@ async function main() {
 		await createFixtureSpecPack(sandboxRoot);
 		await run("npm", ["install", tarballPath], { cwd: sandboxRoot });
 		const { stdout } = await run(
-			"npx",
-			["lspec", "inspect", "--spec-pack-root", "./fixture", "--json"],
+			"npm",
+			[
+				"exec",
+				"--",
+				"lspec",
+				"inspect",
+				"--spec-pack-root",
+				"./fixture",
+				"--json",
+			],
 			{ cwd: sandboxRoot },
 		);
 		const envelope = JSON.parse(stdout) as {
@@ -77,8 +85,21 @@ async function main() {
 			envelope.status !== "ok" ||
 			envelope.outcome !== "ready"
 		) {
-			throw new Error("Packed npx smoke produced an unexpected envelope.");
+			throw new Error("Packed artifact produced an unexpected CLI envelope.");
 		}
+
+		const sdkScriptPath = join(sandboxRoot, "verify-sdk.mjs");
+		await writeFile(
+			sdkScriptPath,
+			[
+				`import { inspect } from "@lspec/core/sdk";`,
+				`const result = await inspect({ specPackRoot: "./fixture" });`,
+				`if (result.command !== "inspect" || result.status !== "ok" || result.outcome !== "ready") {`,
+				`  throw new Error(JSON.stringify(result));`,
+				`}`,
+			].join("\n"),
+		);
+		await run(process.execPath, [sdkScriptPath], { cwd: sandboxRoot });
 	} finally {
 		await rm(sandboxRoot, { recursive: true, force: true });
 		await rm(tarballPath, { force: true });
