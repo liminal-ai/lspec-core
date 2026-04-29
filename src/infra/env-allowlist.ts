@@ -8,6 +8,10 @@ export const DEFAULT_ALLOWLIST = [
 	"TMPDIR",
 	"TEMP",
 	"TMP",
+	"HTTPS_PROXY",
+	"HTTP_PROXY",
+	"ALL_PROXY",
+	"NO_PROXY",
 ] as const;
 
 export const DEFAULT_ALLOWLIST_PREFIXES = [

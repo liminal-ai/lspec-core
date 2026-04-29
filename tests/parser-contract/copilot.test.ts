@@ -1,10 +1,31 @@
 import { describe, expect, test } from "vitest";
 
+import { parseCopilotJsonlPayload } from "../../src/core/provider-adapters/copilot";
+import { getScenarioDefinition } from "../fixtures/real-provider-scenarios";
 import { readProviderFixtures } from "./helpers";
 
+const provider = "copilot" as const;
+const fixturesPromise = readProviderFixtures(provider);
+const scenarios = ["resume", "smoke", "stall", "structured-output"] as const;
+
 describe("copilot parser-contract fixtures", () => {
-	test("accepts an empty fixture set until captured outputs land", async () => {
-		const fixtures = await readProviderFixtures("copilot");
-		expect(fixtures).toEqual([]);
-	});
+	for (const scenario of scenarios) {
+		test(`TC-5.3a/TC-5.3b: ${scenario} captured output parses through the production parser with exact parsed-shape diffs`, async () => {
+			const fixture = (await fixturesPromise).find(
+				(entry) => entry.name === `${scenario}.txt`,
+			);
+			expect(fixture).toBeDefined();
+			expect(fixture?.provenance.scenario).toBe(scenario);
+
+			const definition = getScenarioDefinition(provider, scenario);
+			const parsed = parseCopilotJsonlPayload({
+				stdout: fixture?.stdout ?? "",
+				resultSchema: definition.schema,
+			});
+
+			expect(parsed?.parseError).toBeUndefined();
+			expect(parsed?.sessionId).toEqual(expect.any(String));
+			expect(parsed?.parsedResult).toEqual(definition.expected);
+		});
+	}
 });

@@ -27,6 +27,7 @@ describe("verification scripts", () => {
 	test("TC-1.3b: verify adds the test suite", async () => {
 		const scripts = await readScripts();
 
+		expect(scripts.test).toBe("vitest run --project default");
 		expect(scripts.verify).toBe("npm run red-verify && npm run test");
 	});
 
@@ -38,12 +39,14 @@ describe("verification scripts", () => {
 		);
 	});
 
-	test("TC-1.3b: verify-all remains a clear Story 0 placeholder for integration", async () => {
+	test("TC-1.3b: verify-all adds the integration project", async () => {
 		const scripts = await readScripts();
 
-		expect(scripts["verify-all"]).toContain("npm run verify");
-		expect(scripts["verify-all"]).toContain(
-			"integration suite not yet present",
+		expect(scripts["test:integration"]).toBe(
+			"vitest run --project integration",
+		);
+		expect(scripts["verify-all"]).toBe(
+			"npm run verify && npm run test:integration",
 		);
 	});
 });

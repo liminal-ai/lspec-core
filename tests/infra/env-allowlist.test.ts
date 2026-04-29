@@ -9,6 +9,7 @@ test("TC-4.6a: provider env inherits only allowlisted keys plus overrides", () =
 			HOME: "/tmp/home",
 			LANG: "en_US.UTF-8",
 			GITHUB_TOKEN: "override-me",
+			HTTPS_PROXY: "http://proxy.example:8080",
 			NODE_OPTIONS: "--inspect",
 			AWS_SECRET_ACCESS_KEY: "secret",
 			CUSTOM_LEAK: "nope",
@@ -23,6 +24,7 @@ test("TC-4.6a: provider env inherits only allowlisted keys plus overrides", () =
 		HOME: "/tmp/home",
 		LANG: "en_US.UTF-8",
 		GITHUB_TOKEN: "override-token",
+		HTTPS_PROXY: "http://proxy.example:8080",
 	});
 	expect(filtered.NODE_OPTIONS).toBeUndefined();
 	expect(filtered.AWS_SECRET_ACCESS_KEY).toBeUndefined();

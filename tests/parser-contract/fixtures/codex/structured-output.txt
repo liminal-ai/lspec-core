@@ -1,0 +1,9 @@
+# Provider: codex
+# Command: codex exec --json -m gpt-5.4 -c model_reasoning_effort=low --output-schema <output-schema-path> -o <output-last-message-path> "Return exactly this JSON and nothing else: {\"provider\":\"codex\",\"scenario\":\"structured-output\",\"summary\":{\"completed\":true,\"itemCount\":2},\"items\":[{\"id\":\"alpha\",\"status\":\"ready\"},{\"id\":\"beta\",\"status\":\"done\"}]}"
+# Captured: 2026-04-28
+# Scenario: structured-output
+# Fixture content follows ↓
+{"type":"thread.started","thread_id":"019dd6ce-474b-7cb3-91ff-fe892ba2877d"}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"item_0","type":"agent_message","text":"{\"provider\":\"codex\",\"scenario\":\"structured-output\",\"summary\":{\"completed\":true,\"itemCount\":2},\"items\":[{\"id\":\"alpha\",\"status\":\"ready\"},{\"id\":\"beta\",\"status\":\"done\"}]}"}}
+{"type":"turn.completed","usage":{"input_tokens":15170,"cached_input_tokens":2432,"output_tokens":65,"reasoning_output_tokens":11}}

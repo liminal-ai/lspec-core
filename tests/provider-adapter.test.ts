@@ -11,6 +11,7 @@ import {
 	writeFakeProviderExecutable,
 	writeTextFile,
 } from "./test-helpers";
+import { parseClaudeCodePayload } from "../src/core/provider-adapters/claude-code";
 
 async function writeProviderBinary(params: {
 	dir: string;
@@ -83,6 +84,83 @@ function codexJsonlEventStream(threadId: string, finalText: string): string {
 }
 
 describe("provider availability checks", () => {
+	test("parses Claude wrapper result strings that contain fenced JSON", () => {
+		const parsed = parseClaudeCodePayload({
+			stdout: JSON.stringify({
+				type: "result",
+				result: [
+					"```json",
+					JSON.stringify({
+						outcome: "ready-for-verification",
+						planSummary: "Completed fixture work.",
+						changedFiles: [
+							{
+								path: "integration-fixture.txt",
+								reason: "Fixture confirmation file.",
+							},
+						],
+						tests: {
+							added: [],
+							modified: [],
+							removed: [],
+							totalAfterStory: 1,
+							deltaFromPriorBaseline: 0,
+						},
+						gatesRun: [
+							{
+								command: "true",
+								result: "pass",
+							},
+						],
+						selfReview: {
+							findingsFixed: [],
+							findingsSurfaced: [],
+						},
+						openQuestions: [],
+						specDeviations: [],
+						recommendedNextStep: "Continue.",
+					}),
+					"```",
+				].join("\n"),
+				session_id: "claude-session-001",
+			}),
+			resultSchema: z.object({
+				outcome: z.literal("ready-for-verification"),
+				planSummary: z.string(),
+				changedFiles: z.array(
+					z.object({
+						path: z.string(),
+						reason: z.string(),
+					}),
+				),
+				tests: z.object({
+					added: z.array(z.string()),
+					modified: z.array(z.string()),
+					removed: z.array(z.string()),
+					totalAfterStory: z.number(),
+					deltaFromPriorBaseline: z.number(),
+				}),
+				gatesRun: z.array(
+					z.object({
+						command: z.string(),
+						result: z.enum(["pass", "fail", "not-run"]),
+					}),
+				),
+				selfReview: z.object({
+					findingsFixed: z.array(z.string()),
+					findingsSurfaced: z.array(z.string()),
+				}),
+				openQuestions: z.array(z.string()),
+				specDeviations: z.array(z.string()),
+				recommendedNextStep: z.string(),
+			}),
+		});
+
+		expect(parsed.parseError).toBeUndefined();
+		expect(parsed.sessionId).toBe("claude-session-001");
+		expect(parsed.parsedResult?.planSummary).toBe("Completed fixture work.");
+	});
+
 	test("resolves requested provider availability from real subprocess calls against PATH binaries", async () => {
 		const { resolveProviderMatrix } = await import(
 			"../src/core/provider-checks"

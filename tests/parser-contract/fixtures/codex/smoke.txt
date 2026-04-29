@@ -1,0 +1,9 @@
+# Provider: codex
+# Command: codex exec --json -m gpt-5.4 -c model_reasoning_effort=low --output-schema <output-schema-path> -o <output-last-message-path> "Return exactly this JSON and nothing else: {\"ok\":true,\"provider\":\"codex\",\"scenario\":\"smoke\"}"
+# Captured: 2026-04-28
+# Scenario: smoke
+# Fixture content follows ↓
+{"type":"thread.started","thread_id":"019dd6ce-167b-7161-b67b-c8eee69e80e5"}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"item_0","type":"agent_message","text":"{\"ok\":true,\"provider\":\"codex\",\"scenario\":\"smoke\"}"}}
+{"type":"turn.completed","usage":{"input_tokens":15084,"cached_input_tokens":2432,"output_tokens":25,"reasoning_output_tokens":0}}

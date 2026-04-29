@@ -148,4 +148,16 @@ describe("foundation", () => {
 		expect(workflow).toContain("node-version: 24");
 		expect(workflow).toContain("npm run verify");
 	});
+
+	test("integration workflow opts into LSPEC_INTEGRATION and runs verify-all", async () => {
+		const workflow = await readFile(
+			join(ROOT, ".github", "workflows", "integration.yml"),
+			"utf8",
+		);
+
+		expect(workflow).toContain("workflow_dispatch:");
+		expect(workflow).toContain("schedule:");
+		expect(workflow).toContain('LSPEC_INTEGRATION: "1"');
+		expect(workflow).toContain("npm run verify-all");
+	});
 });

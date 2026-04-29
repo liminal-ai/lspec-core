@@ -4,6 +4,7 @@ import {
 	type ProviderAdapter,
 	type ProviderExecutionRequest,
 } from "./shared";
+import type { z } from "zod";
 
 interface ClaudeCodeAdapterOptions {
 	env?: Record<string, string | undefined>;
@@ -27,6 +28,8 @@ export function createClaudeCodeAdapter(
 						request.model,
 						"--effort",
 						request.reasoningEffort,
+						"--permission-mode",
+						"acceptEdits",
 					]
 				: [
 						"-p",
@@ -47,6 +50,8 @@ export function createClaudeCodeAdapter(
 				cwd: request.cwd,
 				env: options.env,
 				timeoutMs: request.timeoutMs,
+				startupTimeoutMs: request.startupTimeoutMs,
+				silenceTimeoutMs: request.silenceTimeoutMs,
 				streamOutputPaths: request.streamOutputPaths,
 				lifecycleCallback: request.lifecycleCallback,
 			});
@@ -68,4 +73,11 @@ export function createClaudeCodeAdapter(
 			};
 		},
 	};
+}
+
+export function parseClaudeCodePayload<TResult>(input: {
+	stdout: string;
+	resultSchema?: z.ZodType<TResult>;
+}) {
+	return parseProviderPayload(input);
 }

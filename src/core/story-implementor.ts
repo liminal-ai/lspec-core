@@ -506,7 +506,7 @@ async function executePrompt(input: {
 		lifecycleCallback: input.lifecycleCallback,
 	});
 
-	if (execution.exitCode !== 0) {
+	if (execution.errorCode || execution.exitCode !== 0) {
 		return {
 			outcome: "blocked" as const,
 			errors: [

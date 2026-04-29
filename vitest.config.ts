@@ -1,10 +1,27 @@
-import { defineConfig } from "vitest/config";
+import { defineConfig, defineProject } from "vitest/config";
 
 export default defineConfig({
 	test: {
-		fileParallelism: false,
-		include: ["tests/**/*.test.ts"],
-		globals: false,
-		setupFiles: ["./tests/setup.ts"],
+		projects: [
+			defineProject({
+				test: {
+					name: "default",
+					fileParallelism: false,
+					include: ["tests/**/*.test.ts"],
+					exclude: ["tests/integration/**/*.test.ts"],
+					globals: false,
+					setupFiles: ["./tests/setup.ts"],
+				},
+			}),
+			defineProject({
+				test: {
+					name: "integration",
+					fileParallelism: false,
+					include: ["tests/integration/**/*.test.ts"],
+					globals: false,
+					setupFiles: ["./tests/setup.ts"],
+				},
+			}),
+		],
 	},
 });

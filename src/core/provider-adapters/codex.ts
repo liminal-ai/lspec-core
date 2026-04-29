@@ -71,6 +71,8 @@ export function createCodexAdapter(
 					cwd: request.cwd,
 					env: options.env,
 					timeoutMs: request.timeoutMs,
+					startupTimeoutMs: request.startupTimeoutMs,
+					silenceTimeoutMs: request.silenceTimeoutMs,
 					streamOutputPaths: request.streamOutputPaths,
 					lifecycleCallback: request.lifecycleCallback,
 				});
@@ -169,7 +171,7 @@ function parseCodexStructuredOutput<TResult>(input: {
 	};
 }
 
-function parseCodexJsonlPayload<TResult>(input: {
+export function parseCodexJsonlPayload<TResult>(input: {
 	stdout: string;
 	resultSchema?: z.ZodType<TResult>;
 }):

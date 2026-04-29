@@ -7,16 +7,17 @@ const FIXTURE_ROOT = join(ROOT, "tests/parser-contract/fixtures");
 
 export interface ParserFixture {
 	name: string;
-	content: string;
+	stdout: string;
 	provenance: {
 		provider: string;
 		command: string;
 		captured: string;
+		scenario: string;
 	};
 }
 
 const PROVENANCE_PATTERN =
-	/^# Provider: (?<provider>.+)\n# Command: (?<command>.+)\n# Captured: (?<captured>\d{4}-\d{2}-\d{2})\n/m;
+	/^# Provider: (?<provider>.+)\n# Command: (?<command>.+)\n# Captured: (?<captured>\d{4}-\d{2}-\d{2})\n# Scenario: (?<scenario>[a-z-]+)\n# Fixture content follows ↓\n?/m;
 
 export async function readProviderFixtures(
 	provider: "claude-code" | "codex" | "copilot",
@@ -28,24 +29,26 @@ export async function readProviderFixtures(
 
 	const fixtures: ParserFixture[] = [];
 	for (const entry of entries) {
-		const content = await readFile(join(providerDir, entry), "utf8");
-		const match = content.match(PROVENANCE_PATTERN);
+		const fixture = await readFile(join(providerDir, entry), "utf8");
+		const match = fixture.match(PROVENANCE_PATTERN);
 		if (!match?.groups) {
 			throw new Error(
 				`Fixture ${provider}/${entry} is missing provenance metadata.`,
 			);
 		}
 
+		const stdout = fixture.slice(match[0].length);
 		fixtures.push({
 			name: entry,
-			content,
+			stdout,
 			provenance: {
 				provider: match.groups.provider,
 				command: match.groups.command,
 				captured: match.groups.captured,
+				scenario: match.groups.scenario,
 			},
 		});
 	}
 
-	return fixtures;
+	return fixtures.sort((left, right) => left.name.localeCompare(right.name));
 }

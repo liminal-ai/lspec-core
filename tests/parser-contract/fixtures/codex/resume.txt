@@ -1,0 +1,9 @@
+# Provider: codex
+# Command: codex exec resume --json -o <output-last-message-path> 019dd6ce-28aa-7b40-a28b-192afda88d84 "Return exactly this JSON and nothing else: {\"ok\":true,\"provider\":\"codex\",\"scenario\":\"resume\",\"resumed\":true}"
+# Captured: 2026-04-28
+# Scenario: resume
+# Fixture content follows ↓
+{"type":"thread.started","thread_id":"019dd6ce-28aa-7b40-a28b-192afda88d84"}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"item_0","type":"agent_message","text":"{\"ok\":true,\"provider\":\"codex\",\"scenario\":\"resume\",\"resumed\":true}"}}
+{"type":"turn.completed","usage":{"input_tokens":34636,"cached_input_tokens":17152,"output_tokens":60,"reasoning_output_tokens":9}}

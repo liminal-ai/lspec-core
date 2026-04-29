@@ -36,6 +36,8 @@ export function createCopilotAdapter(
 				cwd: request.cwd,
 				env: options.env,
 				timeoutMs: request.timeoutMs,
+				startupTimeoutMs: request.startupTimeoutMs,
+				silenceTimeoutMs: request.silenceTimeoutMs,
 				streamOutputPaths: request.streamOutputPaths,
 				lifecycleCallback: request.lifecycleCallback,
 			});
@@ -65,7 +67,7 @@ export function createCopilotAdapter(
 	};
 }
 
-function parseCopilotJsonlPayload<TResult>(input: {
+export function parseCopilotJsonlPayload<TResult>(input: {
 	stdout: string;
 	resultSchema?: ProviderExecutionRequest<TResult>["resultSchema"];
 }):

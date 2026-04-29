@@ -38,16 +38,18 @@
     "lint": "biome lint src tests scripts",
     "check": "biome check src tests scripts",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
+    "test": "vitest run --project default",
+    "test:integration": "vitest run --project integration",
     "test:watch": "vitest",
     "capture:test-baseline": "tsx scripts/capture-test-baseline.ts",
+    "capture:provider-output": "tsx scripts/capture-provider-output.ts",
     "guard:no-test-changes": "tsx scripts/guard-no-test-changes.ts",
     "build": "tsup && node scripts/ensure-bin-shebang.mjs",
     "pack-and-install-smoke": "tsx scripts/pack-and-install-smoke.ts",
     "red-verify": "npm run format:check && npm run lint && npm run typecheck && npm run capture:test-baseline",
     "verify": "npm run red-verify && npm run test",
     "green-verify": "npm run verify && npm run guard:no-test-changes",
-    "verify-all": "npm run verify && echo 'verify-all: integration suite not yet present (Story 4 owns it) — placeholder pass'"
+    "verify-all": "npm run verify && npm run test:integration"
   },
   "engines": {
     "node": ">=24.0.0"

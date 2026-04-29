@@ -110,9 +110,17 @@ function parseNestedJson(value: unknown): unknown {
 		return value;
 	}
 
+	const trimmed = value.trim();
 	try {
-		return JSON.parse(value);
+		return JSON.parse(trimmed);
 	} catch {
+		const fenced = trimmed.match(/^```(?:json)?\s*\n(?<json>[\s\S]*?)\n?```$/i);
+		if (fenced?.groups?.json) {
+			try {
+				return JSON.parse(fenced.groups.json.trim());
+			} catch {}
+		}
+
 		return undefined;
 	}
 }
