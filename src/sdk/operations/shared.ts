@@ -26,7 +26,7 @@ import type {
 	FileSystemAdapter,
 	SpawnImplementation,
 } from "../contracts/operations.js";
-import { ZodError, z } from "zod";
+import { ZodError, type z } from "zod";
 
 export {
 	epicCleanupResultSchema,

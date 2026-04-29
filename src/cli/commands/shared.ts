@@ -7,10 +7,11 @@ import {
 } from "../../core/artifact-writer.js";
 import { classifyCommandError } from "../../core/command-errors.js";
 import {
-	createResultEnvelope,
 	type CliError,
+	createResultEnvelope,
 } from "../../core/result-contracts.js";
 import type { CliResultEnvelope } from "../../sdk/contracts/envelope.js";
+import { InvalidInputError } from "../../sdk/errors/classes.js";
 import { mapStatusToExitCode, renderDefaultHumanSummary } from "../envelope.js";
 import { writeHuman, writeJson } from "../output.js";
 
@@ -24,6 +25,102 @@ export interface ProviderArtifactOptions {
 		stdoutPath: string;
 		stderrPath: string;
 	};
+}
+
+type CommandArgsDef = Record<
+	string,
+	{
+		type?: string;
+		alias?: string | string[];
+	}
+>;
+
+function toArray(value: string | string[] | undefined): string[] {
+	if (Array.isArray(value)) {
+		return value;
+	}
+	return value ? [value] : [];
+}
+
+function toCamelCase(value: string): string {
+	return value.replace(/-([a-zA-Z0-9])/g, (_, char: string) =>
+		char.toUpperCase(),
+	);
+}
+
+function knownFlags(argsDef: CommandArgsDef): Map<string, string | undefined> {
+	const flags = new Map<string, string | undefined>();
+
+	for (const [name, definition] of Object.entries(argsDef)) {
+		if (definition.type === "positional") {
+			continue;
+		}
+		const names = new Set([
+			name,
+			toCamelCase(name),
+			...toArray(definition.alias),
+		]);
+		for (const flagName of names) {
+			flags.set(flagName, definition.type);
+		}
+	}
+
+	return flags;
+}
+
+export function rejectUnknownCommandArgs(
+	rawArgs: string[],
+	argsDef: unknown,
+): void {
+	if (!argsDef || typeof argsDef !== "object" || Array.isArray(argsDef)) {
+		return;
+	}
+
+	const flags = knownFlags(argsDef as CommandArgsDef);
+
+	for (let index = 0; index < rawArgs.length; index += 1) {
+		const rawArg = rawArgs[index] as string;
+
+		if (rawArg === "--") {
+			const positional = rawArgs[index + 1];
+			if (positional) {
+				throw new InvalidInputError(
+					`Unexpected positional argument: ${positional}`,
+				);
+			}
+			return;
+		}
+
+		if (rawArg.startsWith("--no-")) {
+			const flagName = rawArg.slice("--no-".length);
+			if (flags.get(flagName) !== "boolean") {
+				throw new InvalidInputError(`Unknown option: --no-${flagName}`);
+			}
+			continue;
+		}
+
+		if (rawArg.startsWith("--")) {
+			const [flagName] = rawArg.slice("--".length).split("=", 1);
+			const flagType = flagName ? flags.get(flagName) : undefined;
+			if (!flagName || !flagType) {
+				throw new InvalidInputError(`Unknown option: --${flagName ?? ""}`);
+			}
+			if (flagType !== "boolean" && !rawArg.includes("=")) {
+				index += 1;
+			}
+			continue;
+		}
+
+		if (rawArg.startsWith("-")) {
+			const flagName = rawArg.slice("-".length);
+			if (flags.get(flagName) !== "boolean") {
+				throw new InvalidInputError(`Unknown option: -${flagName}`);
+			}
+			continue;
+		}
+
+		throw new InvalidInputError(`Unexpected positional argument: ${rawArg}`);
+	}
 }
 
 export async function resolveCommandArtifactPath(input: {

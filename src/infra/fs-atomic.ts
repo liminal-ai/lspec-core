@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { dirname } from "node:path";
 
-import { mkdir, rename, rm, writeFile } from "../core/runtime-deps.js";
+import { mkdir, open, rename, rm } from "../core/runtime-deps.js";
 import { AtomicWriteError } from "../sdk/errors/classes.js";
 
 export async function writeAtomic(
@@ -15,10 +15,18 @@ export async function writeAtomic(
 		recursive: true,
 	});
 
+	let handle: Awaited<ReturnType<typeof open>> | undefined;
 	try {
-		await writeFile(tempPath, content);
+		handle = await open(tempPath, "w");
+		await handle.writeFile(content);
+		await handle.sync();
+		await handle.close();
+		handle = undefined;
+
 		await rename(tempPath, path);
+		await syncDirectory(directory);
 	} catch (error) {
+		await handle?.close().catch(() => undefined);
 		await rm(tempPath, {
 			force: true,
 		}).catch(() => undefined);
@@ -29,5 +37,17 @@ export async function writeAtomic(
 				cause: error,
 			},
 		);
+	}
+}
+
+async function syncDirectory(directory: string): Promise<void> {
+	let handle: Awaited<ReturnType<typeof open>> | undefined;
+	try {
+		handle = await open(directory, "r");
+		await handle.sync();
+	} catch {
+		// Some platforms/filesystems do not allow fsync on directories.
+	} finally {
+		await handle?.close().catch(() => undefined);
 	}
 }

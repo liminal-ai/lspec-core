@@ -78,7 +78,7 @@ test("TC-5.3a runs quick-fix from request-text without requiring story-aware inp
 
 	expect(run.exitCode).toBe(0);
 
-	const envelope = parseJsonOutput<any>(run.stdout);
+	const envelope = parseJsonOutput(run.stdout);
 	expect(envelope.command).toBe("quick-fix");
 	expect(envelope.status).toBe("ok");
 	expect(envelope.outcome).toBe("ready-for-verification");
@@ -225,7 +225,7 @@ test("TC-5.3b accepts --request-file, uses the selected working directory, and k
 
 	expect(run.exitCode).toBe(0);
 
-	const envelope = parseJsonOutput<any>(run.stdout);
+	const envelope = parseJsonOutput(run.stdout);
 	expect(envelope.result).toMatchObject({
 		provider: "codex",
 		model: "gpt-5.4",
@@ -298,7 +298,7 @@ test("runs quick-fix through Copilot when the run config selects the Copilot fre
 
 	expect(run.exitCode).toBe(0);
 
-	const envelope = parseJsonOutput<any>(run.stdout);
+	const envelope = parseJsonOutput(run.stdout);
 	expect(envelope.outcome).toBe("ready-for-verification");
 	expect(envelope.result).toMatchObject({
 		provider: "copilot",
@@ -351,7 +351,7 @@ test("rejects missing or duplicate quick-fix request sources", async () => {
 		const run = await runSourceCli([...args]);
 		expect(run.exitCode).toBe(1);
 
-		const envelope = parseJsonOutput<any>(run.stdout);
+		const envelope = parseJsonOutput(run.stdout);
 		expect(envelope.status).toBe("error");
 		expect(envelope.errors).toEqual(
 			expect.arrayContaining([
@@ -378,7 +378,7 @@ test("rejects empty quick-fix request text and empty quick-fix request files", a
 		"--json",
 	]);
 	expect(emptyTextRun.exitCode).toBe(1);
-	expect(parseJsonOutput<any>(emptyTextRun.stdout).errors).toEqual(
+	expect(parseJsonOutput(emptyTextRun.stdout).errors).toEqual(
 		expect.arrayContaining([
 			expect.objectContaining({
 				code: "INVALID_INPUT",
@@ -396,7 +396,7 @@ test("rejects empty quick-fix request text and empty quick-fix request files", a
 		"--json",
 	]);
 	expect(emptyFileRun.exitCode).toBe(1);
-	expect(parseJsonOutput<any>(emptyFileRun.stdout).errors).toEqual(
+	expect(parseJsonOutput(emptyFileRun.stdout).errors).toEqual(
 		expect.arrayContaining([
 			expect.objectContaining({
 				code: "INVALID_INPUT",
@@ -421,7 +421,7 @@ test("blocks quick-fix with exit code 3 when the spec-pack root is outside any g
 
 	expect(run.exitCode).toBe(3);
 
-	const envelope = parseJsonOutput<any>(run.stdout);
+	const envelope = parseJsonOutput(run.stdout);
 	expect(envelope.status).toBe("blocked");
 	expect(envelope.outcome).toBe("blocked");
 	expect(envelope.errors).toEqual(
@@ -451,7 +451,7 @@ test("rejects oversized quick-fix request files before provider dispatch", async
 		"--json",
 	]);
 	expect(oversizedFileRun.exitCode).toBe(1);
-	expect(parseJsonOutput<any>(oversizedFileRun.stdout).errors).toEqual(
+	expect(parseJsonOutput(oversizedFileRun.stdout).errors).toEqual(
 		expect.arrayContaining([
 			expect.objectContaining({
 				code: "INVALID_INPUT",
@@ -494,7 +494,7 @@ test("routes quick-fix to needs-more-routing when the provider returns no stdout
 
 	expect(run.exitCode).toBe(0);
 
-	const envelope = parseJsonOutput<any>(run.stdout);
+	const envelope = parseJsonOutput(run.stdout);
 	expect(envelope.status).toBe("ok");
 	expect(envelope.outcome).toBe("needs-more-routing");
 	expect(envelope.result).toMatchObject({
@@ -529,7 +529,7 @@ test("blocks quick-fix when the explicit working directory escapes the repo root
 
 	expect(run.exitCode).toBe(3);
 
-	const envelope = parseJsonOutput<any>(run.stdout);
+	const envelope = parseJsonOutput(run.stdout);
 	expect(envelope.status).toBe("blocked");
 	expect(envelope.outcome).toBe("blocked");
 	expect(envelope.errors).toEqual(
@@ -577,14 +577,16 @@ test("routes quick-fix to blocked with exit code 3 when the provider fails", asy
 
 	expect(run.exitCode).toBe(3);
 
-	const envelope = parseJsonOutput<any>(run.stdout);
+	const envelope = parseJsonOutput(run.stdout);
 	expect(envelope.status).toBe("blocked");
 	expect(envelope.outcome).toBe("blocked");
 	expect(envelope.errors).toEqual(
 		expect.arrayContaining([
 			expect.objectContaining({
 				code: "PROVIDER_UNAVAILABLE",
-				detail: "provider execution failed before any edits were applied",
+				detail: expect.stringContaining(
+					"provider execution failed before any edits were applied",
+				),
 			}),
 		]),
 	);
@@ -614,7 +616,7 @@ test("rejects legacy story-aware flags such as --story-id, --story-title, and --
 
 		expect(run.exitCode).toBe(1);
 
-		const envelope = parseJsonOutput<any>(run.stdout);
+		const envelope = parseJsonOutput(run.stdout);
 		expect(envelope.status).toBe("error");
 		expect(envelope.errors).toEqual(
 			expect.arrayContaining([

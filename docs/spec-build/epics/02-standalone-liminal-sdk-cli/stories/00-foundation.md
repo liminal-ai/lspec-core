@@ -16,11 +16,11 @@ Move the bundled runtime from `liminal-spec/processes/impl-cli/` into the new `l
 
 | Element | Status at story start |
 |---|---|
-| `package.json` (with `@lspec/core` identity, Node 24 engines, dependency pins) | Present |
+| `package.json` (with `lbuild-impl` identity, Node 24 engines, dependency pins) | Present |
 | `tsconfig.json`, `vitest.config.ts`, `tsup.config.ts`, `biome.json` | Present |
 | Stub `src/sdk/index.ts` and `src/bin/lspec.ts`, single smoke test under `tests/` | Present |
 | Base npm scripts: `format:check`, `format`, `lint`, `check`, `typecheck`, `test`, `test:watch`, `build` | Present |
-| Verify-chain scripts: `red-verify`, `verify`, `green-verify`, `verify-all` | Present as basic compositions (red-verify = format:check + lint + typecheck; verify = red-verify + test; green-verify = verify; verify-all = verify + integration placeholder). Story 0 enriches green-verify to include the test-immutability guard once capture/guard scripts land. |
+| Verify-chain scripts: `red-verify`, `verify`, `green-verify`, `verify-all` | Present as basic compositions (red-verify = format:check + lint + typecheck; verify = red-verify + test; green-verify = verify; verify-all = verify + package + integration). Story 0 enriches green-verify to include the test-immutability guard once capture/guard scripts land. |
 | Test-immutability guard scripts: `capture:test-baseline`, `guard:no-test-changes` | NOT YET — Story 0 adds these tsx scripts and rewires green-verify to include `guard:no-test-changes` |
 | Per-operation test files (~26 files) and migrated source under `src/core/`, `src/infra/` | NOT YET — Story 0 migrates these |
 | `.github/workflows/ci.yml` | NOT YET — Story 0 creates this (the `.github/workflows/` directory does not exist at story start) |
@@ -81,7 +81,7 @@ Story 0 extends this baseline; it does not create the package boundary from scra
 - **TC-1.3b:** Each tier composes correctly
   - Given: The verification scripts
   - When: Each tier is invoked in a clean checkout
-  - Then: `red-verify` runs format, lint, and typecheck; `verify` adds the test suite; `green-verify` adds a test-immutability guard; `verify-all` adds the integration and end-to-end suites or a clear placeholder notice
+  - Then: `red-verify` runs format, lint, and typecheck; `verify` adds the default Vitest suite; `green-verify` adds a test-immutability guard; `verify-all` adds the package and integration Vitest projects
 
 **AC-1.4:** The new package builds to portable JavaScript and TypeScript declaration files.
 

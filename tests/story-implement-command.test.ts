@@ -148,7 +148,7 @@ test("TC-4.1a launches story-implement with the documented inputs and returns a 
 
 	expect(run.exitCode).toBe(0);
 
-	const envelope = parseJsonOutput<any>(run.stdout);
+	const envelope = parseJsonOutput(run.stdout);
 	expect(envelope.command).toBe("story-implement");
 	expect(envelope.outcome).toBe("ready-for-verification");
 	expect(envelope.result.story).toEqual({
@@ -275,7 +275,7 @@ test("returns blocked when the initial implementor pass reports a blocking condi
 
 	expect(run.exitCode).toBe(3);
 
-	const envelope = parseJsonOutput<any>(run.stdout);
+	const envelope = parseJsonOutput(run.stdout);
 	expect(envelope.outcome).toBe("blocked");
 	expect(envelope.result.selfReview.passesRun).toBe(0);
 
@@ -324,7 +324,7 @@ test("returns exit code 2 when story-implement completes with a follow-up fix ou
 
 	expect(run.exitCode).toBe(0);
 
-	const envelope = parseJsonOutput<any>(run.stdout);
+	const envelope = parseJsonOutput(run.stdout);
 	expect(envelope.status).toBe("ok");
 	expect(envelope.outcome).toBe("needs-followup-fix");
 });
@@ -373,7 +373,7 @@ test("blocks when the provider payload includes unknown keys outside the documen
 
 	expect(run.exitCode).toBe(3);
 
-	const envelope = parseJsonOutput<any>(run.stdout);
+	const envelope = parseJsonOutput(run.stdout);
 	expect(envelope.status).toBe("blocked");
 	expect(envelope.outcome).toBe("blocked");
 	expect(envelope.result).toBeUndefined();
@@ -424,7 +424,7 @@ test("TC-4.2b returns the provider and session continuation handle needed for st
 
 	expect(run.exitCode).toBe(0);
 
-	const envelope = parseJsonOutput<any>(run.stdout);
+	const envelope = parseJsonOutput(run.stdout);
 	expect(envelope.result.provider).toBe("codex");
 	expect(envelope.result.sessionId).toBe(sessionId);
 	expect(envelope.result.continuation).toEqual({
@@ -470,7 +470,7 @@ test("TC-4.5a returns the full implementor result contract through the public CL
 
 	expect(run.exitCode).toBe(0);
 
-	const envelope = parseJsonOutput<any>(run.stdout);
+	const envelope = parseJsonOutput(run.stdout);
 	expect(envelope.result).toEqual(
 		expect.objectContaining({
 			resultId: expect.any(String),
@@ -563,7 +563,7 @@ test("does not run self-review during story-implement even when the config reque
 
 	expect(run.exitCode).toBe(0);
 
-	const envelope = parseJsonOutput<any>(run.stdout);
+	const envelope = parseJsonOutput(run.stdout);
 	expect(envelope.result.selfReview.passesRun).toBe(0);
 
 	const invocations = await readJsonLines<{ args: string[] }>(logPath);
@@ -608,7 +608,7 @@ test("blocks with PROVIDER_UNAVAILABLE when the initial provider pass exits nonz
 
 	expect(run.exitCode).toBe(3);
 
-	const envelope = parseJsonOutput<any>(run.stdout);
+	const envelope = parseJsonOutput(run.stdout);
 	expect(envelope.status).toBe("blocked");
 	expect(envelope.errors).toContainEqual(
 		expect.objectContaining({
@@ -670,7 +670,7 @@ test("surfaces invalid output-schema failures with the actual OpenAI/Codex schem
 
 	expect(run.exitCode).toBe(3);
 
-	const envelope = parseJsonOutput<any>(run.stdout);
+	const envelope = parseJsonOutput(run.stdout);
 	expect(envelope.status).toBe("blocked");
 	expect(envelope.errors).toContainEqual(
 		expect.objectContaining({
@@ -719,7 +719,7 @@ test("blocks with CONTINUATION_HANDLE_INVALID when the provider omits a session 
 
 	expect(run.exitCode).toBe(3);
 
-	const envelope = parseJsonOutput<any>(run.stdout);
+	const envelope = parseJsonOutput(run.stdout);
 	expect(envelope.errors).toContainEqual(
 		expect.objectContaining({
 			code: "CONTINUATION_HANDLE_INVALID",
@@ -778,7 +778,7 @@ test("surfaces a needs-human-ruling outcome directly from the initial implemento
 
 	expect(run.exitCode).toBe(2);
 
-	const envelope = parseJsonOutput<any>(run.stdout);
+	const envelope = parseJsonOutput(run.stdout);
 	expect(envelope.status).toBe("needs-user-decision");
 	expect(envelope.outcome).toBe("needs-human-ruling");
 	expect(envelope.result.selfReview.passesRun).toBe(0);

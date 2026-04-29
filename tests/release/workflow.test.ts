@@ -1,4 +1,4 @@
-import { readFile, readdir } from "node:fs/promises";
+import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 
 import { expect, test } from "vitest";
@@ -26,7 +26,8 @@ test("TC-6.5b: default-CI gate blocks publish on failure", async () => {
 	expect(workflow).toContain("default-ci:");
 	expect(workflow).toContain("needs: default-ci");
 	expect(workflow).toContain("npm run verify");
-	expect(workflow).toContain("if: ${{ success() }}");
+	expect(workflow).toContain("npm run test:package");
+	expect(workflow).toContain("if: $" + "{{ success() }}");
 });
 
 test("TC-6.5c: integration gate blocks publish on failure", async () => {
@@ -34,10 +35,29 @@ test("TC-6.5c: integration gate blocks publish on failure", async () => {
 
 	expect(workflow).toContain("integration:");
 	expect(workflow).toContain('LSPEC_INTEGRATION: "1"');
+	expect(workflow).not.toContain("LSPEC_INTEGRATION_SKIP_AUTH_FAILURES");
 	expect(workflow).toContain(
 		"needs:\n      - default-ci\n      - integration\n      - gorilla-evidence",
 	);
 	expect(workflow).toContain("npm run test:integration");
+});
+
+test("workflow_dispatch checks out a GitHub-visible ref and validates release tag input", async () => {
+	const workflow = await readPublishWorkflow();
+
+	expect(workflow).toContain(
+		"RELEASE_REF: $" +
+			"{{ github.event_name == 'workflow_dispatch' && inputs.ref || github.ref }}",
+	);
+	expect(workflow).toContain("ref:");
+	expect(workflow).toContain("GitHub-visible branch, SHA, or ref");
+	expect(workflow).toContain("Validate manual release inputs");
+	expect(workflow).toContain('requested="$' + '{{ inputs.tag }}"');
+	expect(workflow).toContain("^v[0-9]+\\.[0-9]+\\.[0-9]+$");
+	expect(workflow).not.toContain("refs/tags/$" + "{requested}^{commit}");
+	expect(workflow).toContain(
+		"Manual workflow_dispatch runs only support dry_run=true.",
+	);
 });
 
 test("TC-6.5d: gorilla evidence required for publish", async () => {
@@ -76,5 +96,7 @@ test("workflow YAML remains release-ready", async () => {
 		expect(workflow).toContain("name:");
 		expect(workflow).toContain("jobs:");
 		expect(workflow).not.toContain("\t");
+		expect(workflow).toContain("uses: actions/checkout@v5");
+		expect(workflow).toContain("uses: actions/setup-node@v6");
 	}
 });

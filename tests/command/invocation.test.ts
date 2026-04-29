@@ -62,6 +62,7 @@ test("TC-3.5a: built CLI runs through node", { timeout: 120_000 }, async () => {
 
 	expect(run.code).toBe(0);
 	expect(run.stderr).toBe("");
+	expect(run.stdout.trim().split("\n")).toHaveLength(1);
 	expect(JSON.parse(run.stdout)).toEqual(
 		expect.objectContaining({
 			command: "inspect",

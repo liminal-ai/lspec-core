@@ -1,4 +1,5 @@
 import { access } from "node:fs/promises";
+import { createServer, type Server, type Socket } from "node:net";
 import { join } from "node:path";
 
 import type { TestContext } from "vitest";
@@ -25,6 +26,8 @@ import {
 } from "../test-helpers";
 
 export const INTEGRATION_ENABLED = process.env.LSPEC_INTEGRATION === "1";
+export const INTEGRATION_AUTH_SKIP_MODE =
+	process.env.LSPEC_INTEGRATION_SKIP_AUTH_FAILURES === "1";
 
 const DEFAULT_OPERATION_TIMEOUT_MS = 180_000;
 const DEFAULT_OPERATION_SILENCE_TIMEOUT_MS = 120_000;
@@ -188,6 +191,11 @@ export function skipIfProviderAuthUnavailable(
 	},
 ) {
 	if (isSkippableProviderBlock(envelope)) {
+		if (!INTEGRATION_AUTH_SKIP_MODE) {
+			throw new Error(
+				`${provider} real-provider integration blocked by missing or failed authentication. Set LSPEC_INTEGRATION_SKIP_AUTH_FAILURES=1 only for local/dev skip mode.`,
+			);
+		}
 		context.skip(
 			`${provider} real-provider integration skipped because the binary is present but authentication is unavailable: ${envelope.errors[0]?.message ?? "provider unavailable"}`,
 		);
@@ -334,6 +342,7 @@ export async function runInspectStructuredOperation(
 }
 
 export async function runRealProviderStall(provider: RealProviderName) {
+	const stallProxy = await createStallProxy();
 	const fixture = await createSdkOperationSpecPack(
 		provider,
 		"integration-stall",
@@ -344,18 +353,78 @@ export async function runRealProviderStall(provider: RealProviderName) {
 		},
 	);
 
-	const envelope = await storyImplement({
-		specPackRoot: fixture.specPackRoot,
-		storyId: fixture.storyId,
-		env: {
-			HTTPS_PROXY: "http://192.0.2.1:81",
-			HTTP_PROXY: "http://192.0.2.1:81",
-			ALL_PROXY: "http://192.0.2.1:81",
-			NO_PROXY: "",
-		},
+	try {
+		const envelope = await storyImplement({
+			specPackRoot: fixture.specPackRoot,
+			storyId: fixture.storyId,
+			env: {
+				HTTPS_PROXY: stallProxy.url,
+				HTTP_PROXY: stallProxy.url,
+				ALL_PROXY: stallProxy.url,
+				NO_PROXY: "",
+			},
+			streamOutputPaths: {
+				stdoutPath: join(
+					fixture.specPackRoot,
+					"artifacts/streams/stall.stdout.log",
+				),
+				stderrPath: join(
+					fixture.specPackRoot,
+					"artifacts/streams/stall.stderr.log",
+				),
+			},
+		});
+
+		return { envelope, fixture, stallProxyUrl: stallProxy.url };
+	} finally {
+		await stallProxy.close();
+	}
+}
+
+async function createStallProxy(): Promise<{
+	url: string;
+	close: () => Promise<void>;
+}> {
+	const sockets = new Set<Socket>();
+	const server = createServer((socket) => {
+		sockets.add(socket);
+		socket.on("close", () => sockets.delete(socket));
 	});
 
-	return { envelope, fixture };
+	await new Promise<void>((resolve, reject) => {
+		server.once("error", reject);
+		server.listen(0, "127.0.0.1", () => {
+			server.off("error", reject);
+			resolve();
+		});
+	});
+
+	const address = server.address();
+	if (!address || typeof address === "string") {
+		await closeServer(server, sockets);
+		throw new Error("Unable to allocate local stall proxy port.");
+	}
+
+	return {
+		url: `http://127.0.0.1:${address.port}`,
+		close: () => closeServer(server, sockets),
+	};
+}
+
+function closeServer(server: Server, sockets: Set<Socket>): Promise<void> {
+	for (const socket of sockets) {
+		socket.destroy();
+	}
+
+	return new Promise((resolve, reject) => {
+		server.close((error) => {
+			if (error) {
+				reject(error);
+				return;
+			}
+			resolve();
+		});
+	});
 }
 
 export const sdkEnvelopeSchemas = {

@@ -81,27 +81,109 @@ async function cleanupStaleReservations(artifactDir: string): Promise<void> {
 	const threshold = Date.now() - STALE_RESERVATION_TIMEOUT_MS;
 
 	try {
-		const entries = await readdirDirents(artifactDir);
+		const staleBases = new Set<string>();
+		const completedBases = new Set<string>();
+
+		await collectStaleArtifactReservations(
+			artifactDir,
+			threshold,
+			staleBases,
+			completedBases,
+		);
+		await collectStaleSiblingReservations(
+			join(artifactDir, "progress"),
+			/^(\d{3}-.+)\.(?:status\.json|progress\.jsonl)$/,
+			threshold,
+			staleBases,
+		);
+		await collectStaleSiblingReservations(
+			join(artifactDir, "streams"),
+			/^(\d{3}-.+)\.(?:stdout|stderr)\.log$/,
+			threshold,
+			staleBases,
+		);
+
 		await Promise.all(
-			entries.map(async (entry) => {
-				if (entry.isDirectory() || !/^\d{3}-.+\.json$/.test(entry.name)) {
-					return;
-				}
-
-				const targetPath = join(artifactDir, entry.name);
-				const details = await stat(targetPath);
-				if (details.size > 0 || details.mtimeMs >= threshold) {
-					return;
-				}
-
-				await rm(targetPath, {
-					force: true,
-				});
-			}),
+			[...staleBases]
+				.filter((base) => !completedBases.has(base))
+				.flatMap((base) => staleReservationPaths(artifactDir, base))
+				.map((targetPath) =>
+					rm(targetPath, {
+						force: true,
+					}),
+				),
 		);
 	} catch {
 		// Treat missing directories as empty.
 	}
+}
+
+async function collectStaleArtifactReservations(
+	artifactDir: string,
+	threshold: number,
+	staleBases: Set<string>,
+	completedBases: Set<string>,
+): Promise<void> {
+	const entries = await readdirDirents(artifactDir);
+	await Promise.all(
+		entries.map(async (entry) => {
+			if (entry.isDirectory() || !/^\d{3}-.+\.json$/.test(entry.name)) {
+				return;
+			}
+
+			const base = basename(entry.name, ".json");
+			const targetPath = join(artifactDir, entry.name);
+			const details = await stat(targetPath);
+			if (details.size > 0) {
+				completedBases.add(base);
+				return;
+			}
+			if (details.mtimeMs < threshold) {
+				staleBases.add(base);
+			}
+		}),
+	);
+}
+
+async function collectStaleSiblingReservations(
+	directoryPath: string,
+	pattern: RegExp,
+	threshold: number,
+	staleBases: Set<string>,
+): Promise<void> {
+	try {
+		const entries = await readdirDirents(directoryPath);
+		await Promise.all(
+			entries.map(async (entry) => {
+				if (entry.isDirectory()) {
+					return;
+				}
+
+				const match = entry.name.match(pattern);
+				const base = match?.[1];
+				if (!base) {
+					return;
+				}
+
+				const details = await stat(join(directoryPath, entry.name));
+				if (details.mtimeMs < threshold) {
+					staleBases.add(base);
+				}
+			}),
+		);
+	} catch {
+		// Missing subdirs are fine; treat them as empty.
+	}
+}
+
+function staleReservationPaths(artifactDir: string, base: string): string[] {
+	return [
+		join(artifactDir, `${base}.json`),
+		join(artifactDir, "progress", `${base}.status.json`),
+		join(artifactDir, "progress", `${base}.progress.jsonl`),
+		join(artifactDir, "streams", `${base}.stdout.log`),
+		join(artifactDir, "streams", `${base}.stderr.log`),
+	];
 }
 
 async function reserveArtifactPath(

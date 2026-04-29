@@ -1,6 +1,20 @@
-import { ConfigLoadError } from "./config-schema";
 import type { ImplCliError } from "../sdk/errors/base.js";
 import { InternalError } from "../sdk/errors/classes.js";
+import { ConfigLoadError } from "./config-schema";
+
+const blockedWorkflowErrorCodes = new Set([
+	"INVALID_SPEC_PACK",
+	"INVALID_RUN_CONFIG",
+	"VERIFICATION_GATE_UNRESOLVED",
+	"PROVIDER_UNAVAILABLE",
+	"PROVIDER_TIMEOUT",
+	"PROVIDER_STALLED",
+	"PROVIDER_OUTPUT_INVALID",
+	"CONTINUATION_HANDLE_INVALID",
+	"PROMPT_INSERT_INVALID",
+	"ATOMIC_WRITE_FAILED",
+	"INDEX_RESERVATION_FAILED",
+]);
 
 export function classifyCommandError(
 	error: unknown,
@@ -19,7 +33,9 @@ export function classifyCommandError(
 	if (isImplCliError(error)) {
 		return {
 			code: error.code,
-			outcome: blockedOutcome,
+			outcome: blockedWorkflowErrorCodes.has(error.code)
+				? blockedOutcome
+				: "error",
 		};
 	}
 

@@ -9,6 +9,11 @@ import type { ImplRunConfig } from "../src/core/config-schema";
 
 export const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
+export type LooseJsonOutput = string & {
+	[key: string]: LooseJsonOutput;
+	[index: number]: LooseJsonOutput;
+};
+
 interface CreateSpecPackOptions {
 	companionMode?: "two-file" | "four-file";
 	includeStoriesDir?: boolean;
@@ -339,7 +344,7 @@ export async function writeFakeProviderExecutable(params: {
 			"",
 			"const provider = basename(process.argv[1]);",
 			'const prefix = provider.toUpperCase().replace(/-/g, "_");',
-			"const envKey = (name) => `${prefix}_${name}`;",
+			'const envKey = (name) => prefix + "_" + name;',
 			"const args = process.argv.slice(2);",
 			'const logPath = process.env[envKey("LOG_PATH")];',
 			"const envSnapshot = {",
@@ -349,11 +354,11 @@ export async function writeFakeProviderExecutable(params: {
 			"};",
 			"",
 			"if (logPath) {",
-			"  appendFileSync(logPath, `${JSON.stringify({ provider, cwd: process.cwd(), args, env: envSnapshot })}\\n`);",
+			'  appendFileSync(logPath, JSON.stringify({ provider, cwd: process.cwd(), args, env: envSnapshot }) + "\\n");',
 			"}",
 			"",
 			'if (args.length === 1 && args[0] === "--version") {',
-			'  process.stdout.write(process.env[envKey("VERSION")] ?? `${provider} 1.0.0`);',
+			'  process.stdout.write(process.env[envKey("VERSION")] ?? provider + " 1.0.0");',
 			'  process.exit(Number(process.env[envKey("VERSION_EXIT_CODE")] ?? 0));',
 			"}",
 			"",
@@ -381,7 +386,7 @@ export async function writeFakeProviderExecutable(params: {
 			'  stderr: "No fake provider response configured",',
 			"  exitCode: 1,",
 			"};",
-			"writeFileSync(cursorPath, `${cursor + 1}`);",
+			"writeFileSync(cursorPath, String(cursor + 1));",
 			'const outputLastMessageFlagIndex = args.findIndex((arg) => arg === "-o" || arg === "--output-last-message");',
 			"const outputLastMessagePath = outputLastMessageFlagIndex >= 0 ? args[outputLastMessageFlagIndex + 1] : undefined;",
 			'if (outputLastMessagePath && typeof response.lastMessage === "string") {',
@@ -475,6 +480,6 @@ export async function runSourceCli(
 	});
 }
 
-export function parseJsonOutput<T>(stdout: string): T {
+export function parseJsonOutput<T = LooseJsonOutput>(stdout: string): T {
 	return JSON.parse(stdout.trim()) as T;
 }

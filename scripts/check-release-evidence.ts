@@ -9,6 +9,12 @@ const DAY_IN_MS = 24 * 60 * 60 * 1000;
 const EVIDENCE_DIRECTORY_PATTERN = /^\d{4}-\d{2}-\d{2}$/u;
 const EVIDENCE_FILE_PATTERN =
 	/^(claude-code|codex|copilot)-(smoke|resume|structured-output|stall)\.md$/u;
+const DEFAULT_REQUIRED_REPORTS = [
+	"claude-code-smoke.md",
+	"codex-resume.md",
+	"copilot-structured-output.md",
+	"codex-stall.md",
+] as const;
 const CLEAN_FINDING_VALUES = new Set([
 	"none",
 	"n/a",
@@ -22,6 +28,33 @@ interface EvidenceDirectory {
 	path: string;
 	date: Date;
 	ageInDays: number;
+}
+
+function parseRequiredReports(matrix: string | undefined): string[] {
+	if (!matrix) {
+		return [...DEFAULT_REQUIRED_REPORTS];
+	}
+
+	const reports = matrix
+		.split(",")
+		.map((report) => report.trim())
+		.filter(Boolean);
+
+	if (reports.length === 0) {
+		throw new Error(
+			"Invalid evidence matrix: expected one or more comma-separated <provider>-<scenario>.md reports.",
+		);
+	}
+
+	for (const report of reports) {
+		if (!EVIDENCE_FILE_PATTERN.test(report)) {
+			throw new Error(
+				`Invalid evidence matrix report ${report}. Expected <provider>-<scenario>.md using canonical providers and scenarios.`,
+			);
+		}
+	}
+
+	return [...new Set(reports)].sort((left, right) => left.localeCompare(right));
 }
 
 function parseIsoDate(value: string): Date {
@@ -106,6 +139,9 @@ async function main() {
 			"release-window-days": {
 				type: "string",
 			},
+			matrix: {
+				type: "string",
+			},
 		},
 	});
 
@@ -119,6 +155,7 @@ async function main() {
 		values["release-window-days"] ?? "7",
 		10,
 	);
+	const requiredReports = parseRequiredReports(values.matrix);
 
 	if (
 		!Number.isInteger(releaseWindowDays) ||
@@ -161,6 +198,20 @@ async function main() {
 		);
 	}
 
+	const evidenceFileNames = new Set(
+		evidenceFiles.map(
+			(filePath) => filePath.split(/[\\/]/u).at(-1) ?? filePath,
+		),
+	);
+	const missingReports = requiredReports.filter(
+		(report) => !evidenceFileNames.has(report),
+	);
+	if (missingReports.length > 0) {
+		throw new Error(
+			`Gorilla evidence directory ${selectedDirectory.name} is missing required release report(s): ${missingReports.join(", ")}. Required matrix: ${requiredReports.join(", ")}.`,
+		);
+	}
+
 	for (const filePath of evidenceFiles) {
 		const unexpectedBehaviors = readUnexpectedBehaviors(
 			await readFile(filePath, "utf8"),
@@ -175,7 +226,7 @@ async function main() {
 	}
 
 	console.log(
-		`Release gorilla evidence is fresh in ${selectedDirectory.name} with ${evidenceFiles.length} clean report(s).`,
+		`Release gorilla evidence is fresh in ${selectedDirectory.name} with required matrix ${requiredReports.join(", ")} and ${evidenceFiles.length} clean report(s).`,
 	);
 }
 

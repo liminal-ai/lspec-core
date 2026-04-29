@@ -9,6 +9,7 @@ import {
 	formatCodexStructuredOutputError,
 } from "./codex-output-schema";
 import {
+	appendProviderOutputDiagnostics,
 	parseProviderPayload,
 	runProviderCommand,
 	type ProviderAdapter,
@@ -81,11 +82,23 @@ export function createCodexAdapter(
 					const structuredOutputError = extractCodexStructuredOutputError(
 						execution.stdout,
 					);
+					const stderr = structuredOutputError
+						? formatCodexStructuredOutputError(structuredOutputError)
+						: execution.stderr;
+					const diagnostics = [stderr];
+					if (request.streamOutputPaths?.stdoutPath) {
+						diagnostics.push(
+							`stdout log=${request.streamOutputPaths.stdoutPath}`,
+						);
+					}
+					if (request.streamOutputPaths?.stderrPath) {
+						diagnostics.push(
+							`stderr log=${request.streamOutputPaths.stderrPath}`,
+						);
+					}
 					return {
 						...execution,
-						stderr: structuredOutputError
-							? formatCodexStructuredOutputError(structuredOutputError)
-							: execution.stderr,
+						stderr: diagnostics.filter(Boolean).join("; "),
 						errorCode:
 							structuredOutputError?.code === "invalid_json_schema"
 								? "INVALID_OUTPUT_SCHEMA"
@@ -113,7 +126,12 @@ export function createCodexAdapter(
 					...execution,
 					sessionId,
 					parsedResult: parsed.parsedResult,
-					parseError: parsed.parseError,
+					parseError: appendProviderOutputDiagnostics({
+						parseError: parsed.parseError,
+						stdout: execution.stdout,
+						stderr: execution.stderr,
+						streamOutputPaths: request.streamOutputPaths,
+					}),
 				};
 			} finally {
 				await rm(tempDir, { recursive: true, force: true });

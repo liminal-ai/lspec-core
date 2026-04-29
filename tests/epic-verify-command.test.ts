@@ -172,7 +172,7 @@ test("TC-8.1c launches fresh epic verifiers and returns explicit mock or shim au
 
 	expect(run.exitCode).toBe(0);
 
-	const envelope = parseJsonOutput<any>(run.stdout);
+	const envelope = parseJsonOutput(run.stdout);
 	expect(envelope.command).toBe("epic-verify");
 	expect(envelope.outcome).toBe("pass");
 	expect(envelope.result.verifierResults).toHaveLength(2);
@@ -188,7 +188,9 @@ test("TC-8.1c launches fresh epic verifiers and returns explicit mock or shim au
 			}),
 		]),
 	);
-	for (const result of envelope.result.verifierResults) {
+	for (const result of envelope.result.verifierResults as unknown as Array<{
+		mockOrShimAuditFindings: string[];
+	}>) {
 		expect(result.mockOrShimAuditFindings).toEqual(
 			expect.arrayContaining([
 				"No inappropriate mocks, shims, placeholders, or fake adapters remain on production paths.",
@@ -252,7 +254,7 @@ test("blocks epic-verify with INVALID_SPEC_PACK when the spec-pack root is outsi
 
 	expect(run.exitCode).toBe(3);
 
-	const envelope = parseJsonOutput<any>(run.stdout);
+	const envelope = parseJsonOutput(run.stdout);
 	expect(envelope.status).toBe("blocked");
 	expect(envelope.outcome).toBe("block");
 	expect(envelope.errors).toEqual(
@@ -338,7 +340,7 @@ test("blocks epic-verify when a verifier finding inside blockingFindings include
 
 	expect(run.exitCode).toBe(3);
 
-	const envelope = parseJsonOutput<any>(run.stdout);
+	const envelope = parseJsonOutput(run.stdout);
 	expect(envelope.status).toBe("blocked");
 	expect(envelope.outcome).toBe("block");
 	expect(envelope.result).toEqual(
@@ -439,7 +441,7 @@ test("preserves successful epic verifier results when a sibling epic verifier ex
 
 	expect(run.exitCode).toBe(3);
 
-	const envelope = parseJsonOutput<any>(run.stdout);
+	const envelope = parseJsonOutput(run.stdout);
 	expect(envelope.status).toBe("blocked");
 	expect(envelope.outcome).toBe("block");
 	expect(envelope.errors).toEqual(
@@ -518,7 +520,7 @@ test("executes a Copilot-backed epic verifier lane end to end when the run confi
 
 	expect(run.exitCode).toBe(0);
 
-	const envelope = parseJsonOutput<any>(run.stdout);
+	const envelope = parseJsonOutput(run.stdout);
 	expect(envelope.outcome).toBe("pass");
 	expect(envelope.result.verifierResults).toEqual(
 		expect.arrayContaining([
@@ -624,10 +626,12 @@ test("returns exit code 2 when the epic verifier batch outcome is revise", async
 
 	expect(run.exitCode).toBe(0);
 
-	const envelope = parseJsonOutput<any>(run.stdout);
+	const envelope = parseJsonOutput(run.stdout);
 	expect(envelope.outcome).toBe("revise");
 	expect(
-		envelope.result.verifierResults.map((result: any) => result.outcome),
+		(
+			envelope.result.verifierResults as unknown as Array<{ outcome: string }>
+		).map((result) => result.outcome),
 	).toEqual(["revise", "pass"]);
 });
 
@@ -700,7 +704,7 @@ test("reruns epic verification with fresh sessions and increments the epic verif
 	expect(firstRun.exitCode).toBe(0);
 	expect(secondRun.exitCode).toBe(0);
 
-	const secondEnvelope = parseJsonOutput<any>(secondRun.stdout);
+	const secondEnvelope = parseJsonOutput(secondRun.stdout);
 	expect(secondEnvelope.artifacts[0].path).toContain(
 		"/artifacts/epic/002-epic-verifier-batch.json",
 	);

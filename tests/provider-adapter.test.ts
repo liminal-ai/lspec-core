@@ -28,7 +28,7 @@ async function writeProviderBinary(params: {
 	const script = [
 		"#!/bin/sh",
 		params.captureCwdPath
-			? `printf '%s' \"$PWD\" > "${params.captureCwdPath}"`
+			? `printf '%s' "$PWD" > "${params.captureCwdPath}"`
 			: "",
 		'if [ "$1" = "--version" ]; then',
 		params.failureStderr ? `  echo "${params.failureStderr}" >&2` : "",
@@ -89,6 +89,7 @@ describe("provider availability checks", () => {
 			stdout: JSON.stringify({
 				type: "result",
 				result: [
+					"Here is the structured result:",
 					"```json",
 					JSON.stringify({
 						outcome: "ready-for-verification",
@@ -1071,6 +1072,62 @@ describe("provider availability checks", () => {
 		expect(execution.parsedResult).toEqual({
 			ok: true,
 		});
+	});
+
+	test("adds bounded raw-output diagnostics and stream locations to provider parse failures", async () => {
+		const { createCodexAdapter } = await import(
+			"../src/core/provider-adapters/codex"
+		);
+		const providerBinDir = await createTempDir(
+			"provider-parse-diagnostics-codex",
+		);
+		const streamDir = await createTempDir("provider-parse-diagnostics-streams");
+		const stdoutPath = join(streamDir, "provider.stdout.log");
+		const stderrPath = join(streamDir, "provider.stderr.log");
+		const { env } = await writeFakeProviderExecutable({
+			binDir: providerBinDir,
+			provider: "codex",
+			responses: [
+				{
+					stdout: JSON.stringify({
+						result: {
+							ok: "not-a-boolean",
+							extra: "x".repeat(2_000),
+						},
+					}),
+					stderr: "provider side warning",
+				},
+			],
+		});
+		const adapter = createCodexAdapter({
+			env: {
+				PATH: `${providerBinDir}:${process.env.PATH ?? ""}`,
+				...env,
+			},
+		});
+
+		const execution = await adapter.execute({
+			prompt: '{"step":"invalid-payload"}',
+			cwd: ROOT,
+			model: "gpt-5.4",
+			reasoningEffort: "high",
+			timeoutMs: 1_000,
+			resultSchema: z.object({
+				ok: z.boolean(),
+			}),
+			streamOutputPaths: {
+				stdoutPath,
+				stderrPath,
+			},
+		});
+
+		expect(execution.parseError).toContain("root keys: result");
+		expect(execution.parseError).toContain("result payload: ok");
+		expect(execution.parseError).toContain("raw stdout bytes=");
+		expect(execution.parseError).toContain("...[truncated]");
+		expect(execution.parseError).toContain(`stdout log=${stdoutPath}`);
+		expect(execution.parseError).toContain(`stderr log=${stderrPath}`);
+		expect(execution.parseError?.length).toBeLessThan(1_200);
 	});
 
 	test("closes stdin for subprocesses that would otherwise block reading from stdin and streams output to disk", async () => {

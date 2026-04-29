@@ -1,12 +1,11 @@
-import { inspectSpecPack } from "../../core/spec-pack.js";
 import { inspectResultSchema } from "../../core/result-contracts.js";
+import { inspectSpecPack } from "../../core/spec-pack.js";
 import {
-	inspectInputSchema,
 	type InspectInput,
 	type InspectResult,
+	inspectInputSchema,
 } from "../contracts/operations.js";
 import {
-	ensureReadyTeamImplLog,
 	finalizeEnvelope,
 	parseSdkInput,
 	resolveOperationArtifactPath,
@@ -46,11 +45,6 @@ export async function inspect(input: InspectInput): Promise<InspectResult> {
 	return await withSdkExecutionContext(parsedInput, async () => {
 		const startedAt = new Date().toISOString();
 		const inspection = await inspectSpecPack(parsedInput.specPackRoot);
-		await ensureReadyTeamImplLog({
-			specPackRoot: inspection.specPackRoot,
-			stories: inspection.stories,
-			status: inspection.status,
-		});
 		const artifactPath = await resolveOperationArtifactPath({
 			command: "inspect",
 			specPackRoot: inspection.specPackRoot,

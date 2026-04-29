@@ -173,7 +173,7 @@ test("returns INVALID_INPUT with exit code 1 when no verifier reports are provid
 
 	expect(run.exitCode).toBe(1);
 
-	const envelope = parseJsonOutput<any>(run.stdout);
+	const envelope = parseJsonOutput(run.stdout);
 	expect(envelope.status).toBe("error");
 	expect(envelope.outcome).toBe("error");
 	expect(envelope.errors).toEqual(
@@ -236,7 +236,7 @@ test("TC-8.2a runs epic synthesis from verifier reports and returns the structur
 
 	expect(run.exitCode).toBe(0);
 
-	const envelope = parseJsonOutput<any>(run.stdout);
+	const envelope = parseJsonOutput(run.stdout);
 	expect(envelope.command).toBe("epic-synthesize");
 	expect(envelope.outcome).toBe("ready-for-closeout");
 	expect(envelope.result.confirmedIssues).toEqual([
@@ -297,7 +297,7 @@ test("blocks epic-synthesize with INVALID_SPEC_PACK when the spec-pack root is o
 
 	expect(run.exitCode).toBe(3);
 
-	const envelope = parseJsonOutput<any>(run.stdout);
+	const envelope = parseJsonOutput(run.stdout);
 	expect(envelope.status).toBe("blocked");
 	expect(envelope.outcome).toBe("blocked");
 	expect(envelope.errors).toEqual(
@@ -362,7 +362,7 @@ test("blocks epic-synthesize when the structured synthesis payload includes an u
 
 	expect(run.exitCode).toBe(3);
 
-	const envelope = parseJsonOutput<any>(run.stdout);
+	const envelope = parseJsonOutput(run.stdout);
 	expect(envelope.status).toBe("blocked");
 	expect(envelope.outcome).toBe("blocked");
 	expect(envelope.result).toBeUndefined();
@@ -434,7 +434,7 @@ test("executes epic-synthesize through Copilot when the run config selects Copil
 
 	expect(run.exitCode).toBe(0);
 
-	const envelope = parseJsonOutput<any>(run.stdout);
+	const envelope = parseJsonOutput(run.stdout);
 	expect(envelope.outcome).toBe("ready-for-closeout");
 	expect(envelope.result.confirmedIssues).toEqual([
 		"Epic verification ran before closeout.",
@@ -551,7 +551,7 @@ test("TC-8.3a verifies findings independently instead of blindly merging verifie
 
 	expect(run.exitCode).toBe(0);
 
-	const envelope = parseJsonOutput<any>(run.stdout);
+	const envelope = parseJsonOutput(run.stdout);
 	expect(envelope.outcome).toBe("needs-more-verification");
 	expect(envelope.result.confirmedIssues).toEqual([
 		"Cleanup must be verified before epic verification begins.",
@@ -632,7 +632,7 @@ test("returns needs-more-verification when all epic findings remain disputed or 
 
 	expect(run.exitCode).toBe(0);
 
-	const envelope = parseJsonOutput<any>(run.stdout);
+	const envelope = parseJsonOutput(run.stdout);
 	expect(envelope.outcome).toBe("needs-more-verification");
 	expect(envelope.result.confirmedIssues).toEqual([]);
 	expect(envelope.result.disputedOrUnconfirmedIssues).toHaveLength(1);
@@ -702,7 +702,7 @@ test("returns exit code 2 when epic synthesis reports needs-fixes", async () => 
 
 	expect(run.exitCode).toBe(0);
 
-	const envelope = parseJsonOutput<any>(run.stdout);
+	const envelope = parseJsonOutput(run.stdout);
 	expect(envelope.outcome).toBe("needs-fixes");
 	expect(envelope.result.confirmedIssues).toEqual([
 		"A closeout fix still needs to land before the epic is ready.",
@@ -757,7 +757,7 @@ test("returns exit code 3 when epic synthesis is blocked by provider execution f
 
 	expect(run.exitCode).toBe(3);
 
-	const envelope = parseJsonOutput<any>(run.stdout);
+	const envelope = parseJsonOutput(run.stdout);
 	expect(envelope.status).toBe("blocked");
 	expect(envelope.outcome).toBe("blocked");
 	expect(envelope.errors).toEqual(
@@ -800,7 +800,7 @@ test("returns exit code 3 when a verifier report path is unreadable", async () =
 
 		expect(run.exitCode).toBe(3);
 
-		const envelope = parseJsonOutput<any>(run.stdout);
+		const envelope = parseJsonOutput(run.stdout);
 		expect(envelope.status).toBe("blocked");
 		expect(envelope.outcome).toBe("blocked");
 		expect(envelope.errors).toEqual(

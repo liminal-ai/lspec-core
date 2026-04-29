@@ -3,15 +3,16 @@ import { readFile } from "node:fs/promises";
 import { defineCommand } from "citty";
 
 import {
-	storyContinue,
 	type CliResultEnvelope,
 	type StoryContinuePayload,
+	storyContinue,
 } from "../../sdk/index.js";
 import {
 	createCommandErrorEnvelope,
 	createInvalidInvocationEnvelope,
 	emitCommandEnvelope,
 	emitPersistedCommandEnvelope,
+	rejectUnknownCommandArgs,
 	resolveProviderArtifactOptions,
 } from "./shared.js";
 
@@ -71,7 +72,7 @@ export default defineCommand({
 			description: "Emit the structured JSON envelope on stdout",
 		},
 	},
-	async run({ args }) {
+	async run({ args, rawArgs, cmd }) {
 		const json = Boolean(args.json);
 		const startedAt = new Date().toISOString();
 		const artifactOptions = await resolveProviderArtifactOptions({
@@ -81,24 +82,25 @@ export default defineCommand({
 			fileName: "continue",
 		});
 
-		if (
-			(!args["followup-file"] && !args["followup-text"]) ||
-			(args["followup-file"] && args["followup-text"])
-		) {
-			await emitPersistedCommandEnvelope({
-				artifactPath: artifactOptions.artifactPath,
-				envelope: createInvalidInvocationEnvelope({
-					command: "story-continue",
-					artifactPath: artifactOptions.artifactPath,
-					startedAt,
-					message: "Provide exactly one of --followup-file or --followup-text.",
-				}),
-				json,
-			});
-			return;
-		}
-
 		try {
+			rejectUnknownCommandArgs(rawArgs, cmd.args);
+			if (
+				(!args["followup-file"] && !args["followup-text"]) ||
+				(args["followup-file"] && args["followup-text"])
+			) {
+				await emitPersistedCommandEnvelope({
+					artifactPath: artifactOptions.artifactPath,
+					envelope: createInvalidInvocationEnvelope({
+						command: "story-continue",
+						artifactPath: artifactOptions.artifactPath,
+						startedAt,
+						message:
+							"Provide exactly one of --followup-file or --followup-text.",
+					}),
+					json,
+				});
+				return;
+			}
 			const followupRequest = args["followup-file"]
 				? await readFile(args["followup-file"], "utf8")
 				: (args["followup-text"] as string);

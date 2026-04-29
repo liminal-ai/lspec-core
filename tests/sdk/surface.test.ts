@@ -6,6 +6,8 @@ import { describe, expect, test } from "vitest";
 import * as sdk from "../../src/sdk/index";
 import { ROOT } from "../test-helpers";
 
+const sdkExports = sdk as Record<string, unknown>;
+
 const EXPECTED_RUNTIME_EXPORTS = [
 	"AtomicWriteError",
 	"ConfigLoadError",
@@ -93,7 +95,7 @@ describe("sdk surface", () => {
 		for (const commandName of commandNames) {
 			const functionName =
 				COMMAND_TO_FUNCTION[commandName as keyof typeof COMMAND_TO_FUNCTION];
-			expect(typeof sdk[functionName]).toBe("function");
+			expect(typeof sdkExports[functionName]).toBe("function");
 		}
 	});
 

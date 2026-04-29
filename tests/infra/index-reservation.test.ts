@@ -4,8 +4,8 @@ import { join } from "node:path";
 import { describe, expect, test } from "vitest";
 
 import { nextGroupedArtifactPath } from "../../src/core/artifact-writer";
-import { IndexReservationError } from "../../src/sdk/errors";
 import { withRuntimeDeps } from "../../src/core/runtime-deps";
+import { IndexReservationError } from "../../src/sdk/errors";
 import { createTempDir, writeTextFile } from "../test-helpers";
 
 describe("artifact index reservation", () => {
@@ -41,6 +41,38 @@ describe("artifact index reservation", () => {
 
 		expect(nextPath).toContain("/001-implementor.json");
 		expect(await readdir(artifactDir)).toContain("001-implementor.json");
+	});
+
+	test("TC-4.5d: stale progress and stream siblings are reclaimed before a new reservation", async () => {
+		const specPackRoot = await createTempDir(
+			"index-reservation-stale-siblings",
+		);
+		const artifactDir = join(specPackRoot, "artifacts", "story-03");
+		const progressDir = join(artifactDir, "progress");
+		const streamsDir = join(artifactDir, "streams");
+		const stalePaths = [
+			join(progressDir, "001-implementor.status.json"),
+			join(progressDir, "001-implementor.progress.jsonl"),
+			join(streamsDir, "001-implementor.stdout.log"),
+			join(streamsDir, "001-implementor.stderr.log"),
+		];
+		for (const stalePath of stalePaths) {
+			await writeTextFile(stalePath, "abandoned\n");
+		}
+		const staleDate = new Date(Date.now() - 10 * 60 * 1_000);
+		await Promise.all(
+			stalePaths.map((stalePath) => utimes(stalePath, staleDate, staleDate)),
+		);
+
+		const nextPath = await nextGroupedArtifactPath(
+			specPackRoot,
+			"story-03",
+			"implementor",
+		);
+
+		expect(nextPath).toContain("/001-implementor.json");
+		expect(await readdir(progressDir)).toEqual([]);
+		expect(await readdir(streamsDir)).toEqual([]);
 	});
 
 	test("non-TC: reservation throws a typed error when the retry cap is exhausted", async () => {

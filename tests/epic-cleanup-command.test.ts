@@ -145,7 +145,7 @@ test("TC-7.1a consumes a durable cleanup artifact and returns the structured cle
 
 	expect(run.exitCode).toBe(0);
 
-	const envelope = parseJsonOutput<any>(run.stdout);
+	const envelope = parseJsonOutput(run.stdout);
 	expect(envelope.command).toBe("epic-cleanup");
 	expect(envelope.outcome).toBe("cleaned");
 	expect(envelope.result.cleanupBatchPath).toBe(cleanupBatchPath);
@@ -235,7 +235,7 @@ test("treats a reviewed cleanup batch with zero approved items as a cleaned no-o
 
 	expect(run.exitCode).toBe(0);
 
-	const envelope = parseJsonOutput<any>(run.stdout);
+	const envelope = parseJsonOutput(run.stdout);
 	expect(envelope.outcome).toBe("cleaned");
 	expect(envelope.result.filesChanged).toEqual([]);
 	expect(envelope.result.changeSummary).toContain("no-op");
@@ -294,7 +294,7 @@ test("does not treat negated or superseded APPROVED text as actionable cleanup w
 
 	expect(run.exitCode).toBe(0);
 
-	const envelope = parseJsonOutput<any>(run.stdout);
+	const envelope = parseJsonOutput(run.stdout);
 	expect(envelope.outcome).toBe("cleaned");
 	expect(envelope.result.filesChanged).toEqual([]);
 
@@ -350,7 +350,7 @@ test("still treats the batch as actionable when a real approved item appears alo
 
 	expect(run.exitCode).toBe(0);
 
-	const envelope = parseJsonOutput<any>(run.stdout);
+	const envelope = parseJsonOutput(run.stdout);
 	expect(envelope.outcome).toBe("cleaned");
 
 	const invocations = await readJsonLines<{ args: string[] }>(logPath);
@@ -376,7 +376,7 @@ test("blocks epic-cleanup with INVALID_SPEC_PACK when the spec-pack root is outs
 
 	expect(run.exitCode).toBe(3);
 
-	const envelope = parseJsonOutput<any>(run.stdout);
+	const envelope = parseJsonOutput(run.stdout);
 	expect(envelope.status).toBe("blocked");
 	expect(envelope.outcome).toBe("blocked");
 	expect(envelope.errors).toEqual(
@@ -436,7 +436,7 @@ test("blocks epic-cleanup when the structured cleanup payload includes an unknow
 
 	expect(run.exitCode).toBe(3);
 
-	const envelope = parseJsonOutput<any>(run.stdout);
+	const envelope = parseJsonOutput(run.stdout);
 	expect(envelope.status).toBe("blocked");
 	expect(envelope.outcome).toBe("blocked");
 	expect(envelope.result).toBeUndefined();
@@ -503,7 +503,7 @@ test("returns exit code 2 when epic-cleanup reports needs-more-cleanup", async (
 
 	expect(run.exitCode).toBe(0);
 
-	const envelope = parseJsonOutput<any>(run.stdout);
+	const envelope = parseJsonOutput(run.stdout);
 	expect(envelope.outcome).toBe("needs-more-cleanup");
 	expect(envelope.result.unresolvedConcerns).toEqual([
 		"One approved cleanup item still needs a follow-up pass.",
@@ -553,7 +553,7 @@ test("returns exit code 3 when epic-cleanup is blocked by provider execution fai
 
 	expect(run.exitCode).toBe(3);
 
-	const envelope = parseJsonOutput<any>(run.stdout);
+	const envelope = parseJsonOutput(run.stdout);
 	expect(envelope.status).toBe("blocked");
 	expect(envelope.outcome).toBe("blocked");
 	expect(envelope.errors).toEqual(

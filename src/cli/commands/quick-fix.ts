@@ -4,15 +4,16 @@ import { resolve } from "node:path";
 import { defineCommand } from "citty";
 
 import {
-	quickFix,
 	type CliResultEnvelope,
 	type QuickFixPayload,
+	quickFix,
 } from "../../sdk/index.js";
 import {
 	createCommandErrorEnvelope,
 	createInvalidInvocationEnvelope,
 	emitCommandEnvelope,
 	emitPersistedCommandEnvelope,
+	rejectUnknownCommandArgs,
 	resolveProviderArtifactOptions,
 } from "./shared.js";
 
@@ -130,7 +131,7 @@ export default defineCommand({
 			description: "Emit the structured JSON envelope on stdout",
 		},
 	},
-	async run({ args, rawArgs }) {
+	async run({ args, rawArgs, cmd }) {
 		const json = Boolean(args.json);
 		const startedAt = new Date().toISOString();
 		const artifactOptions = await resolveProviderArtifactOptions({
@@ -144,6 +145,7 @@ export default defineCommand({
 					"quick-fix does not accept story-aware flags such as --story-id, --story-title, --story-path, or --scope-file.",
 				);
 			}
+			rejectUnknownCommandArgs(rawArgs, cmd.args);
 			const request = await resolveRequest(args);
 			const envelope = await quickFix({
 				specPackRoot: args["spec-pack-root"],

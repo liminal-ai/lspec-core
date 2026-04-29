@@ -15,5 +15,17 @@ This directory holds the source-only release verification fixture for Story 5.
 - Providers: `claude-code`, `codex`, `copilot`
 - Scenarios: `smoke`, `resume`, `structured-output`, `stall`
 
+## Release Matrix
+The default release gate requires these canonical reports in a fresh dated evidence directory:
+
+- `claude-code-smoke.md`
+- `codex-resume.md`
+- `copilot-structured-output.md`
+- `codex-stall.md`
+
+Use `scripts/check-release-evidence.ts --matrix ...` only for an intentionally documented release-specific matrix.
+
+Release evidence should use the fixture's `*-smoke` run-config files. Those configs keep real-provider operations short and bounded so a provider contract break records a fast, useful failure instead of running a full implementation pass.
+
 ## Reset
 Run `npx tsx gorilla/reset.ts` before a fresh gorilla pass. The reset restores `gorilla/fixture-spec-pack/` from `gorilla/.baseline/fixture-spec-pack/` byte-for-byte at the file-content level and removes any extra files created during a prior run.

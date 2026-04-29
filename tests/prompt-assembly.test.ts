@@ -1,7 +1,11 @@
 import { join } from "node:path";
 import { describe, expect, test } from "vitest";
 
-import { assemblePrompt, PromptInsertError } from "../src/core/prompt-assembly";
+import {
+	assemblePrompt,
+	type PromptAssemblyInput,
+	PromptInsertError,
+} from "../src/core/prompt-assembly";
 import { createSpecPack, writeTextFile } from "./test-helpers";
 
 async function createPromptSpecPack(
@@ -587,7 +591,7 @@ describe("prompt assembly", () => {
 				testPlanPath: fixture.testPlanPath,
 				gateCommands: fixture.gateCommands,
 				implementationPromptInsertPath: oversizedInsertPath,
-			} as any),
+			} as PromptAssemblyInput & { implementationPromptInsertPath: string }),
 		).rejects.toBeInstanceOf(PromptInsertError);
 	});
 });

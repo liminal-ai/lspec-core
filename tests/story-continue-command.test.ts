@@ -157,7 +157,7 @@ test("continues the retained implementor session from explicit provider and sess
 
 	expect(continuedRun.exitCode).toBe(0);
 
-	const envelope = parseJsonOutput<any>(continuedRun.stdout);
+	const envelope = parseJsonOutput(continuedRun.stdout);
 	expect(envelope.command).toBe("story-continue");
 	expect(envelope.result.provider).toBe("codex");
 	expect(envelope.result.sessionId).toBe(sessionId);
@@ -402,7 +402,7 @@ test("returns exit code 2 when story-continue completes with a follow-up fix out
 
 	expect(continuedRun.exitCode).toBe(0);
 
-	const envelope = parseJsonOutput<any>(continuedRun.stdout);
+	const envelope = parseJsonOutput(continuedRun.stdout);
 	expect(envelope.status).toBe("ok");
 	expect(envelope.outcome).toBe("needs-followup-fix");
 });
@@ -480,7 +480,7 @@ test("blocks story-continue when the continued implementor payload includes an u
 
 	expect(continuedRun.exitCode).toBe(3);
 
-	const envelope = parseJsonOutput<any>(continuedRun.stdout);
+	const envelope = parseJsonOutput(continuedRun.stdout);
 	expect(envelope.status).toBe("blocked");
 	expect(envelope.outcome).toBe("blocked");
 	expect(envelope.result).toBeUndefined();
@@ -558,7 +558,7 @@ test("accepts an explicit continuation handle without local story-ownership vali
 
 	expect(continuedRun.exitCode).toBe(0);
 
-	const envelope = parseJsonOutput<any>(continuedRun.stdout);
+	const envelope = parseJsonOutput(continuedRun.stdout);
 	expect(envelope.outcome).toBe("ready-for-verification");
 	expect(envelope.result.provider).toBe("codex");
 	expect(envelope.result.sessionId).toBe(sessionId);
@@ -628,7 +628,7 @@ test("accepts an explicit continuation handle even when it was not previously em
 
 	expect(continuedRun.exitCode).toBe(0);
 
-	const envelope = parseJsonOutput<any>(continuedRun.stdout);
+	const envelope = parseJsonOutput(continuedRun.stdout);
 	expect(envelope.outcome).toBe("ready-for-verification");
 	expect(envelope.result.provider).toBe("codex");
 });
@@ -713,7 +713,7 @@ test("continues a retained Copilot implementor session from explicit provider an
 
 	expect(run.exitCode).toBe(0);
 
-	const envelope = parseJsonOutput<any>(run.stdout);
+	const envelope = parseJsonOutput(run.stdout);
 	expect(envelope.outcome).toBe("ready-for-verification");
 	expect(envelope.result.provider).toBe("copilot");
 	expect(envelope.result.sessionId).toBe(sessionId);
@@ -745,7 +745,7 @@ test("rejects a resume attempt when no follow-up content is provided", async () 
 
 	expect(run.exitCode).toBe(1);
 
-	const envelope = parseJsonOutput<any>(run.stdout);
+	const envelope = parseJsonOutput(run.stdout);
 	expect(envelope.status).toBe("error");
 	expect(envelope.errors).toContainEqual(
 		expect.objectContaining({

@@ -132,20 +132,41 @@ type AuthCheckOutcome =
 	| { kind: "explicit-auth-failure" }
 	| { kind: "unknown" };
 
-const missingAuthCommandPatterns = [/unexpected auth invocation/i] as const;
-const explicitAuthFailurePatterns = [
+const providerPreflightMissingAuthCommandPatterns = [
+	/unexpected auth invocation/i,
+] as const;
+const providerPreflightExplicitAuthFailurePatterns = [
 	/\bmissing\b/i,
 	/not logged in/i,
 	/unauth/i,
 	/sign in/i,
 ] as const;
 
+function providerPreflightStderrMatches(
+	stderr: string,
+	patterns: readonly RegExp[],
+): boolean {
+	// Quarantined exception: these auth status commands do not expose a stable
+	// structured error channel, so preflight classifies a narrow stderr vocabulary.
+	return patterns.some((pattern) => pattern.test(stderr));
+}
+
 function parseAuthCheckOutcome(stderr: string): AuthCheckOutcome {
-	if (missingAuthCommandPatterns.some((pattern) => pattern.test(stderr))) {
+	if (
+		providerPreflightStderrMatches(
+			stderr,
+			providerPreflightMissingAuthCommandPatterns,
+		)
+	) {
 		return { kind: "missing-auth-command" };
 	}
 
-	if (explicitAuthFailurePatterns.some((pattern) => pattern.test(stderr))) {
+	if (
+		providerPreflightStderrMatches(
+			stderr,
+			providerPreflightExplicitAuthFailurePatterns,
+		)
+	) {
 		return { kind: "explicit-auth-failure" };
 	}
 

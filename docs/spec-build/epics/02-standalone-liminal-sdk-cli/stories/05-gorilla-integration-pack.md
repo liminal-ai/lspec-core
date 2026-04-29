@@ -18,7 +18,7 @@ Ship a real fixture spec pack, reset tooling, an agent-readable gorilla prompt, 
 - Reset tool for repeatable runs
 - Gorilla prompt covering every operation
 - Evidence template for agent-run reporting
-- Canonical evidence directory layout: `gorilla/evidence/<YYYY-MM-DD>/<provider>-<scenario>.md` (verified by the release gate in Story 7)
+- Canonical release smoke evidence directory layout: `gorilla/evidence/<YYYY-MM-DD>/` with the exact required reports `claude-code-smoke.md`, `codex-resume.md`, `copilot-structured-output.md`, and `codex-stall.md` (verified by the release gate in Story 7). Optional/full gorilla runs may add broader operation-coverage reports, but they do not replace the release matrix.
 - `gorilla/self-test-log.md` for the maintainer-driven deliberate-drift sanity check on the gorilla pack itself (separate from release evidence)
 - Demonstrated drift detection from an intentionally introduced mismatch
 
@@ -86,7 +86,7 @@ Ship a real fixture spec pack, reset tooling, an agent-readable gorilla prompt, 
 - **TC-5.9a:** Evidence directory layout convention documented
   - Given: The repository at the end of this story
   - When: A reviewer inspects `gorilla/` and the gorilla prompt
-  - Then: The prompt and/or `gorilla/README.md` (or equivalent) declares that gorilla runs deposit evidence under `gorilla/evidence/<YYYY-MM-DD>/<provider>-<scenario>.md` (date is the day of the gorilla run; provider in `claude-code` | `codex` | `copilot`; scenario in `smoke` | `resume` | `structured-output` | `stall`); the `gorilla/evidence/` directory exists in the source tree (initially empty or seeded with one example run); the maintainer-driven deliberate-drift sanity check is recorded separately in `gorilla/self-test-log.md`
+  - Then: The prompt and/or `gorilla/README.md` (or equivalent) declares that release smoke evidence is committed under `gorilla/evidence/<YYYY-MM-DD>/` as the exact four-report matrix `claude-code-smoke.md`, `codex-resume.md`, `copilot-structured-output.md`, and `codex-stall.md`; broader gorilla evidence for optional/full operation coverage may add documented reports in the same dated directory but does not replace the required release matrix; the `gorilla/evidence/` directory exists in the source tree (initially empty or seeded with one example run); the maintainer-driven deliberate-drift sanity check is recorded separately in `gorilla/self-test-log.md`
 
 ### Technical Design
 <!-- Jira: Technical Notes or sub-section of Description -->
@@ -101,7 +101,7 @@ Ship a real fixture spec pack, reset tooling, an agent-readable gorilla prompt, 
 | Target codebase | Real data/code surface for operations to inspect or mutate |
 | Reset tool | Restores fixture and target codebase to committed baseline state byte-for-byte |
 | Gorilla prompt | Explicit invocation coverage for every CLI operation and each applicable provider |
-| Evidence template | Structured sections for operation invoked, returned envelope, verified artifact, continuation-handle exercise, and divergence notes |
+| Evidence template | Structured sections for operation invoked, returned envelope, verified artifact, continuation-handle exercise, and divergence notes; release smoke reports use the same evidence shape within the required four-report matrix |
 
 **Gorilla Coverage Expectations**
 
@@ -159,6 +159,6 @@ See the tech design document for full architecture, implementation targets, and 
 - [ ] Gorilla prompt covers every operation
 - [ ] Provider coverage is explicit where applicable
 - [ ] Evidence template is structured and parseable
-- [ ] Canonical evidence layout (`gorilla/evidence/<YYYY-MM-DD>/<provider>-<scenario>.md`) is declared in the repo so the release gate has a stable contract
+- [ ] Canonical release evidence layout (`gorilla/evidence/<YYYY-MM-DD>/` containing `claude-code-smoke.md`, `codex-resume.md`, `copilot-structured-output.md`, and `codex-stall.md`) is declared in the repo so the release gate has a stable contract
 - [ ] A deliberate drift case is detected by the gorilla flow
 - [ ] No file under `liminal-spec/processes/impl-cli/` or `liminal-spec/processes/codex-impl/` was modified

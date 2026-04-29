@@ -3,15 +3,16 @@ import { readFile } from "node:fs/promises";
 import { defineCommand } from "citty";
 
 import {
-	storyVerify,
 	type CliResultEnvelope,
 	type StoryVerifyPayload,
+	storyVerify,
 } from "../../sdk/index.js";
 import {
 	createCommandErrorEnvelope,
 	createInvalidInvocationEnvelope,
 	emitCommandEnvelope,
 	emitPersistedCommandEnvelope,
+	rejectUnknownCommandArgs,
 	resolveProviderArtifactOptions,
 } from "./shared.js";
 
@@ -81,7 +82,7 @@ export default defineCommand({
 			description: "Emit the structured JSON envelope on stdout",
 		},
 	},
-	async run({ args }) {
+	async run({ args, rawArgs, cmd }) {
 		const json = Boolean(args.json);
 		const startedAt = new Date().toISOString();
 		const artifactOptions = await resolveProviderArtifactOptions({
@@ -90,35 +91,72 @@ export default defineCommand({
 			group: args["story-id"],
 			fileName: "verify",
 		});
-		const isFollowupMode =
-			typeof args.provider === "string" ||
-			typeof args["session-id"] === "string";
-		const hasResponseFile = typeof args["response-file"] === "string";
-		const hasResponseText = typeof args["response-text"] === "string";
-		const hasOrchestratorContextFile =
-			typeof args["orchestrator-context-file"] === "string";
-		const hasOrchestratorContextText =
-			typeof args["orchestrator-context-text"] === "string";
+		try {
+			rejectUnknownCommandArgs(rawArgs, cmd.args);
+			const isFollowupMode =
+				typeof args.provider === "string" ||
+				typeof args["session-id"] === "string";
+			const hasResponseFile = typeof args["response-file"] === "string";
+			const hasResponseText = typeof args["response-text"] === "string";
+			const hasOrchestratorContextFile =
+				typeof args["orchestrator-context-file"] === "string";
+			const hasOrchestratorContextText =
+				typeof args["orchestrator-context-text"] === "string";
 
-		if (!isFollowupMode && (hasResponseFile || hasResponseText)) {
-			await emitPersistedCommandEnvelope({
-				artifactPath: artifactOptions.artifactPath,
-				envelope: createInvalidInvocationEnvelope({
-					command: "story-verify",
+			if (!isFollowupMode && (hasResponseFile || hasResponseText)) {
+				await emitPersistedCommandEnvelope({
 					artifactPath: artifactOptions.artifactPath,
-					startedAt,
-					message:
-						"Initial story-verify mode does not accept --response-file or --response-text.",
-				}),
-				json,
-			});
-			return;
-		}
+					envelope: createInvalidInvocationEnvelope({
+						command: "story-verify",
+						artifactPath: artifactOptions.artifactPath,
+						startedAt,
+						message:
+							"Initial story-verify mode does not accept --response-file or --response-text.",
+					}),
+					json,
+				});
+				return;
+			}
 
-		if (isFollowupMode) {
+			if (isFollowupMode) {
+				if (
+					typeof args.provider !== "string" ||
+					typeof args["session-id"] !== "string"
+				) {
+					await emitPersistedCommandEnvelope({
+						artifactPath: artifactOptions.artifactPath,
+						envelope: createInvalidInvocationEnvelope({
+							command: "story-verify",
+							artifactPath: artifactOptions.artifactPath,
+							startedAt,
+							message:
+								"Follow-up story-verify mode requires both --provider and --session-id.",
+						}),
+						json,
+					});
+					return;
+				}
+
+				if ((hasResponseFile ? 1 : 0) + (hasResponseText ? 1 : 0) !== 1) {
+					await emitPersistedCommandEnvelope({
+						artifactPath: artifactOptions.artifactPath,
+						envelope: createInvalidInvocationEnvelope({
+							command: "story-verify",
+							artifactPath: artifactOptions.artifactPath,
+							startedAt,
+							message:
+								"Follow-up story-verify mode requires exactly one of --response-file or --response-text.",
+						}),
+						json,
+					});
+					return;
+				}
+			}
+
 			if (
-				typeof args.provider !== "string" ||
-				typeof args["session-id"] !== "string"
+				(hasOrchestratorContextFile ? 1 : 0) +
+					(hasOrchestratorContextText ? 1 : 0) >
+				1
 			) {
 				await emitPersistedCommandEnvelope({
 					artifactPath: artifactOptions.artifactPath,
@@ -127,49 +165,13 @@ export default defineCommand({
 						artifactPath: artifactOptions.artifactPath,
 						startedAt,
 						message:
-							"Follow-up story-verify mode requires both --provider and --session-id.",
+							"Provide at most one of --orchestrator-context-file or --orchestrator-context-text.",
 					}),
 					json,
 				});
 				return;
 			}
 
-			if ((hasResponseFile ? 1 : 0) + (hasResponseText ? 1 : 0) !== 1) {
-				await emitPersistedCommandEnvelope({
-					artifactPath: artifactOptions.artifactPath,
-					envelope: createInvalidInvocationEnvelope({
-						command: "story-verify",
-						artifactPath: artifactOptions.artifactPath,
-						startedAt,
-						message:
-							"Follow-up story-verify mode requires exactly one of --response-file or --response-text.",
-					}),
-					json,
-				});
-				return;
-			}
-		}
-
-		if (
-			(hasOrchestratorContextFile ? 1 : 0) +
-				(hasOrchestratorContextText ? 1 : 0) >
-			1
-		) {
-			await emitPersistedCommandEnvelope({
-				artifactPath: artifactOptions.artifactPath,
-				envelope: createInvalidInvocationEnvelope({
-					command: "story-verify",
-					artifactPath: artifactOptions.artifactPath,
-					startedAt,
-					message:
-						"Provide at most one of --orchestrator-context-file or --orchestrator-context-text.",
-				}),
-				json,
-			});
-			return;
-		}
-
-		try {
 			const response = isFollowupMode
 				? hasResponseFile
 					? await readFile(args["response-file"] as string, "utf8")

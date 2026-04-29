@@ -1,5 +1,5 @@
-import { describe, expect, test } from "vitest";
 import { join } from "node:path";
+import { describe, expect, test } from "vitest";
 
 import { TEAM_IMPL_LOG_FILE_NAME } from "../src/core/log-template";
 import {
@@ -22,7 +22,7 @@ describe("inspect command", () => {
 		expect(run.exitCode).toBe(0);
 		expect(run.stderr).toBe("");
 
-		const envelope = parseJsonOutput<any>(run.stdout);
+		const envelope = parseJsonOutput(run.stdout);
 		expect(envelope.command).toBe("inspect");
 		expect(envelope.status).toBe("ok");
 		expect(envelope.outcome).toBe("ready");
@@ -30,8 +30,8 @@ describe("inspect command", () => {
 		expect(envelope.result.artifacts.techDesignCompanionPaths).toEqual([]);
 	});
 
-	test("creates team-impl-log.md when inspect marks the spec pack ready and no log exists", async () => {
-		const specPackRoot = await createSpecPack("inspect-log-create");
+	test("does not create team-impl-log.md when inspect marks the spec pack ready", async () => {
+		const specPackRoot = await createSpecPack("inspect-log-read-only");
 		const logPath = join(specPackRoot, TEAM_IMPL_LOG_FILE_NAME);
 
 		expect(await Bun.file(logPath).exists()).toBe(false);
@@ -45,15 +45,9 @@ describe("inspect command", () => {
 
 		expect(run.exitCode).toBe(0);
 
-		const envelope = parseJsonOutput<any>(run.stdout);
+		const envelope = parseJsonOutput(run.stdout);
 		expect(envelope.outcome).toBe("ready");
-		expect(await Bun.file(logPath).exists()).toBe(true);
-
-		const logContent = await Bun.file(logPath).text();
-		expect(logContent).toContain("# Team Implementation Log");
-		expect(logContent).toContain("- Current Phase: inspect");
-		expect(logContent).toContain("- 00-foundation");
-		expect(logContent).toContain("- 01-next");
+		expect(await Bun.file(logPath).exists()).toBe(false);
 	});
 
 	test("preserves an existing team-impl-log.md when inspect marks the spec pack ready", async () => {
@@ -71,7 +65,7 @@ describe("inspect command", () => {
 
 		expect(run.exitCode).toBe(0);
 
-		const envelope = parseJsonOutput<any>(run.stdout);
+		const envelope = parseJsonOutput(run.stdout);
 		expect(envelope.outcome).toBe("ready");
 		expect(await Bun.file(logPath).text()).toBe(existingLog);
 	});
@@ -89,7 +83,7 @@ describe("inspect command", () => {
 
 		expect(run.exitCode).toBe(0);
 
-		const envelope = parseJsonOutput<any>(run.stdout);
+		const envelope = parseJsonOutput(run.stdout);
 		expect(envelope.status).toBe("ok");
 		expect(envelope.outcome).toBe("ready");
 		expect(envelope.result.techDesignShape).toBe("four-file");
@@ -113,7 +107,7 @@ describe("inspect command", () => {
 
 		expect(run.exitCode).toBe(3);
 
-		const envelope = parseJsonOutput<any>(run.stdout);
+		const envelope = parseJsonOutput(run.stdout);
 		expect(envelope.status).toBe("blocked");
 		expect(envelope.outcome).toBe("blocked");
 		expect(envelope.errors[0].code).toBe("INVALID_SPEC_PACK");
@@ -138,7 +132,7 @@ describe("inspect command", () => {
 
 		expect(run.exitCode).toBe(3);
 
-		const envelope = parseJsonOutput<any>(run.stdout);
+		const envelope = parseJsonOutput(run.stdout);
 		expect(envelope.status).toBe("blocked");
 		expect(envelope.result.blockers).toContain(
 			"Missing required artifact: epic.md",
@@ -159,7 +153,7 @@ describe("inspect command", () => {
 
 		expect(run.exitCode).toBe(0);
 
-		const envelope = parseJsonOutput<any>(run.stdout);
+		const envelope = parseJsonOutput(run.stdout);
 		expect(envelope.result.inserts.customStoryImplPromptInsert).toBe("present");
 		expect(envelope.result.inserts.customStoryVerifierPromptInsert).toBe(
 			"present",
@@ -177,7 +171,7 @@ describe("inspect command", () => {
 
 		expect(run.exitCode).toBe(0);
 
-		const envelope = parseJsonOutput<any>(run.stdout);
+		const envelope = parseJsonOutput(run.stdout);
 		expect(envelope.status).toBe("ok");
 		expect(envelope.result.inserts.customStoryImplPromptInsert).toBe("absent");
 		expect(envelope.result.inserts.customStoryVerifierPromptInsert).toBe(
@@ -201,7 +195,7 @@ describe("inspect command", () => {
 
 		expect(run.exitCode).toBe(3);
 
-		const envelope = parseJsonOutput<any>(run.stdout);
+		const envelope = parseJsonOutput(run.stdout);
 		expect(envelope.status).toBe("blocked");
 		expect(envelope.result.blockers).toContain(
 			"Invalid tech-design companion layout: expected exactly two additional tech-design-*.md companion files for the four-file configuration",
@@ -228,7 +222,7 @@ describe("inspect command", () => {
 
 		expect(run.exitCode).toBe(0);
 
-		const envelope = parseJsonOutput<any>(run.stdout);
+		const envelope = parseJsonOutput(run.stdout);
 		expect(envelope.outcome).toBe("ready");
 		expect(envelope.result.techDesignShape).toBe("four-file");
 		expect(envelope.result.artifacts.techDesignCompanionPaths).toEqual([

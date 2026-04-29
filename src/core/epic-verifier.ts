@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import { z } from "zod";
+import type { z } from "zod";
 
 import {
 	loadRunConfig,

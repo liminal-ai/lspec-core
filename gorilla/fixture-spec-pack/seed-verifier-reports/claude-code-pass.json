@@ -1,0 +1,23 @@
+{
+  "resultId": "claude-code-pass-001",
+  "outcome": "pass",
+  "provider": "claude-code",
+  "model": "claude-sonnet-4-6[1m]",
+  "reviewerLabel": "epic-verifier-claude-code",
+  "crossStoryFindings": [
+    "The fixture keeps implementation, verification, synthesis, and cleanup paths grounded in concrete files."
+  ],
+  "architectureFindings": [
+    "The target codebase stays small enough to reset and rerun without obscuring release evidence."
+  ],
+  "epicCoverageAssessment": [
+    "Flows 1 through 3 remain represented by the target codebase, seed artifacts, and gorilla prompt."
+  ],
+  "mockOrShimAuditFindings": [
+    "The forced-stall shim remains isolated to the explicit stall run-config."
+  ],
+  "blockingFindings": [],
+  "nonBlockingFindings": [],
+  "unresolvedItems": [],
+  "gateResult": "not-run"
+}

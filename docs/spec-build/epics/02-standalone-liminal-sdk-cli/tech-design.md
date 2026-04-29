@@ -1,8 +1,8 @@
-# Technical Design: @lspec/core Standalone Package
+# Technical Design: lbuild-impl Standalone Package
 
 ## Purpose
 
-This document translates Epic 02 into implementable architecture for `@lspec/core`, the standalone npm package that extracts the implementation runtime currently bundled in `liminal-spec/processes/impl-cli/`. It serves three audiences:
+This document translates Epic 02 into implementable architecture for `lbuild-impl`, the standalone npm package that extracts the implementation runtime currently bundled in `liminal-spec/processes/impl-cli/`. It serves three audiences:
 
 | Audience | Value |
 |----------|-------|
@@ -64,11 +64,11 @@ The epic raised 10 questions for the Tech Lead. Each is answered inline in the n
 
 ## Context
 
-`@lspec/core` is the next iteration of an implementation runtime that began as bundled source inside the `ls-claude-impl` skill. The runtime exposes ten operations — `inspect`, `preflight`, `epic-synthesize`, `epic-verify`, `epic-cleanup`, `quick-fix`, `story-implement`, `story-continue`, `story-self-review`, `story-verify` — each callable as a CLI subcommand against a Liminal Spec spec pack. The skill's outer loop sequences these operations into an end-to-end story-implementation workflow: inspect the pack, preflight the providers, implement each story with self-review, verify each story, clean up the epic, and run the final epic verification. The runtime itself is bounded — every call is a single operation against a spec pack on disk, returning a structured envelope and persisting a JSON artifact.
+`lbuild-impl` is the next iteration of an implementation runtime that began as bundled source inside the `ls-claude-impl` skill. The runtime exposes ten operations — `inspect`, `preflight`, `epic-synthesize`, `epic-verify`, `epic-cleanup`, `quick-fix`, `story-implement`, `story-continue`, `story-self-review`, `story-verify` — each callable as a CLI subcommand against a Liminal Spec spec pack. The skill's outer loop sequences these operations into an end-to-end story-implementation workflow: inspect the pack, preflight the providers, implement each story with self-review, verify each story, clean up the epic, and run the final epic verification. The runtime itself is bounded — every call is a single operation against a spec pack on disk, returning a structured envelope and persisting a JSON artifact.
 
 The runtime has grown to ~22,000 lines across production and tests. Pre-epic code review surfaced several edges that don't survive the transition from "bundled source" to "public package": the CLI envelope and persisted state aren't versioned, errors are sometimes detected by string-matching message text, payload schemas drift across three layers (canonical contracts, per-workflow payload schemas, prompt-rendered schemas), artifact and progress writes aren't atomic, artifact-index reservation isn't concurrency-safe, and the subprocess environment inheritance passes the entire parent environment to provider children. Two regressions were also surfaced — Codex retained-session reuse missing a session id on first execution, and preflight regressing the binary-present / auth-unknown fallback for Codex. None of these block today's bundled use through `ls-claude-impl`, but every one of them becomes a public-surface defect when the runtime is published.
 
-This epic ships the runtime as a standalone npm package that coexists with the existing bundled source. Nothing in `liminal-spec/processes/impl-cli/` or `liminal-spec/processes/codex-impl/` is modified during this work; the new package is built and tested in parallel, and skill consumer migration is post-epic. The package exposes two consumption surfaces backed by the same operations: a CLI binary callable through `npx @lspec/core ...` and a programmatic SDK importable through a subpath export. Both produce the same structured envelope and persist the same artifacts. The design centers the SDK as the source of operation logic and treats the CLI as a thin shell — argument parsing, envelope rendering, exit-code mapping, and nothing else.
+This epic ships the runtime as a standalone npm package that coexists with the existing bundled source. Nothing in `liminal-spec/processes/impl-cli/` or `liminal-spec/processes/codex-impl/` is modified during this work; the new package is built and tested in parallel, and skill consumer migration is post-epic. The package exposes two consumption surfaces backed by the same operations: a CLI binary callable through `npx lbuild-impl ...` and a programmatic SDK importable through a subpath export. Both produce the same structured envelope and persist the same artifacts. The design centers the SDK as the source of operation logic and treats the CLI as a thin shell — argument parsing, envelope rendering, exit-code mapping, and nothing else.
 
 The mock-versus-reality drift problem deserves explicit framing because it shapes the testing strategy. The maintainer's recurring failure mode is: tests pass against hand-written mocks; the first real orchestration run breaks because the mock shape didn't match what the provider actually produced. This design treats that as a structural problem, not a test-coverage problem. Internal module boundaries are forbidden as mock points. External-boundary mock fixtures must be derived from captured real provider output — never hand-written. A parser-level contract test layer feeds those captured samples through the same parser the mocks use, so divergence between mock-shape and real-shape fails at parse time before integration tests run. The agent-driven gorilla pack is the final layer — it walks every operation against a real fixture spec pack with real providers and produces evidence a maintainer can read.
 
@@ -82,9 +82,9 @@ The design assumes Vitest as the test runner replacing the Bun-coupled stack, `t
 
 **Decision: Single package with two entry points (CLI bin + SDK subpath export).**
 
-The package name is `@lspec/core`; the CLI binary name is `lspec`. Both `npx @lspec/core <subcommand>` (without prior install — npm fetches and runs in one step) and `lspec <subcommand>` (after `npm install -g @lspec/core`, or with `node_modules/.bin` on PATH inside a project) invoke the same CLI. Spec examples use `npx @lspec/core ...` for first-time / install-via-npx contexts and bare `lspec ...` for post-install contexts.
+The package name is `lbuild-impl`; the CLI binary name is `lbuild-impl`. Both `npx lbuild-impl <subcommand>` (without prior install — npm fetches and runs in one step) and `lbuild-impl <subcommand>` (after `npm install -g lbuild-impl`, or with `node_modules/.bin` on PATH inside a project) invoke the same CLI. Spec examples use `npx lbuild-impl ...` for first-time / install-via-npx contexts and bare `lbuild-impl ...` for post-install contexts.
 
-The package is published as one npm artifact with two reachable surfaces: a `bin` entry that exposes the CLI as `lspec`, and an `exports` subpath that exposes the SDK as `@lspec/core/sdk`. Both surfaces compile from the same TypeScript source tree and ship in the same tarball. The CLI command modules import from the SDK; the SDK has no knowledge of the CLI. There is one `package.json`, one `tsconfig.json`, one build configuration.
+The package is published as one npm artifact with two reachable surfaces: a `bin` entry that exposes the CLI as `lbuild-impl`, and an `exports` subpath that exposes the SDK as `lbuild-impl/sdk`. Both surfaces compile from the same TypeScript source tree and ship in the same tarball. The CLI command modules import from the SDK; the SDK has no knowledge of the CLI. There is one `package.json`, one `tsconfig.json`, one build configuration.
 
 A minimal monorepo (workspaces with `packages/sdk` and `packages/cli`) was considered and rejected. Workspaces add build orchestration complexity (separate `package.json` and `tsconfig.json` per package, workspace linking during development, compound publish steps) without proportional benefit at this scale. The package boundary the SDK needs is a public-export-surface boundary, not a build boundary. The eventual web application consumer does not force a workspace split because it can import from the SDK subpath of the single published package — there is no use case that requires the SDK without also accepting the CLI dependency tree.
 
@@ -119,9 +119,9 @@ A multi-agent ensemble run (Claude + Codex + Copilot in sequence) was considered
 | `red-verify` | `format:check` → `lint` → `typecheck` → `capture:test-baseline` |
 | `verify` | `red-verify` → `vitest run` (includes parser-contract tests) |
 | `green-verify` | `verify` → `guard:no-test-changes` |
-| `verify-all` | `verify` → `vitest run --project integration` (env-gated; placeholder if `LSPEC_INTEGRATION` is unset) |
+| `verify-all` | `verify` → `vitest run --project package` → `vitest run --project integration` (env-gated; placeholder if `LSPEC_INTEGRATION` is unset) |
 
-The parser-contract tests run inside the standard Vitest invocation because they're fast (string parsing against fixture files, no I/O) and they're the cheap drift defense that should run on every PR. The integration suite is separated into a Vitest project that only runs when the `LSPEC_INTEGRATION` env flag is set — see Q5 for the workflow shape that sets it.
+The parser-contract tests run inside the standard Vitest invocation because they're fast (string parsing against fixture files, no I/O) and they're the cheap drift defense that should run on every PR. Vitest is split into three projects: the default suite, a package project for packaged-artifact checks, and an integration project. The integration project only runs real-provider checks when the `LSPEC_INTEGRATION` env flag is set — see Q5 for the workflow shape that sets it.
 
 The `guard:no-test-changes` check uses a captured-baseline pattern, not a git diff. At `red-verify` exit during a TDD cycle, a sibling script `capture:test-baseline` walks `tests/**/*.test.ts`, computes a SHA-256 of each file's content, and writes the manifest to `.test-tmp/green-verify/test-file-baseline.json`. At `green-verify`, the guard rehashes the working tree and fails if any path's hash diverges from the baseline, or if a tracked path is missing or added. Working-tree mutation is detected regardless of whether changes are committed, staged, or untracked — which is the failure mode a git-diff check (against `HEAD` or any ref) would miss for uncommitted edits in the current cycle. The pattern is mirrored from the existing `scripts/guard-no-test-changes.ts` in this repo. The guard is invoked only by `green-verify`; mid-implementation test refinement during normal `verify` is unaffected.
 
@@ -218,19 +218,19 @@ A single rolled-up `.d.ts` was considered but rejected. It would require a bundl
 
 ### System Context
 
-`@lspec/core` is a Node-based CLI/SDK package that operates on Liminal Spec spec packs. It runs in two modes from one source tree: as a CLI subprocess invoked by skills, scripts, or humans through `npx @lspec/core ...`, and as a programmatic library imported through the SDK subpath. The package's external boundaries are the local filesystem (where spec packs live and artifacts are written), provider subprocesses (Claude Code, Codex, and Copilot CLIs spawned as children for LLM work), and the npm registry (the indirect distribution surface, reached only through the GitHub Actions release workflow).
+`lbuild-impl` is a Node-based CLI/SDK package that operates on Liminal Spec spec packs. It runs in two modes from one source tree: as a CLI subprocess invoked by skills, scripts, or humans through `npx lbuild-impl ...`, and as a programmatic library imported through the SDK subpath. The package's external boundaries are the local filesystem (where spec packs live and artifacts are written), provider subprocesses (Claude Code, Codex, and Copilot CLIs spawned as children for LLM work), and the npm registry (the indirect distribution surface, reached only through the GitHub Actions release workflow).
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
 │ Consumer                                                         │
 │                                                                  │
-│  CLI:  npx @lspec/core inspect --spec-pack-root ./spec-pack    │
-│  SDK:  import { inspect } from '@lspec/core/sdk'                      │
+│  CLI:  npx lbuild-impl inspect --spec-pack-root ./spec-pack    │
+│  SDK:  import { inspect } from 'lbuild-impl/sdk'                      │
 └─────────────────────────┬────────────────────────────────────────┘
                           │ command invocation / function call
                           │
 ┌─────────────────────────┴────────────────────────────────────────┐
-│ @lspec/core Package                                              │
+│ lbuild-impl Package                                              │
 │                                                                  │
 │  ┌─────────────────────────────────────────────────────┐         │
 │  │ CLI Surface (src/bin/, src/cli/)                    │         │
@@ -264,7 +264,7 @@ A single rolled-up `.d.ts` was considered but rejected. It would require a bundl
 └───────────────┘  └─────────────────────────────────────────┘
 ```
 
-The CLI Surface and the SDK Surface both terminate in the same Core module set. The Core orchestrates a workflow (story implementation, epic verification, etc.) by composing spec-pack inspection, run-config loading, gate discovery, prompt assembly, provider invocation, output parsing, schema validation, artifact persistence, and progress tracking. The Provider Adapters are the boundary at which `@lspec/core` ends and external CLIs begin.
+The CLI Surface and the SDK Surface both terminate in the same Core module set. The Core orchestrates a workflow (story implementation, epic verification, etc.) by composing spec-pack inspection, run-config loading, gate discovery, prompt assembly, provider invocation, output parsing, schema validation, artifact persistence, and progress tracking. The Provider Adapters are the boundary at which `lbuild-impl` ends and external CLIs begin.
 
 ### External Contracts
 
@@ -284,7 +284,7 @@ Artifacts are JSON envelopes written to `<spec-pack-root>/artifacts/<name>-<inde
 
 **Provider subprocess invocation:**
 
-Each provider adapter spawns a subprocess with a defined argument vector, captures stdout and stderr, parses structured output against a Zod schema, and surfaces structured errors. The provider's CLI is treated as opaque — its output shape is the contract `@lspec/core` parses. Captured output samples committed as fixtures are the package's view of what each provider's output looks like at the time of capture; the parser-contract test layer validates the parser's interpretation of those samples on every CI run.
+Each provider adapter spawns a subprocess with a defined argument vector, captures stdout and stderr, parses structured output against a Zod schema, and surfaces structured errors. The provider's CLI is treated as opaque — its output shape is the contract `lbuild-impl` parses. Captured output samples committed as fixtures are the package's view of what each provider's output looks like at the time of capture; the parser-contract test layer validates the parser's interpretation of those samples on every CI run.
 
 **Error contract:**
 
@@ -315,8 +315,12 @@ SDK functions throw only on programming errors: invalid input that fails Zod par
 | `git` (for `guard:no-test-changes` and release tagging) | Local + CI | `git --version` |
 | Claude Code CLI (`claude`) | Integration suite + gorilla pack | `claude --version` |
 | Codex CLI (`codex`) | Integration suite + gorilla pack | `codex --version` |
-| Copilot CLI (`gh extension install github/gh-copilot`) | Integration suite + gorilla pack | `gh copilot --help` |
+| Copilot CLI (`npm install -g @github/copilot`) | Integration suite + gorilla pack | `copilot --help` |
 | `LSPEC_INTEGRATION=1` env var | Integration suite | Workflow sets this; default CI does not |
+
+---
+
+The Copilot provider uses the standalone `copilot` binary distributed by `@github/copilot`. It does not shell through `gh copilot`; `GH_TOKEN` is still the authentication input for local and CI runs.
 
 ---
 
@@ -328,7 +332,7 @@ The package consists of four top-tier surfaces — locally derived since no proj
 |---------|--------|------|
 | Public Surface | Locally derived | The CLI bin and SDK exports — what consumers reach |
 | Operations | Locally derived | The workflow modules that orchestrate one operation end-to-end |
-| Provider Adapters | Locally derived | The boundary between `@lspec/core` and external provider CLIs |
+| Provider Adapters | Locally derived | The boundary between `lbuild-impl` and external provider CLIs |
 | Infrastructure | Locally derived | Shared utilities — filesystem, atomicity, env allowlist, errors, contracts |
 
 The surfaces nest hierarchically: Public Surface depends on Operations, Operations depend on Provider Adapters and Infrastructure, Provider Adapters depend on Infrastructure. There are no upward dependencies — Infrastructure has no knowledge of which workflow or which CLI command consumes it.
@@ -435,9 +439,12 @@ The surfaces nest hierarchically: Public Surface depends on Operations, Operatio
 │   │   └── target-codebase/
 │   ├── prompt.md
 │   ├── evidence-template.md
-│   ├── evidence/                                # NEW: Gorilla run evidence, organized by run date
+│   ├── evidence/                                # NEW: Gorilla release smoke evidence, organized by run date
 │   │   └── <YYYY-MM-DD>/                        # one directory per gorilla run
-│   │       └── <provider>-<scenario>.md         # e.g. claude-code-smoke.md, codex-resume.md
+│   │       ├── claude-code-smoke.md             # required release smoke report
+│   │       ├── codex-resume.md                  # required release smoke report
+│   │       ├── copilot-structured-output.md     # required release smoke report
+│   │       └── codex-stall.md                   # required release smoke report
 │   ├── self-test-log.md                         # NEW: Maintainer-driven sanity check on the gorilla pack itself (NOT release evidence)
 │   └── reset.ts
 ├── scripts/
@@ -490,7 +497,7 @@ The `MIGRATED` marker indicates the file's source content comes from `liminal-sp
 | `gorilla/fixture-spec-pack/` | NEW | Realistic spec pack for gorilla runs | None | AC-5.4 |
 | `gorilla/prompt.md` | NEW | Agent-readable instruction prompt | None | AC-5.6 |
 | `gorilla/evidence-template.md` | NEW | Evidence report structure | None | AC-5.7, AC-5.8 |
-| `gorilla/evidence/<YYYY-MM-DD>/<provider>-<scenario>.md` | NEW | Per-run evidence files (one per provider × scenario), organized by run date; verified by the release gate | None | AC-5.7, AC-5.8, AC-6.5d |
+| `gorilla/evidence/<YYYY-MM-DD>/{claude-code-smoke.md,codex-resume.md,copilot-structured-output.md,codex-stall.md}` | NEW | Required four-report release smoke evidence matrix, organized by run date and verified by the release gate; optional/full gorilla coverage may add documented reports without replacing these files | None | AC-5.7, AC-5.8, AC-6.5d |
 | `gorilla/self-test-log.md` | NEW | Maintainer's sanity-check log of running the gorilla pack against a known-broken parser; documents drift detection works (NOT release evidence) | None | AC-5.8 |
 | `gorilla/reset.ts` | NEW | Restore fixture to baseline | None | AC-5.5 |
 | `tests/parser-contract/*.test.ts` | NEW | Captured-output contract tests run on default CI | `src/core/provider-adapters/*` | AC-5.3 |
@@ -508,7 +515,7 @@ The `MIGRATED` marker indicates the file's source content comes from `liminal-sp
 The runtime path for one CLI invocation flows down through the layered surfaces:
 
 ```
-npx @lspec/core story-implement --spec-pack-root ./pack --story-id story-01 --json
+npx lbuild-impl story-implement --spec-pack-root ./pack --story-id story-01 --json
         │
         ▼
 src/bin/lspec.ts (citty subcommand registry)
@@ -646,7 +653,7 @@ sequenceDiagram
 | TC-1.3a | `tests/foundation.test.ts` | package.json declares red-verify, verify, green-verify, verify-all scripts |
 | TC-1.3b | `tests/verification-scripts.test.ts` | Each script invokes the expected sub-commands |
 | TC-1.4a | `tests/foundation.test.ts` | After `tsup`, dist/ contains bin/*.js, sdk/*.js, and matching .d.ts files |
-| TC-1.4b | `tests/build-output.test.ts` | `node dist/bin/lspec.js --help` runs without errors |
+| TC-1.4b | `tests/build-output.test.ts` | `node dist/bin/lbuild-impl.js --help` runs without errors |
 | TC-1.5a | (manual maintainer-run parity check; not automated in `lspec-core`) | Maintainer runs the bundled suite from `liminal-spec` and the migrated suite from `lspec-core` independently, walks per-test-name correspondence, and commits a `parity-report.md` artifact. See test-plan §Manual: TC-1.5a. |
 | TC-1.5b | `tests/parity.test.ts` (post-Story 3) | Documented divergences trace to Flow 4 ACs |
 | TC-1.6a | `tests/foundation.test.ts` | `.github/workflows/ci.yml` exists; triggers on push and pull_request; runs on Node 24 with npm; invokes `npm run verify` |
@@ -659,7 +666,7 @@ sequenceDiagram
 
 This flow exposes every operation in the inventory as a typed programmatic function. Each SDK function takes a typed input object and returns a typed envelope; no SDK function calls `process.exit`, writes to stdout, or throws on a structured failure. SDK functions accept dependency-injection points for filesystem and subprocess implementations so consumers can substitute fakes during testing.
 
-The SDK surface is centered on `src/sdk/index.ts`, which re-exports the operation functions plus the public contracts and error classes. Anything not reached from this index is internal. The package's `exports` field declares a subpath (`./sdk`) so consumers import as `from '@lspec/core/sdk'`. Auxiliary subpaths (`./sdk/contracts`, `./sdk/errors`) let consumers import contracts or errors without pulling in operation implementations.
+The SDK surface is centered on `src/sdk/index.ts`, which re-exports the operation functions plus the public contracts and error classes. Anything not reached from this index is internal. The package's `exports` field declares a subpath (`./sdk`) so consumers import as `from 'lbuild-impl/sdk'`. Auxiliary subpaths (`./sdk/contracts`, `./sdk/errors`) let consumers import contracts or errors without pulling in operation implementations.
 
 Each operation function delegates to the corresponding workflow module under `src/core/`. The workflows are migrated from the existing implementation flat at `src/core/` — the file layout matches `liminal-spec/processes/impl-cli/core/` for parity. The SDK layer is a typed wrapper that normalizes input/output shape and surfaces errors as typed instances.
 
@@ -758,8 +765,8 @@ sequenceDiagram
 | TC-3.3a | `tests/command/exit-codes.test.ts` | Each envelope status produces the documented exit code |
 | TC-3.4a | `tests/command/envelope.test.ts` | Stdout JSON contains all required envelope fields |
 | TC-3.4b | `tests/command/envelope.test.ts` | Persisted artifact equals stdout envelope for the same run |
-| TC-3.5a | `tests/command/invocation.test.ts` | `node dist/bin/lspec.js --help` runs without error |
-| TC-3.5b | `tests/command/pack-and-install-smoke.test.ts` | `npm pack` tarball installs into a sandbox project; `npx @lspec/core inspect ...` produces expected envelope |
+| TC-3.5a | `tests/command/invocation.test.ts` | `node dist/bin/lbuild-impl.js --help` runs without error |
+| TC-3.5b | `tests/command/pack-and-install-smoke.test.ts` | `npm pack` tarball installs into a sandbox project; `npx lbuild-impl inspect ...` produces expected envelope |
 
 ---
 
@@ -926,15 +933,18 @@ sequenceDiagram
 
 **Gorilla Evidence Layout:**
 
-Gorilla runs produce evidence files under `gorilla/evidence/<YYYY-MM-DD>/`, where the date is the day the gorilla run was completed. Each provider × scenario pair produces one evidence file:
+Gorilla release smoke runs produce evidence files under `gorilla/evidence/<YYYY-MM-DD>/`, where the date is the day the release smoke run was completed. The release gate requires this exact four-report matrix:
 
 ```
-gorilla/evidence/<YYYY-MM-DD>/<provider>-<scenario>.md
+gorilla/evidence/<YYYY-MM-DD>/claude-code-smoke.md
+gorilla/evidence/<YYYY-MM-DD>/codex-resume.md
+gorilla/evidence/<YYYY-MM-DD>/copilot-structured-output.md
+gorilla/evidence/<YYYY-MM-DD>/codex-stall.md
 ```
 
-Where `<provider>` is `claude-code` | `codex` | `copilot` and `<scenario>` is `smoke` | `resume` | `structured-output` | `stall`. Each file follows the structure in `gorilla/evidence-template.md`: operation walked, envelope produced, artifact verified, continuation handle (where applicable), divergences flagged.
+These four files are a bounded release smoke matrix, not the full gorilla operation inventory. Optional/full gorilla operation coverage may produce additional documented reports in the same dated directory, including provider/scenario combinations beyond the release matrix, but those extra reports do not satisfy or replace the required four release files. Each file follows the structure in `gorilla/evidence-template.md`: operation walked, envelope produced, artifact verified, continuation handle (where applicable), divergences flagged.
 
-The `gorilla/evidence/` directory is committed to the repo. Old evidence accumulates as a historical record. The release gate (`publish.yml` in Story 7) verifies that at least one evidence directory exists with a date within the configured release window (default: 7 days before tag push).
+The `gorilla/evidence/` directory is committed to the repo. Old evidence accumulates as a historical record. The release gate (`publish.yml` in Story 7) verifies that at least one evidence directory exists with a date within the configured release window (default: 7 days before tag push) and contains all four required release smoke reports.
 
 The maintainer self-test record (`gorilla/self-test-log.md`) is separate — it documents the maintainer running the gorilla pack against a known-broken parser to confirm the agent's evidence report flags the divergence. Self-test is a maintainer-driven sanity check on the gorilla pack itself; it is NOT release evidence.
 
@@ -953,12 +963,12 @@ The maintainer self-test record (`gorilla/self-test-log.md`) is separate — it 
 | TC-5.4a | `tests/gorilla/fixture.test.ts` | Fixture directory contains all required artifacts (epic.md, tech-design.md, test-plan.md, stories/, target-codebase/) |
 | TC-5.4b | `tests/gorilla/distribution.test.ts` | `npm pack` tarball does not contain `gorilla/` |
 | TC-5.5a | `tests/gorilla/reset.test.ts` | After running reset, fixture matches committed baseline byte-for-byte |
-| TC-5.6a | `tests/gorilla/prompt-coverage.test.ts` | Prompt mentions every operation in the inventory at least once |
-| TC-5.6b | `tests/gorilla/prompt-coverage.test.ts` | Prompt mentions each provider at least once for provider-consuming operations |
+| TC-5.6a | `tests/gorilla/prompt-coverage.test.ts` | Prompt contains an explicit `$CLI <operation>` invocation for every operation in the inventory |
+| TC-5.6b | `tests/gorilla/prompt-coverage.test.ts` | Prompt uses provider-specific run configs in explicit `$CLI` invocations and names the canonical evidence providers |
 | TC-5.7a | `tests/gorilla/template.test.ts` | Evidence template has sections for: operation, envelope, artifact, continuation, divergences |
 | TC-5.7b | (manual; reviewed by maintainer) | Sample populated evidence report passes the template parser |
 | TC-5.8a | (manual; pre-release verification) | Inject deliberate parser drift; run gorilla pack; agent's report flags the divergence |
-| TC-5.9a | `tests/gorilla/evidence-layout.test.ts` | `gorilla/evidence/` directory present; gorilla prompt and/or `gorilla/README.md` declares the `gorilla/evidence/<YYYY-MM-DD>/<provider>-<scenario>.md` convention with the documented provider and scenario enums; self-test log lives at `gorilla/self-test-log.md` |
+| TC-5.9a | `tests/gorilla/evidence-layout.test.ts` | `gorilla/evidence/` directory present; gorilla prompt and/or `gorilla/README.md` declares the required release smoke matrix under `gorilla/evidence/<YYYY-MM-DD>/` (`claude-code-smoke.md`, `codex-resume.md`, `copilot-structured-output.md`, `codex-stall.md`) and distinguishes it from optional/full gorilla operation coverage; self-test log lives at `gorilla/self-test-log.md` |
 
 ---
 
@@ -991,7 +1001,7 @@ sequenceDiagram
     Default-->>Release: Green or fail
     Release->>Integration: Run integration suite (env flag set)
     Integration-->>Release: Green or fail
-    Release->>Release: Verify gorilla evidence committed at HEAD, dated within window
+    Release->>Release: Verify required four-report gorilla release smoke evidence committed at HEAD, dated within window
     Release->>Release: All three gates green?
     
     alt All green
@@ -1012,7 +1022,7 @@ sequenceDiagram
 | Default workflow | `.github/workflows/ci.yml` (NEW in Story 0) | Triggers on push/PR; runs `npm run verify` |
 | Integration workflow | `.github/workflows/integration.yml` (NEW in Story 4) | Triggers on workflow_dispatch + on a schedule; sets LSPEC_INTEGRATION; installs provider binaries; runs `verify-all` |
 | Release workflow | `.github/workflows/publish.yml` (NEW in Story 7) | Triggers on tag push; calls default, calls integration, checks gorilla evidence, publishes |
-| Pack-and-install smoke script | `scripts/pack-and-install-smoke.ts` | `npm pack` → install into temp dir → run `npx @lspec/core inspect` → assert envelope |
+| Pack-and-install smoke script | `scripts/pack-and-install-smoke.ts` | `npm pack` → install into temp dir → run `npx lbuild-impl inspect` → assert envelope |
 | Release runbook | `docs/release-runbook.md` | Documents npm token rotation, organization setup, gorilla pre-tag procedure, first-publish rehearsal |
 
 **TC Mapping for Flow 6:**
@@ -1027,7 +1037,7 @@ sequenceDiagram
 | TC-6.5a | (workflow inspection) | publish.yml triggers on tag push, not on regular push |
 | TC-6.5b | (workflow inspection + simulation) | If default CI step fails, publish step does not run |
 | TC-6.5c | (workflow inspection + simulation) | If integration suite step fails, publish step does not run |
-| TC-6.5d | (workflow inspection + simulation) | If gorilla evidence missing or stale, publish step does not run with named-gate failure message |
+| TC-6.5d | (workflow inspection + simulation) | If the required four-report gorilla release smoke evidence matrix is missing, incomplete, or stale, publish step does not run with named-gate failure message |
 | TC-6.5e | (workflow inspection + dry-run) | All gates green → publish runs with version matching tag |
 | TC-6.6a | (manual) | Runbook documents all required manual steps |
 | TC-6.7a | (manual; post-publish) | First-publish artifact installs cleanly through `npx` from npm registry |
@@ -1624,7 +1634,7 @@ The package defines four verification tiers as `npm run` scripts in `package.jso
 | `red-verify` | `npm run format:check && npm run lint && npm run typecheck && npm run capture:test-baseline` | TDD Red exit gate — everything except tests, plus baseline capture for the immutability guard |
 | `verify` | `npm run red-verify && npm run test` | Standard development gate (includes parser-contract tests) |
 | `green-verify` | `npm run verify && npm run guard:no-test-changes` | TDD Green exit gate (verify + test-immutability guard against the captured baseline) |
-| `verify-all` | `npm run verify && npm run test:integration` | Deep verification (verify + integration suite) |
+| `verify-all` | `npm run verify && npm run test:package && npm run test:integration` | Deep verification (verify + package project + integration project) |
 
 The capture step runs as the last action of `red-verify`, after format/lint/typecheck have all passed. This ensures the captured baseline reflects the post-Red state of test files. The capture script is idempotent — running it twice produces the same baseline file when the working tree hasn't changed.
 
@@ -1639,6 +1649,7 @@ Concrete commands:
     "check": "biome check src tests scripts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "test:package": "vitest run --project package",
     "test:integration": "vitest run --project integration",
     "capture:test-baseline": "tsx scripts/capture-test-baseline.ts",
     "guard:no-test-changes": "tsx scripts/guard-no-test-changes.ts",
@@ -1646,13 +1657,13 @@ Concrete commands:
     "red-verify": "npm run format:check && npm run lint && npm run typecheck && npm run capture:test-baseline",
     "verify": "npm run red-verify && npm run test",
     "green-verify": "npm run verify && npm run guard:no-test-changes",
-    "verify-all": "npm run verify && npm run test:integration",
+    "verify-all": "npm run verify && npm run test:package && npm run test:integration",
     "pack-and-install-smoke": "tsx scripts/pack-and-install-smoke.ts"
   }
 }
 ```
 
-The `test:integration` script invokes Vitest with the `integration` project, which has its own Vitest config selecting only `tests/integration/**/*.test.ts` and is gated by `LSPEC_INTEGRATION`. When the env flag is unset, the project's tests are skipped — the script exits successfully with a "skipped" notice.
+The Vitest config defines three projects: the default suite run by `npm test`, the `package` project run by `test:package`, and the env-gated `integration` project run by `test:integration`. The `test:integration` project selects `tests/integration/**/*.test.ts` and is gated by `LSPEC_INTEGRATION`. When the env flag is unset, the project's tests are skipped — the script exits successfully with a "skipped" notice.
 
 The `capture:test-baseline` script walks `tests/**/*.test.ts` (skipping `node_modules`, `dist`, and `.test-tmp`), computes a SHA-256 of each file's content, and writes a sorted manifest of `{ path, sha256 }` entries to `.test-tmp/green-verify/test-file-baseline.json`. The manifest is regenerated each `red-verify` run, so each TDD cycle captures its own baseline.
 
@@ -1722,7 +1733,7 @@ The work decomposes into eight chunks aligned with the epic's eight stories. Eac
 - `tests/code-quality/zod-v4-syntax.test.ts` (NEW — TC-2.6a, TC-2.6b)
 - `tests/sdk/per-operation/*.test.ts` (NEW — 10 files for envelope shape)
 
-**Exit Criteria:** `green-verify` passes. SDK is importable from `@lspec/core/sdk`. Every operation reachable as a function. No Zod 3 constructor params remain in `src/`.
+**Exit Criteria:** `green-verify` passes. SDK is importable from `lbuild-impl/sdk`. Every operation reachable as a function. No Zod 3 constructor params remain in `src/`.
 
 **Test Count:** 9 TC tests + 10 non-TC envelope tests = 19 new tests
 **Running Total:** ~256 tests
@@ -1754,7 +1765,7 @@ The work decomposes into eight chunks aligned with the epic's eight stories. Eac
 - `tests/command/pack-and-install-smoke.test.ts` (NEW)
 - `scripts/pack-and-install-smoke.ts` (NEW)
 
-**Exit Criteria:** `green-verify` passes. `npx @lspec/core --help` lists every operation. `npm pack` + install produces a working CLI in a sandbox.
+**Exit Criteria:** `green-verify` passes. `npx lbuild-impl --help` lists every operation. `npm pack` + install produces a working CLI in a sandbox.
 
 **Test Count:** 10 TC tests (TC-3.3a expands to 4 sub-cases for each status value) + 2 non-TC tests = 12 new tests
 **Running Total:** ~268 tests
@@ -1982,7 +1993,7 @@ The test plan document holds the per-test-file totals; this table is the index s
 | Multi-agent gorilla ensemble (Claude + Codex + Copilot) | Q3 | Single-agent run delivers high drift signal; ensemble triples maintenance | Reconsider after first release if a specific drift class slips through |
 | Append-only progress log with manifest pattern | Q6 | JSONL append + atomic snapshot is sufficient | Reconsider if progress files grow large enough that JSONL stream becomes a bottleneck |
 | Workspace split into `packages/sdk` + `packages/cli` | Q1 | Single package with two entry points is sufficient | Split if the SDK consumer base ever justifies a different dependency surface than the CLI |
-| Final published package name selection | Epic A1 | Resolved: `@lspec/core` (scoped); CLI bin name `lspec` | (closed before tagging) |
+| Final published package name selection | Epic A1 | Resolved: unscoped package `lbuild-impl`; CLI bin name `lbuild-impl` | (closed before tagging) |
 
 ---
 

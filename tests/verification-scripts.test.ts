@@ -39,14 +39,15 @@ describe("verification scripts", () => {
 		);
 	});
 
-	test("TC-1.3b: verify-all adds the integration project", async () => {
+	test("TC-1.3b: verify-all adds the package and integration projects", async () => {
 		const scripts = await readScripts();
 
+		expect(scripts["test:package"]).toBe("vitest run --project package");
 		expect(scripts["test:integration"]).toBe(
 			"vitest run --project integration",
 		);
 		expect(scripts["verify-all"]).toBe(
-			"npm run verify && npm run test:integration",
+			"npm run verify && npm run test:package && npm run test:integration",
 		);
 	});
 });

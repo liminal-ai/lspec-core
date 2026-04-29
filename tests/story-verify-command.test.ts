@@ -161,7 +161,7 @@ test("initial story-verify starts one retained verifier session and returns cont
 
 	expect(run.exitCode).toBe(0);
 
-	const envelope = parseJsonOutput<any>(run.stdout);
+	const envelope = parseJsonOutput(run.stdout);
 	expect(envelope.command).toBe("story-verify");
 	expect(envelope.outcome).toBe("revise");
 	expect(envelope.result.mode).toBe("initial");
@@ -293,7 +293,7 @@ test("follow-up story-verify resumes the retained verifier session with implemen
 
 	expect(followupRun.exitCode).toBe(0);
 
-	const envelope = parseJsonOutput<any>(followupRun.stdout);
+	const envelope = parseJsonOutput(followupRun.stdout);
 	expect(envelope.outcome).toBe("pass");
 	expect(envelope.result.mode).toBe("followup");
 	expect(envelope.result.sessionId).toBe(sessionId);
@@ -350,7 +350,7 @@ test("follow-up story-verify rejects missing provider or session id", async () =
 	]);
 
 	expect(run.exitCode).toBe(1);
-	const envelope = parseJsonOutput<any>(run.stdout);
+	const envelope = parseJsonOutput(run.stdout);
 	expect(envelope.outcome).toBe("error");
 	expect(envelope.errors[0]?.code).toBe("INVALID_INPUT");
 });
@@ -373,7 +373,7 @@ test("follow-up story-verify rejects missing or duplicate response inputs", asyn
 		"--json",
 	]);
 	expect(missingRun.exitCode).toBe(1);
-	expect(parseJsonOutput<any>(missingRun.stdout).errors[0]?.code).toBe(
+	expect(parseJsonOutput(missingRun.stdout).errors[0]?.code).toBe(
 		"INVALID_INPUT",
 	);
 
@@ -394,7 +394,7 @@ test("follow-up story-verify rejects missing or duplicate response inputs", asyn
 		"--json",
 	]);
 	expect(duplicateRun.exitCode).toBe(1);
-	expect(parseJsonOutput<any>(duplicateRun.stdout).errors[0]?.code).toBe(
+	expect(parseJsonOutput(duplicateRun.stdout).errors[0]?.code).toBe(
 		"INVALID_INPUT",
 	);
 });
@@ -416,7 +416,7 @@ test("initial story-verify rejects response-only follow-up flags", async () => {
 	]);
 
 	expect(run.exitCode).toBe(1);
-	const envelope = parseJsonOutput<any>(run.stdout);
+	const envelope = parseJsonOutput(run.stdout);
 	expect(envelope.outcome).toBe("error");
 	expect(envelope.errors[0]?.code).toBe("INVALID_INPUT");
 });
@@ -443,7 +443,7 @@ test("follow-up story-verify blocks when the retained verifier continuation cann
 	]);
 
 	expect(run.exitCode).toBe(3);
-	const envelope = parseJsonOutput<any>(run.stdout);
+	const envelope = parseJsonOutput(run.stdout);
 	expect(envelope.status).toBe("blocked");
 	expect(envelope.outcome).toBe("block");
 	expect(envelope.errors[0]?.code).toBe("CONTINUATION_HANDLE_INVALID");
@@ -543,7 +543,7 @@ test("follow-up story-verify preserves prior finding ids and accepts directly to
 	);
 
 	expect(followupRun.exitCode).toBe(0);
-	const envelope = parseJsonOutput<any>(followupRun.stdout);
+	const envelope = parseJsonOutput(followupRun.stdout);
 	expect(envelope.outcome).toBe("revise");
 	expect(envelope.result.priorFindingStatuses).toEqual([
 		{
@@ -646,7 +646,7 @@ test("follow-up story-verify surfaces needs-human-ruling as a top-level outcome 
 	);
 
 	expect(followupRun.exitCode).toBe(2);
-	const envelope = parseJsonOutput<any>(followupRun.stdout);
+	const envelope = parseJsonOutput(followupRun.stdout);
 	expect(envelope.status).toBe("needs-user-decision");
 	expect(envelope.outcome).toBe("needs-human-ruling");
 	expect(envelope.result.recommendedNextStep).toBe("needs-human-ruling");
@@ -706,7 +706,7 @@ test("story-verify runs through Copilot for fresh initial verification when conf
 	);
 
 	expect(run.exitCode).toBe(0);
-	const envelope = parseJsonOutput<any>(run.stdout);
+	const envelope = parseJsonOutput(run.stdout);
 	expect(envelope.result.provider).toBe("copilot");
 	expect(envelope.result.mode).toBe("initial");
 
@@ -817,7 +817,7 @@ test("follow-up story-verify resumes the retained Copilot verifier session when 
 	);
 
 	expect(followupRun.exitCode).toBe(0);
-	const envelope = parseJsonOutput<any>(followupRun.stdout);
+	const envelope = parseJsonOutput(followupRun.stdout);
 	expect(envelope.result.provider).toBe("copilot");
 	expect(envelope.result.mode).toBe("followup");
 	expect(envelope.result.sessionId).toBe(sessionId);

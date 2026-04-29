@@ -202,7 +202,7 @@ test("runs story-self-review from an explicit continuation handle using the conf
 
 	expect(selfReviewRun.exitCode).toBe(0);
 
-	const envelope = parseJsonOutput<any>(selfReviewRun.stdout);
+	const envelope = parseJsonOutput(selfReviewRun.stdout);
 	expect(envelope.command).toBe("story-self-review");
 	expect(envelope.outcome).toBe("ready-for-verification");
 	expect(envelope.result.provider).toBe("codex");
@@ -239,7 +239,7 @@ test("runs story-self-review from an explicit continuation handle using the conf
 	const persisted = JSON.parse(await Bun.file(artifactPath).text());
 	expect(persisted).toEqual(envelope);
 
-	for (const artifact of envelope.result.passArtifacts as Array<{
+	for (const artifact of envelope.result.passArtifacts as unknown as Array<{
 		passNumber: number;
 		path: string;
 	}>) {
@@ -346,7 +346,7 @@ test("honors --passes as a command-level override over impl-run.config.json", as
 
 	expect(selfReviewRun.exitCode).toBe(0);
 
-	const envelope = parseJsonOutput<any>(selfReviewRun.stdout);
+	const envelope = parseJsonOutput(selfReviewRun.stdout);
 	expect(envelope.result.passesRequested).toBe(2);
 	expect(envelope.result.passesCompleted).toBe(2);
 	expect(envelope.result.passArtifacts).toHaveLength(2);
@@ -400,7 +400,7 @@ test("rejects invalid --passes values before provider dispatch", async () => {
 	);
 
 	expect(run.exitCode).toBe(1);
-	const envelope = parseJsonOutput<any>(run.stdout);
+	const envelope = parseJsonOutput(run.stdout);
 	expect(envelope.status).toBe("error");
 	expect(envelope.errors).toContainEqual(
 		expect.objectContaining({
@@ -481,7 +481,7 @@ test("stops early on needs-human-ruling, preserves completed evidence, and write
 	);
 
 	expect(selfReviewRun.exitCode).toBe(2);
-	const envelope = parseJsonOutput<any>(selfReviewRun.stdout);
+	const envelope = parseJsonOutput(selfReviewRun.stdout);
 	expect(envelope.status).toBe("needs-user-decision");
 	expect(envelope.outcome).toBe("needs-human-ruling");
 	expect(envelope.result.passesRequested).toBe(3);
@@ -562,7 +562,7 @@ test("accepts an explicit self-review continuation handle without local story-ow
 	);
 
 	expect(selfReviewRun.exitCode).toBe(0);
-	const envelope = parseJsonOutput<any>(selfReviewRun.stdout);
+	const envelope = parseJsonOutput(selfReviewRun.stdout);
 	expect(envelope.outcome).toBe("ready-for-verification");
 	expect(envelope.result.provider).toBe("codex");
 	expect(envelope.result.sessionId).toBe(sessionId);
@@ -632,7 +632,7 @@ test("runs story-self-review through retained Copilot sessions when configured",
 	);
 
 	expect(selfReviewRun.exitCode).toBe(0);
-	const envelope = parseJsonOutput<any>(selfReviewRun.stdout);
+	const envelope = parseJsonOutput(selfReviewRun.stdout);
 	expect(envelope.outcome).toBe("ready-for-verification");
 	expect(envelope.result.provider).toBe("copilot");
 	expect(envelope.result.sessionId).toBe(sessionId);
@@ -708,7 +708,7 @@ test("writes partial pass evidence and skips the remaining passes when provider 
 	);
 
 	expect(selfReviewRun.exitCode).toBe(3);
-	const envelope = parseJsonOutput<any>(selfReviewRun.stdout);
+	const envelope = parseJsonOutput(selfReviewRun.stdout);
 	expect(envelope.status).toBe("blocked");
 	expect(envelope.errors).toContainEqual(
 		expect.objectContaining({
@@ -738,12 +738,16 @@ test("writes partial pass evidence and skips the remaining passes when provider 
 		]),
 	);
 
+	const skippedArtifact = (
+		envelope.artifacts as unknown as Array<{ path: string }>
+	).find((artifact) => artifact.path.includes("003-self-review-pass-2.json"));
+	expect(skippedArtifact).toBeDefined();
+	if (!skippedArtifact) {
+		throw new Error("Expected skipped self-review pass artifact");
+	}
+
 	const skippedPass = JSON.parse(
-		await Bun.file(
-			envelope.artifacts.find((artifact: any) =>
-				String(artifact.path).includes("003-self-review-pass-2.json"),
-			).path,
-		).text(),
+		await Bun.file(skippedArtifact.path).text(),
 	) as {
 		status: string;
 	};

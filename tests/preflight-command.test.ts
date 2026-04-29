@@ -245,7 +245,7 @@ describe("preflight command", () => {
 
 		expect(run.exitCode).toBe(3);
 
-		const envelope = parseJsonOutput<any>(run.stdout);
+		const envelope = parseJsonOutput(run.stdout);
 		expect(envelope.status).toBe("blocked");
 		expect(envelope.outcome).toBe("blocked");
 		expect(envelope.errors).toContainEqual(
@@ -297,7 +297,7 @@ describe("preflight command", () => {
 
 		expect(run.exitCode).toBe(3);
 
-		const envelope = parseJsonOutput<any>(run.stdout);
+		const envelope = parseJsonOutput(run.stdout);
 		expect(envelope.artifacts).toHaveLength(1);
 		expect(envelope.artifacts[0].path).toContain(
 			"/artifacts/preflight/001-preflight.json",
@@ -345,7 +345,7 @@ describe("preflight command", () => {
 
 		expect(run.exitCode).toBe(3);
 
-		const envelope = parseJsonOutput<any>(run.stdout);
+		const envelope = parseJsonOutput(run.stdout);
 		expect(envelope.errors).toContainEqual(
 			expect.objectContaining({
 				code: "INVALID_RUN_CONFIG",
@@ -424,7 +424,7 @@ describe("preflight command", () => {
 
 		expect(run.exitCode).toBe(3);
 
-		const envelope = parseJsonOutput<any>(run.stdout);
+		const envelope = parseJsonOutput(run.stdout);
 		expect(envelope.status).toBe("blocked");
 		expect(envelope.errors).toContainEqual(
 			expect.objectContaining({
@@ -473,7 +473,7 @@ describe("preflight command", () => {
 
 		expect(run.exitCode).toBe(3);
 
-		const envelope = parseJsonOutput<any>(run.stdout);
+		const envelope = parseJsonOutput(run.stdout);
 		expect(envelope.errors).toContainEqual(
 			expect.objectContaining({
 				code: "INVALID_RUN_CONFIG",
@@ -528,7 +528,7 @@ describe("preflight command", () => {
 		expect(run.exitCode).toBe(0);
 		expect(run.stderr).toBe("");
 
-		const envelope = parseJsonOutput<any>(run.stdout);
+		const envelope = parseJsonOutput(run.stdout);
 		expect(envelope.command).toBe("preflight");
 		expect(envelope.status).toBe("ok");
 		expect(envelope.outcome).toBe("ready");
@@ -581,7 +581,7 @@ describe("preflight command", () => {
 
 		expect(run.exitCode).toBe(0);
 
-		const envelope = parseJsonOutput<any>(run.stdout);
+		const envelope = parseJsonOutput(run.stdout);
 		expect(envelope.result.validatedConfig.verification_gates).toEqual({
 			story: "corepack pnpm run verify",
 			epic: "corepack pnpm run verify-all",
@@ -627,7 +627,7 @@ describe("preflight command", () => {
 
 		expect(run.exitCode).toBe(2);
 
-		const envelope = parseJsonOutput<any>(run.stdout);
+		const envelope = parseJsonOutput(run.stdout);
 		expect(envelope.status).toBe("needs-user-decision");
 		expect(envelope.outcome).toBe("needs-user-decision");
 		expect(envelope.errors).toContainEqual(
@@ -675,7 +675,7 @@ describe("preflight command", () => {
 
 		expect(run.exitCode).toBe(0);
 
-		const envelope = parseJsonOutput<any>(run.stdout);
+		const envelope = parseJsonOutput(run.stdout);
 		expect(
 			envelope.result.validatedConfig.story_implementor.secondary_harness,
 		).toBe("codex");
@@ -729,7 +729,7 @@ describe("preflight command", () => {
 
 		expect(run.exitCode).toBe(0);
 
-		const envelope = parseJsonOutput<any>(run.stdout);
+		const envelope = parseJsonOutput(run.stdout);
 		expect(
 			envelope.result.validatedConfig.story_implementor.secondary_harness,
 		).toBe("none");
@@ -775,7 +775,7 @@ describe("preflight command", () => {
 
 		expect(run.exitCode).toBe(0);
 
-		const envelope = parseJsonOutput<any>(run.stdout);
+		const envelope = parseJsonOutput(run.stdout);
 		expect(
 			envelope.result.validatedConfig.story_implementor.secondary_harness,
 		).toBe("none");
@@ -823,7 +823,7 @@ describe("preflight command", () => {
 
 		expect(run.exitCode).toBe(0);
 
-		const envelope = parseJsonOutput<any>(run.stdout);
+		const envelope = parseJsonOutput(run.stdout);
 		expect(envelope.result.providerMatrix.primary).toMatchObject({
 			harness: "claude-code",
 			available: true,
@@ -871,7 +871,7 @@ describe("preflight command", () => {
 
 		expect(run.exitCode).toBe(0);
 
-		const envelope = parseJsonOutput<any>(run.stdout);
+		const envelope = parseJsonOutput(run.stdout);
 		expect(envelope.result.providerMatrix.secondary).toContainEqual(
 			expect.objectContaining({
 				harness: "codex",
@@ -920,7 +920,7 @@ describe("preflight command", () => {
 
 		expect(run.exitCode).toBe(0);
 
-		const envelope = parseJsonOutput<any>(run.stdout);
+		const envelope = parseJsonOutput(run.stdout);
 		expect(envelope.result.providerMatrix.primary).toMatchObject({
 			harness: "claude-code",
 			available: true,
@@ -971,7 +971,7 @@ describe("preflight command", () => {
 
 		expect(run.exitCode).toBe(3);
 
-		const envelope = parseJsonOutput<any>(run.stdout);
+		const envelope = parseJsonOutput(run.stdout);
 		expect(envelope.status).toBe("blocked");
 		expect(envelope.errors).toContainEqual(
 			expect.objectContaining({

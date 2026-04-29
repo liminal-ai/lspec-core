@@ -20,9 +20,12 @@ test("TC-5.4b: fixture excluded from published tarball", async () => {
 	const tarballName = packResult[0]?.filename;
 
 	expect(tarballName).toBeTruthy();
+	if (!tarballName) {
+		throw new Error("npm pack did not produce a tarball filename");
+	}
 
 	try {
-		const { stdout } = await execFileAsync("tar", ["-tf", tarballName!], {
+		const { stdout } = await execFileAsync("tar", ["-tf", tarballName], {
 			cwd: ROOT,
 		});
 		expect(stdout).not.toContain("package/gorilla/");

@@ -1,14 +1,15 @@
 import { defineCommand } from "citty";
 
 import {
-	inspect,
 	type CliResultEnvelope,
 	type InspectPayload,
+	inspect,
 } from "../../sdk/index.js";
 import {
 	createCommandErrorEnvelope,
 	emitCommandEnvelope,
 	emitPersistedCommandEnvelope,
+	rejectUnknownCommandArgs,
 	resolveCommandArtifactPath,
 } from "./shared.js";
 
@@ -52,7 +53,7 @@ export default defineCommand({
 			description: "Emit the structured JSON envelope on stdout",
 		},
 	},
-	async run({ args }) {
+	async run({ args, rawArgs, cmd }) {
 		const json = Boolean(args.json);
 		const startedAt = new Date().toISOString();
 		const artifactPath = await resolveCommandArtifactPath({
@@ -61,6 +62,7 @@ export default defineCommand({
 		});
 
 		try {
+			rejectUnknownCommandArgs(rawArgs, cmd.args);
 			const envelope = await inspect({
 				specPackRoot: args["spec-pack-root"],
 				artifactPath,

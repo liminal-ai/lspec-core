@@ -625,7 +625,6 @@ export function exitCodeForStatus(
 			return 2;
 		case "blocked":
 			return 3;
-		case "error":
 		default:
 			return 1;
 	}

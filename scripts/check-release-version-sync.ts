@@ -7,6 +7,8 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const CHANGELOG_PATH = join(ROOT, "CHANGELOG.md");
 const PACKAGE_JSON_PATH = join(ROOT, "package.json");
 const VERSION_MARKER_PATH = join(ROOT, "VERSION");
+const SDK_INDEX_PATH = join(ROOT, "src", "sdk", "index.ts");
+const CLI_ENTRY_PATH = join(ROOT, "src", "bin", "lbuild-impl.ts");
 
 function normalizeTag(tag: string): string {
 	return tag.replace(/^refs\/tags\//u, "");
@@ -54,6 +56,22 @@ async function main() {
 				`CHANGELOG.md: ${changelogVersion}`,
 				`VERSION: ${versionMarker}`,
 			].join("\n"),
+		);
+	}
+
+	const sdkIndex = await readFile(SDK_INDEX_PATH, "utf8");
+	const cliEntry = await readFile(CLI_ENTRY_PATH, "utf8");
+	if (!sdkIndex.includes("packageVersion as version")) {
+		throw new Error(
+			`${SDK_INDEX_PATH} must export the SDK version from package metadata instead of a hardcoded literal.`,
+		);
+	}
+	if (
+		!cliEntry.includes("packageVersion") ||
+		!cliEntry.includes("version: packageVersion")
+	) {
+		throw new Error(
+			`${CLI_ENTRY_PATH} must source CLI metadata version from package metadata instead of a hardcoded literal.`,
 		);
 	}
 

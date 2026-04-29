@@ -6,7 +6,7 @@ import { createTempDir, writeTextFile } from "./test-helpers";
 
 function parseStoryImplementorHandle(content: string) {
 	const match = content.match(
-		/## Current Continuation Handles\n- Story Implementor:\n  - Story: (?<story>[^\n]+)\n  - Provider: (?<provider>[^\n]+)\n  - Session ID: (?<sessionId>[^\n]+)\n  - Result Artifact: (?<artifact>[^\n]+)/,
+		/## Current Continuation Handles\n- Story Implementor:\n {2}- Story: (?<story>[^\n]+)\n {2}- Provider: (?<provider>[^\n]+)\n {2}- Session ID: (?<sessionId>[^\n]+)\n {2}- Result Artifact: (?<artifact>[^\n]+)/,
 	);
 
 	expect(match?.groups).toBeDefined();
@@ -21,7 +21,7 @@ function parseStoryImplementorHandle(content: string) {
 
 function parseStoryVerifierHandle(content: string) {
 	const match = content.match(
-		/- Story Verifier:\n  - Story: (?<story>[^\n]+)\n  - Provider: (?<provider>[^\n]+)\n  - Session ID: (?<sessionId>[^\n]+)\n  - Result Artifact: (?<artifact>[^\n]+)/,
+		/- Story Verifier:\n {2}- Story: (?<story>[^\n]+)\n {2}- Provider: (?<provider>[^\n]+)\n {2}- Session ID: (?<sessionId>[^\n]+)\n {2}- Result Artifact: (?<artifact>[^\n]+)/,
 	);
 
 	expect(match?.groups).toBeDefined();

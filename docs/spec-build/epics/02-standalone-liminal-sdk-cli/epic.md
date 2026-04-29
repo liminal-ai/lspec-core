@@ -1,4 +1,4 @@
-# Epic: @lspec/core Standalone Package
+# Epic: lbuild-impl Standalone Package
 
 This epic defines the requirements for extracting the implementation runtime currently bundled inside `ls-claude-impl` into a standalone, publishable package. The package exposes both a programmatic SDK surface and a CLI invocation surface backed by the same operations. It serves as the source of truth for the technical design work.
 
@@ -17,7 +17,7 @@ The new package is built and published in parallel with the existing bundled run
 
 ## Feature Overview
 
-`@lspec/core` is the standalone, publishable runtime that exposes the operation primitives currently delivered through `liminal-spec/processes/impl-cli/`. The package ships two consumption surfaces backed by the same operations: a CLI binary callable through `npx @lspec/core ...`, and a programmatic SDK importable through `@lspec/core/sdk`. Both surfaces produce the same structured envelope and persist the same artifacts.
+`lbuild-impl` is the standalone, publishable runtime that exposes the operation primitives currently delivered through `liminal-spec/processes/impl-cli/`. The package ships two consumption surfaces backed by the same operations: a CLI binary callable through `npx lbuild-impl ...`, and a programmatic SDK importable through `lbuild-impl/sdk`. Both surfaces produce the same structured envelope and persist the same artifacts.
 
 The package replaces the current bundled runtime as the long-term home of the operations. After this epic ships, callers can install one package and call the same operations whether they orchestrate from a Claude Code skill, a Codex skill, a web application, or a script. The runtime's contract surface is versioned; its persistence is atomic and concurrency-safe; its integration with real providers is exercised by both an automated harness suite and an agent-driven gorilla pack designed to catch mock-versus-reality drift before each release.
 
@@ -63,7 +63,7 @@ This epic delivers a published, hardened standalone package. It covers:
 - Removal or modification of `liminal-spec/processes/impl-cli/` or `liminal-spec/processes/codex-impl/` source (left in place; new package coexists alongside)
 - The Codex outer-loop runtime in `liminal-spec/processes/codex-impl/` (not consumed by the new package)
 - Web application SDK consumer adoption (separate fast-follow epic)
-- (Resolved before this rewrite) Final published package name is `@lspec/core` (scoped under the `@lspec` org); CLI bin name is `lspec`
+- (Resolved before release) Final published package name is the unscoped npm package `lbuild-impl`; CLI bin name is `lbuild-impl`
 - npm token rotation, npm organization setup, or GitHub repository secret configuration as automated work — these are documented as a runbook and executed manually
 - Operation-level functional changes — operations behave the same after this epic as they do today, except where contract hardening explicitly redefines the public surface
 
@@ -71,7 +71,7 @@ This epic delivers a published, hardened standalone package. It covers:
 
 | ID | Assumption | Status | Owner | Notes |
 |----|------------|--------|-------|-------|
-| A1 | The final published package name is decided before first release tag | Validated | Maintainer | Chosen: `@lspec/core` (scoped under the `@lspec` org) |
+| A1 | The final published package name is decided before first release tag | Validated | Maintainer | Chosen: unscoped package `lbuild-impl` |
 | A2 | The maintainer has npm publish rights for the chosen package name or scope | Unvalidated | Maintainer | Confirm before tagging the first release |
 | A3 | GitHub Actions has the npm token and any other release secrets configured before tagging the first release | Unvalidated | Maintainer | Documented in the runbook |
 | A4 | The existing `liminal-spec/processes/impl-cli/` test suite represents the operational behavior the new package must preserve | Validated | Maintainer | Migration parity is measured against this suite |
@@ -507,7 +507,7 @@ The automated suite is opt-in via env flag and runs in a separate workflow from 
 - **TC-5.9a:** Evidence directory layout convention documented
   - Given: The repository at the end of this story
   - When: A reviewer inspects `gorilla/` and the gorilla prompt
-  - Then: The prompt and/or `gorilla/README.md` (or equivalent) declares that gorilla runs deposit evidence under `gorilla/evidence/<YYYY-MM-DD>/<provider>-<scenario>.md` (date is the day of the gorilla run; provider in `claude-code` | `codex` | `copilot`; scenario in `smoke` | `resume` | `structured-output` | `stall`); the `gorilla/evidence/` directory exists in the source tree (initially empty or seeded with one example run); the maintainer-driven deliberate-drift sanity check is recorded separately in `gorilla/self-test-log.md`
+  - Then: The prompt and/or `gorilla/README.md` (or equivalent) declares that release smoke evidence is committed under `gorilla/evidence/<YYYY-MM-DD>/` as the exact four-report matrix `claude-code-smoke.md`, `codex-resume.md`, `copilot-structured-output.md`, and `codex-stall.md`; broader gorilla evidence for optional/full operation coverage may use additional documented report files in the same dated directory but does not replace the required release matrix; the `gorilla/evidence/` directory exists in the source tree (initially empty or seeded with one example run); the maintainer-driven deliberate-drift sanity check is recorded separately in `gorilla/self-test-log.md`
 
 ---
 

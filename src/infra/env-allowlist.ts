@@ -45,8 +45,11 @@ export function filterEnv(
 		filtered[key] = value;
 	}
 
+	// Parent process inheritance is allowlisted, but explicit caller overrides are
+	// part of the SDK/CLI contract and intentionally win even for non-allowlisted
+	// keys. Callers should pass only the narrow env delta they mean to expose.
 	for (const [key, value] of Object.entries(overrides)) {
-		if (typeof value === "string" && isAllowedKey(key)) {
+		if (typeof value === "string") {
 			filtered[key] = value;
 			continue;
 		}

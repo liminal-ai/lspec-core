@@ -7,11 +7,16 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Release tag to rehearse or publish (vX.Y.Z)
+        description: Release tag/version to rehearse (vX.Y.Z)
         required: true
         type: string
+      ref:
+        description: GitHub-visible branch, SHA, or ref to check out for the dry-run rehearsal
+        required: false
+        default: main
+        type: string
       dry_run:
-        description: Run npm publish in dry-run mode
+        description: Run npm publish in dry-run mode; manual runs cannot publish live
         required: false
         default: true
         type: boolean
@@ -27,7 +32,7 @@ permissions:
 
 env:
   NODE_VERSION: 24
-  RELEASE_REF: ${{ github.ref }}
+  RELEASE_REF: ${{ github.event_name == 'workflow_dispatch' && inputs.ref || github.ref }}
   RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
   RELEASE_WINDOW_DAYS: ${{ github.event_name == 'workflow_dispatch' && inputs.release_window_days || '7' }}
 
@@ -36,13 +41,30 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ env.RELEASE_REF }}
           fetch-depth: 0
 
+      - name: Validate manual release inputs
+        run: |
+          if [ "${{ github.event_name }}" != "workflow_dispatch" ]; then
+            exit 0
+          fi
+
+          requested="${{ inputs.tag }}"
+          if ! printf '%s\n' "${requested}" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "Requested release tag must use vX.Y.Z format: ${requested}"
+            exit 1
+          fi
+
+          if [ "${{ inputs.dry_run }}" != "true" ]; then
+            echo "Manual workflow_dispatch runs only support dry_run=true. Push a vX.Y.Z tag for a live publish."
+            exit 1
+          fi
+
       - name: Set up Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -52,6 +74,9 @@ jobs:
 
       - name: Run default CI gate
         run: npm run verify
+
+      - name: Run package/release gate
+        run: npm run test:package
 
   integration:
     runs-on: ubuntu-latest
@@ -65,13 +90,30 @@ jobs:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ env.RELEASE_REF }}
           fetch-depth: 0
 
+      - name: Validate manual release inputs
+        run: |
+          if [ "${{ github.event_name }}" != "workflow_dispatch" ]; then
+            exit 0
+          fi
+
+          requested="${{ inputs.tag }}"
+          if ! printf '%s\n' "${requested}" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "Requested release tag must use vX.Y.Z format: ${requested}"
+            exit 1
+          fi
+
+          if [ "${{ inputs.dry_run }}" != "true" ]; then
+            echo "Manual workflow_dispatch runs only support dry_run=true. Push a vX.Y.Z tag for a live publish."
+            exit 1
+          fi
+
       - name: Set up Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -95,13 +137,30 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ env.RELEASE_REF }}
           fetch-depth: 0
 
+      - name: Validate manual release inputs
+        run: |
+          if [ "${{ github.event_name }}" != "workflow_dispatch" ]; then
+            exit 0
+          fi
+
+          requested="${{ inputs.tag }}"
+          if ! printf '%s\n' "${requested}" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "Requested release tag must use vX.Y.Z format: ${requested}"
+            exit 1
+          fi
+
+          if [ "${{ inputs.dry_run }}" != "true" ]; then
+            echo "Manual workflow_dispatch runs only support dry_run=true. Push a vX.Y.Z tag for a live publish."
+            exit 1
+          fi
+
       - name: Set up Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -121,13 +180,30 @@ jobs:
     if: ${{ success() }}
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ env.RELEASE_REF }}
           fetch-depth: 0
 
+      - name: Validate manual release inputs
+        run: |
+          if [ "${{ github.event_name }}" != "workflow_dispatch" ]; then
+            exit 0
+          fi
+
+          requested="${{ inputs.tag }}"
+          if ! printf '%s\n' "${requested}" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "Requested release tag must use vX.Y.Z format: ${requested}"
+            exit 1
+          fi
+
+          if [ "${{ inputs.dry_run }}" != "true" ]; then
+            echo "Manual workflow_dispatch runs only support dry_run=true. Push a vX.Y.Z tag for a live publish."
+            exit 1
+          fi
+
       - name: Set up Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm

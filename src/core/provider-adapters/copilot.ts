@@ -1,4 +1,5 @@
 import {
+	appendProviderOutputDiagnostics,
 	parseProviderPayload,
 	runProviderCommand,
 	type ProviderAdapter,
@@ -61,7 +62,12 @@ export function createCopilotAdapter(
 				...execution,
 				sessionId: copilotParsed.sessionId ?? request.resumeSessionId,
 				parsedResult: copilotParsed.parsedResult,
-				parseError: copilotParsed.parseError,
+				parseError: appendProviderOutputDiagnostics({
+					parseError: copilotParsed.parseError,
+					stdout: execution.stdout,
+					stderr: execution.stderr,
+					streamOutputPaths: request.streamOutputPaths,
+				}),
 			};
 		},
 	};

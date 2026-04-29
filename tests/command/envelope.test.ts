@@ -41,7 +41,7 @@ test("TC-3.4b: persisted artifact matches stdout for the same run", async () => 
 
 	expect(run.exitCode).toBe(0);
 
-	const envelope = parseJsonOutput<any>(run.stdout);
+	const envelope = parseJsonOutput(run.stdout);
 	const artifactPath = envelope.artifacts[0].path as string;
 	const persisted = JSON.parse(await Bun.file(artifactPath).text());
 

@@ -13,11 +13,12 @@ import storyContinueCommand from "../cli/commands/story-continue";
 import storyImplementCommand from "../cli/commands/story-implement";
 import storySelfReviewCommand from "../cli/commands/story-self-review";
 import storyVerifyCommand from "../cli/commands/story-verify";
+import { packageVersion } from "../package-metadata";
 
 const main = defineCommand({
 	meta: {
 		name: "lbuild-impl",
-		version: "0.1.0",
+		version: packageVersion,
 		description:
 			"Implementation runtime for Liminal Build — agentic impl/verify orchestration.",
 	},

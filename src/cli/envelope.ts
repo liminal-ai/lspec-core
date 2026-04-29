@@ -11,7 +11,6 @@ export function mapStatusToExitCode(status: CliStatus): number {
 			return 2;
 		case "blocked":
 			return 3;
-		case "error":
 		default:
 			return 1;
 	}

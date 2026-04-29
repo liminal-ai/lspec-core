@@ -1,14 +1,15 @@
 import { defineCommand } from "citty";
 
 import {
-	storyImplement,
 	type CliResultEnvelope,
 	type StoryImplementPayload,
+	storyImplement,
 } from "../../sdk/index.js";
 import {
 	createCommandErrorEnvelope,
 	emitCommandEnvelope,
 	emitPersistedCommandEnvelope,
+	rejectUnknownCommandArgs,
 	resolveProviderArtifactOptions,
 } from "./shared.js";
 
@@ -50,7 +51,7 @@ export default defineCommand({
 			description: "Emit the structured JSON envelope on stdout",
 		},
 	},
-	async run({ args }) {
+	async run({ args, rawArgs, cmd }) {
 		const json = Boolean(args.json);
 		const startedAt = new Date().toISOString();
 		const artifactOptions = await resolveProviderArtifactOptions({
@@ -61,6 +62,7 @@ export default defineCommand({
 		});
 
 		try {
+			rejectUnknownCommandArgs(rawArgs, cmd.args);
 			const envelope = await storyImplement({
 				specPackRoot: args["spec-pack-root"],
 				storyId: args["story-id"],

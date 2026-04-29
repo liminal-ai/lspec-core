@@ -83,6 +83,7 @@ describe("foundation", () => {
 
 		expect(pkg.scripts["red-verify"]).toBeTruthy();
 		expect(pkg.scripts.verify).toBeTruthy();
+		expect(pkg.scripts["test:package"]).toBeTruthy();
 		expect(pkg.scripts["green-verify"]).toBeTruthy();
 		expect(pkg.scripts["verify-all"]).toBeTruthy();
 	});
@@ -127,6 +128,7 @@ describe("foundation", () => {
 		expect(workflow).toContain("pull_request:");
 		expect(workflow).toContain("node-version: 24");
 		expect(workflow).toContain("npm run verify");
+		expect(workflow).toContain("npm run test:package");
 	});
 
 	test("integration workflow opts into LSPEC_INTEGRATION and runs verify-all", async () => {

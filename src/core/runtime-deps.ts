@@ -1,19 +1,20 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 import {
-	execFile as nodeExecFile,
-	spawn as nodeSpawn,
 	type ChildProcess,
 	type ExecFileOptionsWithStringEncoding,
+	execFile as nodeExecFile,
+	spawn as nodeSpawn,
 } from "node:child_process";
-import * as nodeFs from "node:fs";
 import type { Dirent } from "node:fs";
+import * as nodeFs from "node:fs";
 import {
 	access as nodeAccess,
 	appendFile as nodeAppendFile,
 	mkdir as nodeMkdir,
 	mkdtemp as nodeMkdtemp,
-	readFile as nodeReadFile,
+	open as nodeOpen,
 	readdir as nodeReaddir,
+	readFile as nodeReadFile,
 	rename as nodeRename,
 	rm as nodeRm,
 	stat as nodeStat,
@@ -26,6 +27,7 @@ export interface FileSystemAdapter {
 	createWriteStream?: typeof nodeFs.createWriteStream;
 	mkdir?: typeof nodeMkdir;
 	mkdtemp?: typeof nodeMkdtemp;
+	open?: typeof nodeOpen;
 	readFile?: typeof nodeReadFile;
 	readdir?: typeof nodeReaddir;
 	rename?: typeof nodeRename;
@@ -103,6 +105,13 @@ export async function mkdtemp(
 	...args: Parameters<typeof nodeMkdtemp>
 ): ReturnType<typeof nodeMkdtemp> {
 	const implementation = getContext().fs?.mkdtemp ?? nodeMkdtemp;
+	return await implementation(...args);
+}
+
+export async function open(
+	...args: Parameters<typeof nodeOpen>
+): ReturnType<typeof nodeOpen> {
+	const implementation = getContext().fs?.open ?? nodeOpen;
 	return await implementation(...args);
 }
 

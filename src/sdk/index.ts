@@ -12,5 +12,4 @@ export {
 } from "./operations/index.js";
 export * from "./contracts/index.js";
 export * from "./errors/index.js";
-
-export const version = "0.1.0";
+export { packageVersion as version } from "../package-metadata.js";

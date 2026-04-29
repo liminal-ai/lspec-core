@@ -114,7 +114,7 @@ function parseNestedJson(value: unknown): unknown {
 	try {
 		return JSON.parse(trimmed);
 	} catch {
-		const fenced = trimmed.match(/^```(?:json)?\s*\n(?<json>[\s\S]*?)\n?```$/i);
+		const fenced = trimmed.match(/```(?:json)?\s*\n(?<json>[\s\S]*?)\n?```/i);
 		if (fenced?.groups?.json) {
 			try {
 				return JSON.parse(fenced.groups.json.trim());
@@ -154,6 +154,30 @@ function formatZodIssue(issue: z.ZodIssue): string {
 
 function formatZodError(error: z.ZodError): string {
 	return error.issues.map(formatZodIssue).join("; ");
+}
+
+function byteLength(value: string): number {
+	return Buffer.byteLength(value, "utf8");
+}
+
+function previewText(value: string, maxBytes = 500): string {
+	if (byteLength(value) <= maxBytes) {
+		return value;
+	}
+
+	let preview = "";
+	for (const char of value) {
+		if (byteLength(`${preview}${char}`) > maxBytes) {
+			break;
+		}
+		preview += char;
+	}
+	return `${preview}...[truncated]`;
+}
+
+function formatRootKeys(value: Record<string, unknown>): string {
+	const keys = Object.keys(value);
+	return keys.length > 0 ? keys.join(", ") : "<none>";
 }
 
 export function parseProviderPayload<TResult>(input: {
@@ -196,7 +220,10 @@ export function parseProviderPayload<TResult>(input: {
 		};
 	}
 
-	const parseDiagnostics = [`direct payload: ${formatZodError(direct.error)}`];
+	const parseDiagnostics = [
+		`root keys: ${formatRootKeys(rootRecord)}`,
+		`direct payload: ${formatZodError(direct.error)}`,
+	];
 	for (const field of ["result", "text"]) {
 		if (!(field in rootRecord)) {
 			continue;
@@ -224,6 +251,38 @@ export function parseProviderPayload<TResult>(input: {
 	return {
 		parseError: `Provider output did not match the expected JSON payload. ${parseDiagnostics.join("; ")}`,
 	};
+}
+
+export function appendProviderOutputDiagnostics(input: {
+	parseError: string | undefined;
+	stdout: string;
+	stderr: string;
+	streamOutputPaths?: ProviderStreamOutputPaths;
+}): string | undefined {
+	if (!input.parseError) {
+		return undefined;
+	}
+
+	const diagnostics = [
+		input.parseError,
+		`raw stdout bytes=${byteLength(input.stdout)}`,
+		`raw stdout preview=${JSON.stringify(previewText(input.stdout))}`,
+	];
+
+	if (input.stderr.length > 0) {
+		diagnostics.push(`raw stderr bytes=${byteLength(input.stderr)}`);
+		diagnostics.push(
+			`raw stderr preview=${JSON.stringify(previewText(input.stderr))}`,
+		);
+	}
+	if (input.streamOutputPaths?.stdoutPath) {
+		diagnostics.push(`stdout log=${input.streamOutputPaths.stdoutPath}`);
+	}
+	if (input.streamOutputPaths?.stderrPath) {
+		diagnostics.push(`stderr log=${input.streamOutputPaths.stderrPath}`);
+	}
+
+	return diagnostics.join("; ");
 }
 
 async function ensureStreamDirectories(

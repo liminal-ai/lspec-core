@@ -48,7 +48,7 @@ describe("security guardrails", () => {
 
 		expect(run.exitCode).toBe(0);
 
-		const envelope = parseJsonOutput<any>(run.stdout);
+		const envelope = parseJsonOutput(run.stdout);
 		expect(envelope.result.specPackRoot).toBe(specPackRoot);
 	});
 
@@ -63,7 +63,7 @@ describe("security guardrails", () => {
 
 		expect(run.exitCode).toBe(3);
 
-		const envelope = parseJsonOutput<any>(run.stdout);
+		const envelope = parseJsonOutput(run.stdout);
 		expect(envelope.status).toBe("blocked");
 		expect(envelope.errors[0].code).toBe("INVALID_SPEC_PACK");
 		expect(envelope.result.blockers).toContain(
@@ -87,7 +87,7 @@ describe("security guardrails", () => {
 
 			expect(run.exitCode).toBe(3);
 
-			const envelope = parseJsonOutput<any>(run.stdout);
+			const envelope = parseJsonOutput(run.stdout);
 			expect(envelope.status).toBe("blocked");
 			expect(envelope.errors[0].code).toBe("PROMPT_INSERT_INVALID");
 			expect(envelope.result.blockers).toContain(
@@ -119,7 +119,7 @@ describe("security guardrails", () => {
 
 		expect(run.exitCode).toBe(3);
 
-		const envelope = parseJsonOutput<any>(run.stdout);
+		const envelope = parseJsonOutput(run.stdout);
 		expect(envelope.status).toBe("blocked");
 		expect(envelope.errors).toContainEqual(
 			expect.objectContaining({
@@ -149,7 +149,7 @@ describe("security guardrails", () => {
 
 		expect(run.exitCode).toBe(3);
 
-		const envelope = parseJsonOutput<any>(run.stdout);
+		const envelope = parseJsonOutput(run.stdout);
 		expect(envelope.status).toBe("blocked");
 		expect(envelope.errors).toContainEqual(
 			expect.objectContaining({
@@ -248,7 +248,7 @@ describe("security guardrails", () => {
 
 		expect(run.exitCode).toBe(2);
 
-		const envelope = parseJsonOutput<any>(run.stdout);
+		const envelope = parseJsonOutput(run.stdout);
 		expect(envelope.status).toBe("needs-user-decision");
 		expect(envelope.errors).toContainEqual(
 			expect.objectContaining({
@@ -336,7 +336,7 @@ describe("security guardrails", () => {
 
 		expect(run.exitCode).toBe(3);
 
-		const envelope = parseJsonOutput<any>(run.stdout);
+		const envelope = parseJsonOutput(run.stdout);
 		expect(envelope.status).toBe("blocked");
 		expect(envelope.errors).toContainEqual(
 			expect.objectContaining({
@@ -384,7 +384,7 @@ describe("security guardrails", () => {
 
 		expect(run.exitCode).toBe(3);
 
-		const envelope = parseJsonOutput<any>(run.stdout);
+		const envelope = parseJsonOutput(run.stdout);
 		expect(envelope.status).toBe("blocked");
 		expect(envelope.errors).toContainEqual(
 			expect.objectContaining({

@@ -1,4 +1,4 @@
-# Test Plan: @lspec/core Standalone Package
+# Test Plan: lbuild-impl Standalone Package
 
 This document holds the per-test-file TC mappings, mock strategy, fixture catalog, per-chunk test totals, and the test count reconciliation that the tech-design index references. It is the source consulted during TDD Red phase: open the listed test file, write the listed tests in the order they appear, write each test against the concrete setup/action/assert column.
 
@@ -22,7 +22,7 @@ Structural tests for the package directory and configuration. No production code
 | TC-1.1b | TC-1.1b: existing bundled runtime untouched | Capture file SHA list of `liminal-spec/processes/impl-cli/` and `liminal-spec/processes/codex-impl/` from baseline branch | Recompute SHAs after epic work | All file SHAs match the baseline |
 | TC-1.2a | TC-1.2a: no bun:test imports remain | Walk `src/` and `tests/` | Grep for `from 'bun:test'` and `from "bun:test"` | Zero matches |
 | TC-1.3a | TC-1.3a: package.json declares all four verification scripts | Read `package.json` | Inspect `scripts` block | `red-verify`, `verify`, `green-verify`, `verify-all` keys all present |
-| TC-1.4a | TC-1.4a: build output produced | Run `npm run build` in a clean checkout | Inspect `dist/` | `dist/bin/lspec.js`, `dist/sdk/index.js`, and matching `.d.ts` files all present |
+| TC-1.4a | TC-1.4a: build output produced | Run `npm run build` in a clean checkout | Inspect `dist/` | `dist/bin/lbuild-impl.js`, `dist/sdk/index.js`, and matching `.d.ts` files all present |
 
 #### `tests/verification-scripts.test.ts`
 
@@ -33,7 +33,7 @@ Behavioral tests for each verification tier's composition.
 | TC-1.3b | TC-1.3b: red-verify runs format/lint/typecheck/capture | Stub child commands with spies | Invoke `npm run red-verify` | Each sub-command spawned in order; capture-test-baseline runs last |
 | TC-1.3b (cont.) | TC-1.3b: verify adds the test suite | Stub child commands | Invoke `npm run verify` | red-verify steps + Vitest invocation observed |
 | TC-1.3b (cont.) | TC-1.3b: green-verify adds the immutability guard | Stub child commands; ensure baseline manifest exists | Invoke `npm run green-verify` | verify steps + guard-no-test-changes invocation observed |
-| TC-1.3b (cont.) | TC-1.3b: verify-all adds the integration project | Set LSPEC_INTEGRATION=1; stub Vitest | Invoke `npm run verify-all` | verify steps + Vitest with `--project integration` observed |
+| TC-1.3b (cont.) | TC-1.3b: verify-all adds the package and integration projects | Set LSPEC_INTEGRATION=1; stub Vitest | Invoke `npm run verify-all` | verify steps + Vitest with `--project package` and `--project integration` observed |
 
 #### `tests/build-output.test.ts`
 
@@ -41,7 +41,7 @@ CLI bin smoke against the freshly built output.
 
 | TC | Test Name | Setup | Action | Assert |
 |----|-----------|-------|--------|--------|
-| TC-1.4b | TC-1.4b: built CLI runs under Node | Run `npm run build` in a temp working copy | Spawn `node dist/bin/lspec.js --help` | Exit code 0; stdout includes the subcommand list |
+| TC-1.4b | TC-1.4b: built CLI runs under Node | Run `npm run build` in a temp working copy | Spawn `node dist/bin/lbuild-impl.js --help` | Exit code 0; stdout includes the subcommand list |
 
 #### Manual: TC-1.5a (maintainer-run parity check)
 
@@ -94,7 +94,7 @@ SDK function behavior tests with mocked filesystem and subprocess.
 | TC | Test Name | Setup | Action | Assert |
 |----|-----------|-------|--------|--------|
 | TC-2.4a | TC-2.4a: SDK never calls process.exit, writes stdout, or throws on structured failure | Spy on `process.exit` and `process.stdout.write`; render fixture spec pack | Invoke each SDK function for each terminal status (ok/blocked/error/needs-user-decision) | `process.exit` never called; nothing written to stdout; envelope returned to caller on every terminal status; no throw on any structured failure |
-| TC-2.4b | TC-2.4b: SDK callable from a script | Build dist; install package locally; run a small Node script importing from `@lspec/core/sdk` | Script calls `inspect({ specPackRoot })` against fixture | Script terminates with valid envelope and exit 0 |
+| TC-2.4b | TC-2.4b: SDK callable from a script | Build dist; install package locally; run a small Node script importing from `lbuild-impl/sdk` | Script calls `inspect({ specPackRoot })` against fixture | Script terminates with valid envelope and exit 0 |
 | TC-2.5a | TC-2.5a: dependency-injection adapters are honored | Provide `fs` and `spawn` adapters that record calls | Invoke an SDK operation that touches both | Adapter calls captured; default fs and child_process not invoked |
 
 #### `tests/sdk/per-operation/*.test.ts`
@@ -109,7 +109,7 @@ Per-operation envelope-shape tests (ten files, one per operation). Non-TC defens
 
 | TC | Test Name | Setup | Action | Assert |
 |----|-----------|-------|--------|--------|
-| TC-3.1a | TC-3.1a: --help lists all ten subcommands | Build CLI bin | Spawn `node dist/bin/lspec.js --help` | Stdout names each of the ten operations |
+| TC-3.1a | TC-3.1a: --help lists all ten subcommands | Build CLI bin | Spawn `node dist/bin/lbuild-impl.js --help` | Stdout names each of the ten operations |
 
 #### `tests/command/structure.test.ts`
 
@@ -134,13 +134,13 @@ Per-operation envelope-shape tests (ten files, one per operation). Non-TC defens
 
 | TC | Test Name | Setup | Action | Assert |
 |----|-----------|-------|--------|--------|
-| TC-3.5a | TC-3.5a: node invocation works | Build dist | Spawn `node dist/bin/lspec.js inspect --spec-pack-root ./fixture --json` | Exit 0; stdout envelope valid |
+| TC-3.5a | TC-3.5a: node invocation works | Build dist | Spawn `node dist/bin/lbuild-impl.js inspect --spec-pack-root ./fixture --json` | Exit 0; stdout envelope valid |
 
 #### `tests/command/pack-and-install-smoke.test.ts`
 
 | TC | Test Name | Setup | Action | Assert |
 |----|-----------|-------|--------|--------|
-| TC-3.5b | TC-3.5b: npx invocation against packed tarball | Run `npm pack`; install resulting tarball into a fresh temp project; symlink fixture | Invoke `npx @lspec/core inspect --spec-pack-root ./fixture --json` | Exit 0; envelope valid |
+| TC-3.5b | TC-3.5b: npx invocation against packed tarball | Run `npm pack`; install resulting tarball into a fresh temp project; symlink fixture | Invoke `npx lbuild-impl inspect --spec-pack-root ./fixture --json` | Exit 0; envelope valid |
 
 ---
 
@@ -289,8 +289,8 @@ Each provider's parser-contract suite runs every captured fixture through the co
 
 | TC | Test Name | Setup | Action | Assert |
 |----|-----------|-------|--------|--------|
-| TC-5.6a | TC-5.6a: prompt covers every operation | Read `gorilla/prompt.md` | Match operation names | All ten operations from the inventory mentioned at least once |
-| TC-5.6b | TC-5.6b: prompt covers each provider for provider-consuming operations | Read `gorilla/prompt.md` | Match provider names | Claude Code, Codex, Copilot each mentioned at least once for the operations that consume providers |
+| TC-5.6a | TC-5.6a: prompt covers every operation | Read `gorilla/prompt.md` | Extract backticked `$CLI ...` command invocations | All ten operations from the inventory appear as explicit `$CLI <operation>` invocations |
+| TC-5.6b | TC-5.6b: prompt covers each provider for provider-consuming operations | Read `gorilla/prompt.md` | Extract backticked `$CLI ...` command invocations and evidence filenames | Claude Code, Codex, and Copilot run configs are used by explicit invocations, and canonical evidence filenames name each provider |
 
 #### `tests/gorilla/template.test.ts`
 
@@ -317,7 +317,7 @@ This is a manual pre-release verification, not an automated test. Documented in 
 
 | TC | Test Name | Setup | Action | Assert |
 |----|-----------|-------|--------|--------|
-| TC-6.2a | TC-6.2a: pack and install round trip | Run `npm pack`; create a fresh sandbox project; install tarball | Run `npx @lspec/core inspect ./fixture --json` from sandbox | Exit 0; envelope valid |
+| TC-6.2a | TC-6.2a: pack and install round trip | Run `npm pack`; create a fresh sandbox project; install tarball | Run `npx lbuild-impl inspect ./fixture --json` from sandbox | Exit 0; envelope valid |
 | TC-6.2b | TC-6.2b: tarball respects files allowlist | List tarball contents | Cross-reference against `files` allowlist | Only `dist/`, `README*`, `LICENSE*`, `CHANGELOG*` present; no `tests/`, `gorilla/`, `scripts/`, source files |
 
 #### `tests/dist/types.test.ts`
@@ -339,7 +339,7 @@ This is a manual pre-release verification, not an automated test. Documented in 
 | TC-6.5a | TC-6.5a: workflow triggers on tag | Read `.github/workflows/publish.yml` | Inspect `on:` block | Triggers include `push.tags`; does not include `push.branches: ['**']` |
 | TC-6.5b | TC-6.5b: default-CI gate blocks publish on failure | Inspect publish.yml jobs | Check job dependencies and conditions | Publish job depends on default-CI job; publish step has `if: success()` |
 | TC-6.5c | TC-6.5c: integration gate blocks publish on failure | Inspect publish.yml | Check integration job presence and gating | Publish job depends on integration job; publish step gated on integration success |
-| TC-6.5d | TC-6.5d: gorilla evidence required for publish | Inspect publish.yml | Check evidence-verification step | Step verifies that at least one `gorilla/evidence/<YYYY-MM-DD>/` directory exists at HEAD where the directory date is within the configured release window (default 7 days before tag push); the directory contains one or more `<provider>-<scenario>.md` files per the canonical layout; fails with named-gate error message if absent or stale |
+| TC-6.5d | TC-6.5d: gorilla evidence required for publish | Inspect publish.yml and `scripts/check-release-evidence.ts` | Check evidence-verification step and script contract | Step verifies that at least one `gorilla/evidence/<YYYY-MM-DD>/` directory exists at HEAD where the directory date is within the configured release window (default 7 days before tag push); the directory contains the complete required release smoke matrix `claude-code-smoke.md`, `codex-resume.md`, `copilot-structured-output.md`, and `codex-stall.md`; fails with named-gate error message if absent, incomplete, or stale |
 | TC-6.5e | TC-6.5e: all gates green publishes | Simulate a successful workflow run via dry-run mode | Run release workflow on a test tag | Publish runs; version on registry matches tag |
 
 #### Manual / `tests/release/runbook.test.ts`
@@ -518,6 +518,7 @@ tests/
 │   └── subpath-imports.test.ts           # Non-TC defensive
 ├── release/                               # Story 7
 │   ├── workflow.test.ts
+│   ├── evidence-script.test.ts
 │   └── runbook.test.ts
 └── fixtures/
     ├── workspaces.ts
@@ -644,11 +645,12 @@ Note: TC-5.8a is manual pre-release verification, not an automated test; not cou
 | Test File | New Tests | TCs Covered |
 |-----------|-----------|-------------|
 | `tests/dist/version-sync.test.ts` | 1 | TC-6.4a |
-| `tests/release/workflow.test.ts` | 5 | TC-6.5a, TC-6.5b, TC-6.5c, TC-6.5d, TC-6.5e |
+| `tests/release/workflow.test.ts` | 7 | TC-6.5a, TC-6.5b, TC-6.5c, TC-6.5d, TC-6.5e; plus workflow_dispatch checkout and YAML readiness non-TC checks |
+| `tests/release/evidence-script.test.ts` | 3 | TC-6.5d matrix script coverage |
 | `tests/release/runbook.test.ts` | 1 | TC-6.6a |
 | YAML lint (workflow files) | 1 | (non-TC) |
 | First-publish smoke (manual) | — | TC-6.7a (manual; not automated) |
-| **Chunk 7 Total** | **8** | |
+| **Chunk 7 Total** | **13** | |
 
 ---
 
@@ -684,8 +686,8 @@ Tests beyond 1:1 TC coverage. These are defensive, edge-case, or stress tests th
 - **Fixture validates with inspect.** Running `inspect` against the gorilla fixture returns a `ready` envelope; the fixture is itself a valid spec pack.
 
 ### Chunk 6
-- **Subpath imports under TypeScript and JavaScript.** Import from `@lspec/core/sdk`, `@lspec/core/sdk/contracts`, `@lspec/core/sdk/errors` from both a TS consumer and a JS consumer; both work.
-- **Types-only import.** A consumer that imports `import type { CliResultEnvelope } from '@lspec/core/sdk/contracts'` produces no runtime cost (no JS emitted for the import).
+- **Subpath imports under TypeScript and JavaScript.** Import from `lbuild-impl/sdk`, `lbuild-impl/sdk/contracts`, `lbuild-impl/sdk/errors` from both a TS consumer and a JS consumer; both work.
+- **Types-only import.** A consumer that imports `import type { CliResultEnvelope } from 'lbuild-impl/sdk/contracts'` produces no runtime cost (no JS emitted for the import).
 
 ### Chunk 7
 - **YAML lint.** Workflow files pass `actionlint` (or equivalent) without warnings.

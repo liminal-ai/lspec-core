@@ -39,6 +39,7 @@
     "check": "biome check src tests scripts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --project default",
+    "test:package": "vitest run --project package",
     "test:integration": "vitest run --project integration",
     "test:watch": "vitest",
     "capture:test-baseline": "tsx scripts/capture-test-baseline.ts",
@@ -49,7 +50,7 @@
     "red-verify": "npm run format:check && npm run lint && npm run typecheck && npm run capture:test-baseline",
     "verify": "npm run red-verify && npm run test",
     "green-verify": "npm run verify && npm run guard:no-test-changes",
-    "verify-all": "npm run verify && npm run test:integration"
+    "verify-all": "npm run verify && npm run test:package && npm run test:integration"
   },
   "engines": {
     "node": ">=24.0.0"

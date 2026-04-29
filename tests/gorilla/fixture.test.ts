@@ -39,6 +39,7 @@ test("fixture validates with inspect", async () => {
 			"00-foundation",
 			"01-structured-output-hardening",
 			"02-release-evidence-polish",
+			"03-smoke-continuation",
 		]);
 	});
 });

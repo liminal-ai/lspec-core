@@ -1,14 +1,15 @@
 import { defineCommand } from "citty";
 
 import {
-	storySelfReview,
 	type CliResultEnvelope,
 	type StorySelfReviewPayload,
+	storySelfReview,
 } from "../../sdk/index.js";
 import {
 	createCommandErrorEnvelope,
 	emitCommandEnvelope,
 	emitPersistedCommandEnvelope,
+	rejectUnknownCommandArgs,
 	resolveCommandArtifactPath,
 } from "./shared.js";
 
@@ -78,11 +79,12 @@ export default defineCommand({
 			description: "Emit the structured JSON envelope on stdout",
 		},
 	},
-	async run({ args }) {
+	async run({ args, rawArgs, cmd }) {
 		const json = Boolean(args.json);
 		const startedAt = new Date().toISOString();
 
 		try {
+			rejectUnknownCommandArgs(rawArgs, cmd.args);
 			const envelope = await storySelfReview({
 				specPackRoot: args["spec-pack-root"],
 				storyId: args["story-id"],

@@ -1,4 +1,5 @@
 import {
+	appendProviderOutputDiagnostics,
 	parseProviderPayload,
 	runProviderCommand,
 	type ProviderAdapter,
@@ -69,7 +70,12 @@ export function createClaudeCodeAdapter(
 				...execution,
 				sessionId: parsed.sessionId ?? request.resumeSessionId,
 				parsedResult: parsed.parsedResult,
-				parseError: parsed.parseError,
+				parseError: appendProviderOutputDiagnostics({
+					parseError: parsed.parseError,
+					stdout: execution.stdout,
+					stderr: execution.stderr,
+					streamOutputPaths: request.streamOutputPaths,
+				}),
 			};
 		},
 	};

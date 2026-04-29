@@ -25,4 +25,34 @@ describe("command error classification", () => {
 			outcome: "error",
 		});
 	});
+
+	test("maps InternalError instances to error outcomes", async () => {
+		const { classifyCommandError } = await import("../src/core/command-errors");
+		const { InternalError } = await import("../src/sdk/errors/classes");
+
+		expect(
+			classifyCommandError(new InternalError("Invariant failed.")),
+		).toEqual({
+			code: "INTERNAL_ERROR",
+			outcome: "error",
+		});
+	});
+
+	test("maps unexpected ImplCliError subclasses to error outcomes", async () => {
+		const { classifyCommandError } = await import("../src/core/command-errors");
+		const { ImplCliError } = await import("../src/sdk/errors/base");
+
+		class UnexpectedProgrammingError extends ImplCliError {
+			readonly code = "UNEXPECTED_PROGRAMMING_FAILURE";
+		}
+
+		expect(
+			classifyCommandError(
+				new UnexpectedProgrammingError("A command invariant failed."),
+			),
+		).toEqual({
+			code: "UNEXPECTED_PROGRAMMING_FAILURE",
+			outcome: "error",
+		});
+	});
 });
