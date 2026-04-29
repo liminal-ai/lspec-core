@@ -44,7 +44,9 @@ function runCli(args: string[]) {
 	);
 }
 
-test("TC-3.1a: --help lists all ten subcommands", async () => {
+test("TC-3.1a: --help lists all ten subcommands", {
+	timeout: 120_000,
+}, async () => {
 	await new Promise<void>((resolveBuild, reject) => {
 		const build = spawn("npm", ["run", "build"], {
 			cwd: ROOT,

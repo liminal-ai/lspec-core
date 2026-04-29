@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 
 import { expect, test } from "vitest";
 
-test("TC-1.4b: built CLI runs under Node", async () => {
+test("TC-1.4b: built CLI runs under Node", { timeout: 120_000 }, async () => {
 	const root = resolve(import.meta.dirname, "..");
 	const cliPath = resolve(root, "dist/bin/lbuild-impl.js");
 

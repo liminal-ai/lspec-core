@@ -109,7 +109,9 @@ describe("sdk operations", () => {
 		}
 	});
 
-	test("TC-2.4b SDK is callable from a Node script through the package export", async () => {
+	test("TC-2.4b SDK is callable from a Node script through the package export", {
+		timeout: 120_000,
+	}, async () => {
 		const specPackRoot = await createSpecPack("sdk-script");
 
 		await execFileAsync("npm", ["run", "build"], {

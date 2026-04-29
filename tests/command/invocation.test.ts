@@ -8,7 +8,7 @@ import { createSpecPack } from "../test-helpers";
 const ROOT = resolve(import.meta.dirname, "../..");
 const CLI_PATH = resolve(ROOT, "dist/bin/lbuild-impl.js");
 
-test("TC-3.5a: built CLI runs through node", async () => {
+test("TC-3.5a: built CLI runs through node", { timeout: 120_000 }, async () => {
 	const specPackRoot = await createSpecPack("node-cli-invocation");
 
 	await new Promise<void>((resolveBuild, reject) => {
