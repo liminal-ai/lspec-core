@@ -39,6 +39,8 @@ test("TC-6.5c: integration gate blocks publish on failure", async () => {
 	expect(workflow).toContain(
 		"needs:\n      - default-ci\n      - integration\n      - gorilla-evidence",
 	);
+	expect(workflow).toContain("Authenticate Codex CLI");
+	expect(workflow).toContain("codex login --with-api-key");
 	expect(workflow).toContain("npm run test:integration");
 });
 

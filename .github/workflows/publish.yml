@@ -124,6 +124,11 @@ jobs:
       - name: Install real provider CLIs
         run: npm install --global @anthropic-ai/claude-code @github/copilot @openai/codex
 
+      - name: Authenticate Codex CLI
+        run: |
+          printf '%s' "$OPENAI_API_KEY" | codex login --with-api-key
+          codex login status
+
       - name: Show provider versions
         run: |
           claude --version

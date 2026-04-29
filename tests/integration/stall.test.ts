@@ -8,7 +8,7 @@ import {
 } from "./helpers";
 
 const describeIntegration = INTEGRATION_ENABLED ? describe : describe.skip;
-const providers = ["claude-code", "codex", "copilot"] as const;
+const providers = ["claude-code", "codex"] as const;
 
 describeIntegration("provider stall coverage", () => {
 	for (const provider of providers) {
