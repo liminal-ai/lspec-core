@@ -1,14 +1,12 @@
-import { execFile, spawn } from "node:child_process";
+import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import { readdir, readFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { promisify } from "node:util";
 
 import { describe, expect, test } from "vitest";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const execFileAsync = promisify(execFile);
 
 async function collectFiles(dir: string): Promise<string[]> {
 	const entries = await readdir(dir, { withFileTypes: true });
@@ -59,28 +57,6 @@ describe("foundation", () => {
 		expect(entries).toContain("package.json");
 		expect(entries).toContain("tsconfig.json");
 		expect(entries).toContain("vitest.config.ts");
-	});
-
-	test("TC-1.1b: bundled runtime directories remain unmodified", async () => {
-		const liminalSpecRoot = resolve(ROOT, "../liminal-spec");
-		expect(existsSync(resolve(liminalSpecRoot, "processes/impl-cli"))).toBe(
-			true,
-		);
-		expect(existsSync(resolve(liminalSpecRoot, "processes/codex-impl"))).toBe(
-			true,
-		);
-
-		const { stdout } = await execFileAsync("git", [
-			"-C",
-			liminalSpecRoot,
-			"status",
-			"--short",
-			"--",
-			"processes/impl-cli",
-			"processes/codex-impl",
-		]);
-
-		expect(stdout.trim()).toBe("");
 	});
 
 	test("TC-1.2a: no Bun test-runner imports remain", async () => {

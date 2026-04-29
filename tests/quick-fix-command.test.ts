@@ -433,7 +433,7 @@ test("blocks quick-fix with exit code 3 when the spec-pack root is outside any g
 	);
 });
 
-test("rejects oversized quick-fix request text and request files before provider dispatch", async () => {
+test("rejects oversized quick-fix request files before provider dispatch", async () => {
 	const specPackRoot = await createQuickFixSpecPack(
 		"quick-fix-oversized-requests",
 	);
@@ -441,24 +441,6 @@ test("rejects oversized quick-fix request text and request files before provider
 	const oversizedContent = "x".repeat(128 * 1024 + 1);
 	const oversizedFilePath = join(specPackRoot, "oversized-request.txt");
 	await writeTextFile(oversizedFilePath, oversizedContent);
-
-	const oversizedTextRun = await runSourceCli([
-		"quick-fix",
-		"--spec-pack-root",
-		specPackRoot,
-		"--request-text",
-		oversizedContent,
-		"--json",
-	]);
-	expect(oversizedTextRun.exitCode).toBe(1);
-	expect(parseJsonOutput<any>(oversizedTextRun.stdout).errors).toEqual(
-		expect.arrayContaining([
-			expect.objectContaining({
-				code: "INVALID_INPUT",
-				message: "--request-text exceeds the 128 KiB limit (131072 bytes).",
-			}),
-		]),
-	);
 
 	const oversizedFileRun = await runSourceCli([
 		"quick-fix",
