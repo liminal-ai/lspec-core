@@ -1,0 +1,17 @@
+[
+  {
+    "name": "Kito",
+    "species": "gorilla",
+    "habitat": "montane forest"
+  },
+  {
+    "name": "Nia",
+    "species": "okapi",
+    "habitat": "rainforest understory"
+  },
+  {
+    "name": "Tala",
+    "species": "red panda",
+    "habitat": "cool bamboo forest"
+  }
+]

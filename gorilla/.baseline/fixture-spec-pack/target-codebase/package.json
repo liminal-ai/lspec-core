@@ -1,0 +1,9 @@
+{
+  "name": "gorilla-target-codebase",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "green-verify": "node ./scripts/green-verify.mjs",
+    "verify-all": "node ./scripts/verify-all.mjs"
+  }
+}

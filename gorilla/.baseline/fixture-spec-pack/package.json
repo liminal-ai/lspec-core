@@ -1,0 +1,8 @@
+{
+  "name": "gorilla-fixture-spec-pack",
+  "private": true,
+  "scripts": {
+    "green-verify": "npm --prefix ./target-codebase run green-verify",
+    "verify-all": "npm --prefix ./target-codebase run verify-all"
+  }
+}

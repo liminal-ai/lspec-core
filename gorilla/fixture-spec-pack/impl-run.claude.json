@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "primary_harness": "claude-code",
+  "story_implementor": {
+    "secondary_harness": "none",
+    "model": "claude-sonnet-4-6[1m]",
+    "reasoning_effort": "max"
+  },
+  "quick_fixer": {
+    "secondary_harness": "none",
+    "model": "claude-sonnet-4-6[1m]",
+    "reasoning_effort": "max"
+  },
+  "story_verifier": {
+    "secondary_harness": "none",
+    "model": "claude-sonnet-4-6[1m]",
+    "reasoning_effort": "max"
+  },
+  "self_review": {
+    "passes": 2
+  },
+  "epic_verifiers": [
+    {
+      "label": "epic-verifier-1",
+      "secondary_harness": "none",
+      "model": "claude-sonnet-4-6[1m]",
+      "reasoning_effort": "max"
+    }
+  ],
+  "epic_synthesizer": {
+    "secondary_harness": "none",
+    "model": "claude-sonnet-4-6[1m]",
+    "reasoning_effort": "max"
+  },
+  "verification_gates": {
+    "story": "npm run green-verify",
+    "epic": "npm run verify-all"
+  }
+}
