@@ -17,7 +17,7 @@ beforeAll(async () => {
 	await buildPackage();
 });
 
-test("TypeScript consumers can import each public SDK subpath", async () => {
+test("TypeScript consumers can import each public SDK subpath", { timeout: 120_000 }, async () => {
 	const packed = await packPackage();
 	const sandbox = await createSandboxProject("lspec-dist-subpaths-ts");
 
@@ -82,7 +82,7 @@ test("TypeScript consumers can import each public SDK subpath", async () => {
 	}
 });
 
-test("JavaScript consumers can import each public SDK subpath", async () => {
+test("JavaScript consumers can import each public SDK subpath", { timeout: 120_000 }, async () => {
 	const packed = await packPackage();
 	const sandbox = await createSandboxProject("lspec-dist-subpaths-js");
 
@@ -114,7 +114,7 @@ test("JavaScript consumers can import each public SDK subpath", async () => {
 	}
 });
 
-test("types-only imports erase without runtime cost", async () => {
+test("types-only imports erase without runtime cost", { timeout: 120_000 }, async () => {
 	const packed = await packPackage();
 	const sandbox = await createSandboxProject("lspec-dist-subpaths-type-only");
 

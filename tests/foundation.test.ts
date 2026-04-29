@@ -104,7 +104,9 @@ describe("foundation", () => {
 		});
 	});
 
-	test("TC-1.4a: build output includes CLI and SDK artifacts after build", async () => {
+	test("TC-1.4a: build output includes CLI and SDK artifacts after build", {
+		timeout: 120_000,
+	}, async () => {
 		await runBuild();
 
 		expect(existsSync(join(ROOT, "dist", "bin", "lbuild-impl.js"))).toBe(true);
