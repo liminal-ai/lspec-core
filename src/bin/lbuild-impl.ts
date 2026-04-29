@@ -16,12 +16,13 @@ import storyVerifyCommand from "../cli/commands/story-verify";
 
 const main = defineCommand({
 	meta: {
-		name: "lspec",
+		name: "lbuild-impl",
 		version: "0.1.0",
-		description: "Liminal Spec Core SDK / CLI Runtime",
+		description:
+			"Implementation runtime for Liminal Build — agentic impl/verify orchestration.",
 	},
 	default:
-		"Use `lspec inspect --spec-pack-root <path> --json` to validate a spec pack.",
+		"Use `lbuild-impl inspect --spec-pack-root <path> --json` to validate a spec pack.",
 	subCommands: {
 		"epic-cleanup": epicCleanupCommand,
 		"epic-synthesize": epicSynthesizeCommand,

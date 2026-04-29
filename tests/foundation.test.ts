@@ -131,8 +131,10 @@ describe("foundation", () => {
 	test("TC-1.4a: build output includes CLI and SDK artifacts after build", async () => {
 		await runBuild();
 
-		expect(existsSync(join(ROOT, "dist", "bin", "lspec.js"))).toBe(true);
-		expect(existsSync(join(ROOT, "dist", "bin", "lspec.d.ts"))).toBe(true);
+		expect(existsSync(join(ROOT, "dist", "bin", "lbuild-impl.js"))).toBe(true);
+		expect(existsSync(join(ROOT, "dist", "bin", "lbuild-impl.d.ts"))).toBe(
+			true,
+		);
 		expect(existsSync(join(ROOT, "dist", "sdk", "index.js"))).toBe(true);
 		expect(existsSync(join(ROOT, "dist", "sdk", "index.d.ts"))).toBe(true);
 	});

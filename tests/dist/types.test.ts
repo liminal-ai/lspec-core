@@ -26,13 +26,13 @@ test("TC-6.3a: types resolve under TypeScript", async () => {
 		await writeFile(
 			join(sandbox.root, "consumer.ts"),
 			[
-				`import { inspect } from "@lspec/core/sdk";`,
+				`import { inspect } from "lbuild-impl/sdk";`,
 				`import type {`,
 				`  CliResultEnvelope,`,
 				`  ContinuationHandle,`,
 				`  InspectInput,`,
 				`  InspectResult,`,
-				`} from "@lspec/core/sdk";`,
+				`} from "lbuild-impl/sdk";`,
 				``,
 				`const input: InspectInput = { specPackRoot: "./fixture" };`,
 				`const invoke: (value: InspectInput) => Promise<InspectResult> = inspect;`,

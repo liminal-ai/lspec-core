@@ -26,10 +26,10 @@ test("TypeScript consumers can import each public SDK subpath", async () => {
 		await writeFile(
 			join(sandbox.root, "consumer.ts"),
 			[
-				`import { inspect } from "@lspec/core/sdk";`,
-				`import { cliResultEnvelopeSchema, inspectResultSchema } from "@lspec/core/sdk/contracts";`,
-				`import { InvalidInputError } from "@lspec/core/sdk/errors";`,
-				`import type { CliResultEnvelope } from "@lspec/core/sdk/contracts";`,
+				`import { inspect } from "lbuild-impl/sdk";`,
+				`import { cliResultEnvelopeSchema, inspectResultSchema } from "lbuild-impl/sdk/contracts";`,
+				`import { InvalidInputError } from "lbuild-impl/sdk/errors";`,
+				`import type { CliResultEnvelope } from "lbuild-impl/sdk/contracts";`,
 				``,
 				`const runtimeValue = cliResultEnvelopeSchema(inspectResultSchema);`,
 				`const errorConstructor = InvalidInputError;`,
@@ -92,9 +92,9 @@ test("JavaScript consumers can import each public SDK subpath", async () => {
 		await writeFile(
 			scriptPath,
 			[
-				`import { inspect } from "@lspec/core/sdk";`,
-				`import { cliResultEnvelopeSchema, inspectResultSchema } from "@lspec/core/sdk/contracts";`,
-				`import { InvalidInputError } from "@lspec/core/sdk/errors";`,
+				`import { inspect } from "lbuild-impl/sdk";`,
+				`import { cliResultEnvelopeSchema, inspectResultSchema } from "lbuild-impl/sdk/contracts";`,
+				`import { InvalidInputError } from "lbuild-impl/sdk/errors";`,
 				`if (typeof inspect !== "function") throw new Error("inspect export missing");`,
 				`if (typeof cliResultEnvelopeSchema !== "function") throw new Error("contracts export missing");`,
 				`if (typeof cliResultEnvelopeSchema(inspectResultSchema).parse !== "function") throw new Error("contracts schema factory broken");`,
@@ -123,8 +123,8 @@ test("types-only imports erase without runtime cost", async () => {
 		await writeFile(
 			join(sandbox.root, "type-only.ts"),
 			[
-				`import type { CliResultEnvelope } from "@lspec/core/sdk/contracts";`,
-				`import type { InvalidInputError } from "@lspec/core/sdk/errors";`,
+				`import type { CliResultEnvelope } from "lbuild-impl/sdk/contracts";`,
+				`import type { InvalidInputError } from "lbuild-impl/sdk/errors";`,
 				`export type Envelope = CliResultEnvelope<{ ok: true }>;`,
 				`export type ErrorShape = InvalidInputError;`,
 				`export const outcome: Envelope["outcome"] = "ready";`,
@@ -156,7 +156,7 @@ test("types-only imports erase without runtime cost", async () => {
 		expect(stderr).toBe("");
 
 		const emitted = await readFile(join(sandbox.root, "out", "type-only.js"), "utf8");
-		expect(emitted).not.toContain("@lspec/core");
+		expect(emitted).not.toContain("lbuild-impl");
 	} finally {
 		await sandbox.cleanup();
 		await packed.cleanup();

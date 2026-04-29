@@ -5,7 +5,7 @@ import { expect, test } from "vitest";
 
 test("TC-1.4b: built CLI runs under Node", async () => {
 	const root = resolve(import.meta.dirname, "..");
-	const cliPath = resolve(root, "dist/bin/lspec.js");
+	const cliPath = resolve(root, "dist/bin/lbuild-impl.js");
 
 	await new Promise<void>((resolveBuild, reject) => {
 		const build = spawn("npm", ["run", "build"], {

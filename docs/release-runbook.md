@@ -4,7 +4,7 @@ This runbook covers the maintainer-owned steps around Story 7 release automation
 
 ## npm token configuration
 
-1. Create or refresh an npm automation token with publish rights for `@lspec/core`.
+1. Create or refresh an npm automation token with publish rights for `lbuild-impl`.
 2. Add the token to the GitHub repository as the `NPM_TOKEN` Actions secret.
 3. Confirm the release workflow also has the provider secrets already used by the real-harness job:
    - `ANTHROPIC_API_KEY`
@@ -12,12 +12,12 @@ This runbook covers the maintainer-owned steps around Story 7 release automation
    - `GH_TOKEN`
 4. If the token was rotated, rerun `npm whoami` locally before the next tag so the first live release is not the first auth check.
 
-## Scoped organization setup
+## Package access setup
 
-`@lspec/core` publishes under the `@lspec` scope. Before the first live publish:
+`lbuild-impl` publishes as an unscoped public package. Before the first live publish:
 
-1. Confirm the `@lspec` npm organization exists and the maintainer account has publish access.
-2. Confirm the package is configured for public access under the scope.
+1. Confirm the maintainer account has publish access to the `lbuild-impl` package on the npm registry.
+2. Confirm the package is configured for public access (default for unscoped packages).
 3. Keep `package.json`, `CHANGELOG.md`, and `VERSION` aligned to the same semantic version before tagging.
 
 ## Pre-tag gorilla evidence procedure
@@ -26,7 +26,7 @@ The publish workflow will not generate gorilla evidence for you. The maintainer 
 
 1. Reset the fixture: `npx tsx gorilla/reset.ts`
 2. Build the package: `npm run build`
-3. Follow [`gorilla/prompt.md`](/Users/leemoore/code/lspec-core/gorilla/prompt.md) and write evidence into `gorilla/evidence/<YYYY-MM-DD>/`.
+3. Follow [`gorilla/prompt.md`](../../gorilla/prompt.md) and write evidence into `gorilla/evidence/<YYYY-MM-DD>/`.
 4. Keep the canonical filename format: `<provider>-<scenario>.md`
 5. For a clean report, record `- Unexpected behaviors observed: none` in the `## Divergences` section.
 6. If the gorilla run finds issues, fix them before tagging instead of committing unresolved release evidence.
@@ -61,8 +61,8 @@ Do one rehearsal before the first live publish for a version:
 
 After the live publish completes:
 
-1. In a fresh temp directory, run `npx @lspec/core inspect --spec-pack-root ./fixture --json` against a minimal fixture pack.
+1. In a fresh temp directory, run `npx lbuild-impl inspect --spec-pack-root ./fixture --json` against a minimal fixture pack.
 2. Confirm the command returns an `inspect` envelope with `status: ok` and `outcome: ready`.
 3. Confirm the persisted artifact path named in the envelope exists on disk.
-4. Run `npm view @lspec/core version` and confirm the registry version matches the pushed tag.
+4. Run `npm view lbuild-impl version` and confirm the registry version matches the pushed tag.
 5. Record the first successful `npx` smoke result in the release notes or maintainer log for TC-6.7a traceability.

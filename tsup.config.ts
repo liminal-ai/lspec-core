@@ -5,7 +5,7 @@ export default defineConfig({
 		"sdk/index": "src/sdk/index.ts",
 		"sdk/contracts/index": "src/sdk/contracts/index.ts",
 		"sdk/errors/index": "src/sdk/errors/index.ts",
-		"bin/lspec": "src/bin/lspec.ts",
+		"bin/lbuild-impl": "src/bin/lbuild-impl.ts",
 	},
 	format: ["esm"],
 	dts: true,

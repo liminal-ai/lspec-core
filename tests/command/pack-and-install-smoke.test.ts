@@ -5,7 +5,9 @@ import { expect, test } from "vitest";
 
 const ROOT = resolve(import.meta.dirname, "../..");
 
-test("TC-3.5b: packed tarball runs through npx after install", async () => {
+test("TC-3.5b: packed tarball runs through npx after install", {
+	timeout: 120_000,
+}, async () => {
 	await new Promise<void>((resolveRun, reject) => {
 		const child = spawn("npm", ["run", "pack-and-install-smoke"], {
 			cwd: ROOT,

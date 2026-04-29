@@ -126,7 +126,7 @@ describe("sdk operations", () => {
 				"--input-type=module",
 				"--eval",
 				[
-					"import { inspect } from '@lspec/core/sdk';",
+					"import { inspect } from 'lbuild-impl/sdk';",
 					"const result = await inspect({ specPackRoot: process.argv[1] });",
 					"process.stdout.write(JSON.stringify(result));",
 				].join("\n"),

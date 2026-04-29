@@ -6,7 +6,7 @@ import { expect, test } from "vitest";
 import { createSpecPack } from "../test-helpers";
 
 const ROOT = resolve(import.meta.dirname, "../..");
-const CLI_PATH = resolve(ROOT, "dist/bin/lspec.js");
+const CLI_PATH = resolve(ROOT, "dist/bin/lbuild-impl.js");
 
 test("TC-3.5a: built CLI runs through node", async () => {
 	const specPackRoot = await createSpecPack("node-cli-invocation");

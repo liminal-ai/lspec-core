@@ -1,7 +1,13 @@
 import { chmod, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
-const binPath = resolve(import.meta.dirname, "..", "dist", "bin", "lspec.js");
+const binPath = resolve(
+	import.meta.dirname,
+	"..",
+	"dist",
+	"bin",
+	"lbuild-impl.js",
+);
 const shebang = "#!/usr/bin/env node\n";
 const current = await readFile(binPath, "utf8");
 

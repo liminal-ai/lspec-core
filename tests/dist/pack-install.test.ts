@@ -28,7 +28,7 @@ test("TC-6.2a: pack and install round trip", async () => {
 			[
 				"exec",
 				"--",
-				"lspec",
+				"lbuild-impl",
 				"inspect",
 				"--spec-pack-root",
 				"./fixture",
@@ -51,7 +51,7 @@ test("TC-6.2a: pack and install round trip", async () => {
 		await writeFile(
 			scriptPath,
 			[
-				`import { inspect } from "@lspec/core/sdk";`,
+				`import { inspect } from "lbuild-impl/sdk";`,
 				`const result = await inspect({ specPackRoot: "./fixture" });`,
 				`if (result.command !== "inspect" || result.status !== "ok" || result.outcome !== "ready") {`,
 				`  throw new Error(JSON.stringify(result));`,

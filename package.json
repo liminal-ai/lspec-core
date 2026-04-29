@@ -1,31 +1,31 @@
 {
-  "name": "@lspec/core",
+  "name": "lbuild-impl",
   "version": "0.1.0",
-  "description": "Liminal Spec Core SDK / CLI Runtime",
+  "description": "Implementation runtime for Liminal Build — agentic impl/verify orchestration.",
   "type": "module",
-	"main": "./dist/sdk/index.js",
-	"types": "./dist/sdk/index.d.ts",
-	"exports": {
-		".": {
-			"types": "./dist/sdk/index.d.ts",
-			"import": "./dist/sdk/index.js"
-		},
-		"./sdk": {
-			"types": "./dist/sdk/index.d.ts",
-			"import": "./dist/sdk/index.js"
-		},
-		"./sdk/contracts": {
-			"types": "./dist/sdk/contracts/index.d.ts",
-			"import": "./dist/sdk/contracts/index.js"
-		},
-		"./sdk/errors": {
-			"types": "./dist/sdk/errors/index.d.ts",
-			"import": "./dist/sdk/errors/index.js"
-		}
-	},
-	"bin": {
-		"lspec": "./dist/bin/lspec.js"
-	},
+  "main": "./dist/sdk/index.js",
+  "types": "./dist/sdk/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/sdk/index.d.ts",
+      "import": "./dist/sdk/index.js"
+    },
+    "./sdk": {
+      "types": "./dist/sdk/index.d.ts",
+      "import": "./dist/sdk/index.js"
+    },
+    "./sdk/contracts": {
+      "types": "./dist/sdk/contracts/index.d.ts",
+      "import": "./dist/sdk/contracts/index.js"
+    },
+    "./sdk/errors": {
+      "types": "./dist/sdk/errors/index.d.ts",
+      "import": "./dist/sdk/errors/index.js"
+    }
+  },
+  "bin": {
+    "lbuild-impl": "dist/bin/lbuild-impl.js"
+  },
   "files": [
     "dist",
     "README.md",
@@ -73,11 +73,11 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/liminal-ai/lspec-core.git"
+    "url": "git+https://github.com/liminal-ai/lbuild-impl.git"
   },
-  "homepage": "https://github.com/liminal-ai/lspec-core#readme",
+  "homepage": "https://github.com/liminal-ai/lbuild-impl#readme",
   "bugs": {
-    "url": "https://github.com/liminal-ai/lspec-core/issues"
+    "url": "https://github.com/liminal-ai/lbuild-impl/issues"
   },
   "keywords": [
     "liminal-spec",

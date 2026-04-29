@@ -5,7 +5,7 @@ Use the built package against the source-only fixture and record evidence in the
 ## Setup
 1. Run `npx tsx gorilla/reset.ts`.
 2. Run `npm run build`.
-3. Set `CLI="node ./dist/bin/lspec.js"`.
+3. Set `CLI="node ./dist/bin/lbuild-impl.js"`.
 4. Set `SPEC="./gorilla/fixture-spec-pack"`.
 5. Create today's evidence directory: `mkdir -p "gorilla/evidence/<YYYY-MM-DD>"`.
 

@@ -17,10 +17,10 @@ test("TC-6.1a: distribution metadata complete", async () => {
 		types?: string;
 	};
 
-	expect(packageJson.name).toBe("@lspec/core");
+	expect(packageJson.name).toBe("lbuild-impl");
 	expect(packageJson.version).toMatch(/^\d+\.\d+\.\d+/);
 	expect(packageJson.bin).toEqual({
-		lspec: "./dist/bin/lspec.js",
+		"lbuild-impl": "dist/bin/lbuild-impl.js",
 	});
 	expect(packageJson.types).toBe("./dist/sdk/index.d.ts");
 	expect(packageJson.exports).toEqual({

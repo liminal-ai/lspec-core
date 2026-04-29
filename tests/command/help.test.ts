@@ -4,7 +4,7 @@ import { resolve } from "node:path";
 import { expect, test } from "vitest";
 
 const ROOT = resolve(import.meta.dirname, "../..");
-const CLI_PATH = resolve(ROOT, "dist/bin/lspec.js");
+const CLI_PATH = resolve(ROOT, "dist/bin/lbuild-impl.js");
 const EXPECTED_SUBCOMMANDS = [
 	"inspect",
 	"preflight",

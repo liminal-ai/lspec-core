@@ -76,7 +76,10 @@ const COMMAND_TO_FUNCTION = {
 
 describe("sdk surface", () => {
 	test("TC-2.1a every CLI command has a corresponding SDK function", async () => {
-		const binSource = await readFile(join(ROOT, "src/bin/lspec.ts"), "utf8");
+		const binSource = await readFile(
+			join(ROOT, "src/bin/lbuild-impl.ts"),
+			"utf8",
+		);
 		const commandNames = [
 			...binSource.matchAll(/^\s*(?:"([^"]+)"|([a-z-]+)):\s+\w+Command,?$/gm),
 		]
@@ -118,7 +121,7 @@ describe("sdk surface", () => {
 			"./sdk/errors": expect.any(Object),
 		});
 		expect(packageJson.bin).toEqual({
-			lspec: "./dist/bin/lspec.js",
+			"lbuild-impl": "dist/bin/lbuild-impl.js",
 		});
 	});
 

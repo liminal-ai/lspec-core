@@ -445,7 +445,7 @@ export async function runSourceCli(
 	return await new Promise<CliRunResult>((resolveResult, reject) => {
 		const proc = spawn(
 			process.execPath,
-			["--import", "tsx", "src/bin/lspec.ts", ...args],
+			["--import", "tsx", "src/bin/lbuild-impl.ts", ...args],
 			{
 				cwd: ROOT,
 				env: {
