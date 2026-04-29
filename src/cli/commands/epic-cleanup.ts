@@ -65,7 +65,6 @@ export default defineCommand({
 				specPackRoot: args["spec-pack-root"],
 				cleanupBatchPath: args["cleanup-batch"],
 				configPath: args.config,
-				env: process.env,
 				artifactPath: artifactOptions.artifactPath,
 				streamOutputPaths: artifactOptions.streamOutputPaths,
 				runtimeProgressPaths: artifactOptions.runtimeProgressPaths,

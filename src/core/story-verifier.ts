@@ -33,44 +33,27 @@ import {
 import { readdirDirents } from "./runtime-deps";
 import { inspectSpecPack } from "./spec-pack";
 
-const verifierRequirementCoverageSchema = z
+const storyVerifierResultBaseSchema = z
 	.object({
-		verified: z.array(z.string().min(1)),
-		unverified: z.array(z.string().min(1)),
+		...storyVerifierResultSchema.shape,
 	})
 	.strict();
 
-const verifierGateRunSchema = z
-	.object({
-		command: z.string().min(1),
-		result: z.enum(["pass", "fail", "not-run"]),
+export const storyVerifierProviderPayloadSchema = storyVerifierResultBaseSchema
+	.omit({
+		resultId: true,
+		role: true,
+		provider: true,
+		model: true,
+		sessionId: true,
+		continuation: true,
+		mode: true,
+		story: true,
 	})
-	.strict();
-
-export const storyVerifierProviderPayloadSchema = z
-	.object({
-		artifactsRead: z.array(z.string().min(1)).min(1),
-		reviewScopeSummary: z.string().min(1),
+	.extend({
 		priorFindingStatuses: z.array(priorFindingStatusSchema),
 		newFindings: z.array(verifierFindingSchema),
 		openFindings: z.array(verifierFindingSchema),
-		requirementCoverage: verifierRequirementCoverageSchema,
-		gatesRun: z.array(verifierGateRunSchema),
-		mockOrShimAuditFindings: z.array(z.string()),
-		recommendedNextStep: z.enum([
-			"pass",
-			"revise",
-			"block",
-			"needs-human-ruling",
-		]),
-		recommendedFixScope: z.enum([
-			"same-session-implementor",
-			"quick-fix",
-			"fresh-fix-path",
-			"human-ruling",
-		]),
-		openQuestions: z.array(z.string()),
-		additionalObservations: z.array(z.string()),
 	})
 	.strict();
 

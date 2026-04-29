@@ -352,7 +352,7 @@ test("follow-up story-verify rejects missing provider or session id", async () =
 	expect(run.exitCode).toBe(1);
 	const envelope = parseJsonOutput<any>(run.stdout);
 	expect(envelope.outcome).toBe("error");
-	expect(envelope.errors[0]?.code).toBe("INVALID_INVOCATION");
+	expect(envelope.errors[0]?.code).toBe("INVALID_INPUT");
 });
 
 test("follow-up story-verify rejects missing or duplicate response inputs", async () => {
@@ -374,7 +374,7 @@ test("follow-up story-verify rejects missing or duplicate response inputs", asyn
 	]);
 	expect(missingRun.exitCode).toBe(1);
 	expect(parseJsonOutput<any>(missingRun.stdout).errors[0]?.code).toBe(
-		"INVALID_INVOCATION",
+		"INVALID_INPUT",
 	);
 
 	const duplicateRun = await runSourceCli([
@@ -395,7 +395,7 @@ test("follow-up story-verify rejects missing or duplicate response inputs", asyn
 	]);
 	expect(duplicateRun.exitCode).toBe(1);
 	expect(parseJsonOutput<any>(duplicateRun.stdout).errors[0]?.code).toBe(
-		"INVALID_INVOCATION",
+		"INVALID_INPUT",
 	);
 });
 
@@ -418,7 +418,7 @@ test("initial story-verify rejects response-only follow-up flags", async () => {
 	expect(run.exitCode).toBe(1);
 	const envelope = parseJsonOutput<any>(run.stdout);
 	expect(envelope.outcome).toBe("error");
-	expect(envelope.errors[0]?.code).toBe("INVALID_INVOCATION");
+	expect(envelope.errors[0]?.code).toBe("INVALID_INPUT");
 });
 
 test("follow-up story-verify blocks when the retained verifier continuation cannot be recovered from prior artifacts", async () => {

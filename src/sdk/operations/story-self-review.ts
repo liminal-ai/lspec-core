@@ -10,13 +10,15 @@ import {
 } from "../../core/config-schema.js";
 import { storySelfReviewResultSchema } from "../../core/result-contracts.js";
 import { runStorySelfReview } from "../../core/story-implementor.js";
-import type {
-	StorySelfReviewInput,
-	StorySelfReviewResult,
+import {
+	storySelfReviewInputSchema,
+	type StorySelfReviewInput,
+	type StorySelfReviewResult,
 } from "../contracts/operations.js";
 import {
 	buildUnexpectedEnvelope,
 	finalizeEnvelope,
+	parseSdkInput,
 	resolveOperationArtifactPath,
 	withSdkExecutionContext,
 } from "./shared.js";
@@ -80,17 +82,19 @@ async function resolveSelfReviewArtifactPaths(
 export async function storySelfReview(
 	input: StorySelfReviewInput,
 ): Promise<StorySelfReviewResult> {
-	return await withSdkExecutionContext(input, async () => {
+	const parsedInput = parseSdkInput(storySelfReviewInputSchema, input);
+
+	return await withSdkExecutionContext(parsedInput, async () => {
 		const startedAt = new Date().toISOString();
 		const resolvedPasses =
-			Number.isNaN(input.passes) || input.passes <= 0
+			Number.isNaN(parsedInput.passes) || parsedInput.passes <= 0
 				? (
 						await loadRunConfig({
-							specPackRoot: input.specPackRoot,
-							configPath: input.configPath,
+							specPackRoot: parsedInput.specPackRoot,
+							configPath: parsedInput.configPath,
 						})
 					).self_review.passes
-				: input.passes;
+				: parsedInput.passes;
 
 		if (
 			resolvedPasses < MIN_SELF_REVIEW_PASSES ||
@@ -98,9 +102,9 @@ export async function storySelfReview(
 		) {
 			const artifactPath = await resolveOperationArtifactPath({
 				command: "story-self-review",
-				specPackRoot: input.specPackRoot,
-				artifactPath: input.artifactPath,
-				group: input.storyId,
+				specPackRoot: parsedInput.specPackRoot,
+				artifactPath: parsedInput.artifactPath,
+				group: parsedInput.storyId,
 				fileName: "self-review-batch",
 			});
 			return await finalizeEnvelope({
@@ -111,7 +115,7 @@ export async function storySelfReview(
 				resultSchema: storySelfReviewResultSchema,
 				errors: [
 					{
-						code: "INVALID_INVOCATION",
+						code: "INVALID_INPUT",
 						message: `passes must be between ${MIN_SELF_REVIEW_PASSES} and ${MAX_SELF_REVIEW_PASSES}.`,
 					},
 				],
@@ -121,24 +125,25 @@ export async function storySelfReview(
 		let artifactPath = "";
 		try {
 			const resolvedArtifacts = await resolveSelfReviewArtifactPaths(
-				input,
+				parsedInput,
 				resolvedPasses,
 			);
 			artifactPath = resolvedArtifacts.artifactPath;
 			const outcome = await runStorySelfReview({
-				specPackRoot: input.specPackRoot,
-				storyId: input.storyId,
-				provider: input.continuationHandle.provider,
-				sessionId: input.continuationHandle.sessionId,
+				specPackRoot: parsedInput.specPackRoot,
+				storyId: parsedInput.storyId,
+				provider: parsedInput.continuationHandle.provider,
+				sessionId: parsedInput.continuationHandle.sessionId,
 				passes: resolvedPasses,
 				passArtifactPaths: resolvedArtifacts.passArtifactPaths,
-				configPath: input.configPath,
-				env: input.env,
+				configPath: parsedInput.configPath,
+				env: parsedInput.env,
 				artifactPath,
 				streamOutputPaths:
-					input.streamOutputPaths ?? buildStreamOutputPaths(artifactPath),
+					parsedInput.streamOutputPaths ?? buildStreamOutputPaths(artifactPath),
 				runtimeProgressPaths:
-					input.runtimeProgressPaths ?? buildRuntimeProgressPaths(artifactPath),
+					parsedInput.runtimeProgressPaths ??
+					buildRuntimeProgressPaths(artifactPath),
 			});
 			const passArtifacts =
 				outcome.result?.passArtifacts ?? outcome.passArtifacts ?? [];
@@ -160,9 +165,9 @@ export async function storySelfReview(
 			if (artifactPath.length === 0) {
 				artifactPath = await resolveOperationArtifactPath({
 					command: "story-self-review",
-					specPackRoot: input.specPackRoot,
-					artifactPath: input.artifactPath,
-					group: input.storyId,
+					specPackRoot: parsedInput.specPackRoot,
+					artifactPath: parsedInput.artifactPath,
+					group: parsedInput.storyId,
 					fileName: "self-review-batch",
 				});
 			}

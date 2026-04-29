@@ -104,7 +104,6 @@ export default defineCommand({
 				specPackRoot: args["spec-pack-root"],
 				verifierReportPaths,
 				configPath: args.config,
-				env: process.env,
 				artifactPath: artifactOptions.artifactPath,
 				streamOutputPaths: artifactOptions.streamOutputPaths,
 				runtimeProgressPaths: artifactOptions.runtimeProgressPaths,

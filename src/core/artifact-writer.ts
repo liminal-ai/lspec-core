@@ -1,7 +1,11 @@
 import { basename, dirname, join, resolve } from "node:path";
 
-import { mkdir, readdirDirents } from "./runtime-deps";
-import { writeTextFile } from "./fs-utils";
+import { writeAtomic } from "../infra/fs-atomic.js";
+import { IndexReservationError } from "../sdk/errors/classes.js";
+import { mkdir, readdirDirents, rm, stat, writeFile } from "./runtime-deps";
+
+const RESERVATION_RETRY_CAP = 10;
+const STALE_RESERVATION_TIMEOUT_MS = 5 * 60 * 1_000;
 
 async function nextArtifactPathForGroup(
 	specPackRoot: string,
@@ -22,11 +26,22 @@ async function nextArtifactPathsForGroup(
 	const artifactDir = join(resolve(specPackRoot), "artifacts", group);
 	await mkdir(artifactDir, { recursive: true });
 
-	const existingMaxIndex = await findMaxArtifactIndex(artifactDir);
-	return fileNames.map((fileName, index) => {
-		const nextIndex = String(existingMaxIndex + index + 1).padStart(3, "0");
-		return join(artifactDir, `${nextIndex}-${fileName}.json`);
-	});
+	await cleanupStaleReservations(artifactDir);
+
+	let nextIndex = await findMaxArtifactIndex(artifactDir);
+	const reservedPaths: string[] = [];
+
+	for (const fileName of fileNames) {
+		const reservedPath = await reserveArtifactPath(
+			artifactDir,
+			fileName,
+			nextIndex + 1,
+		);
+		reservedPaths.push(reservedPath);
+		nextIndex = extractArtifactIndex(reservedPath);
+	}
+
+	return reservedPaths;
 }
 
 async function findMaxArtifactIndex(artifactDir: string): Promise<number> {
@@ -62,6 +77,74 @@ async function findMaxArtifactIndex(artifactDir: string): Promise<number> {
 	return maxIndex;
 }
 
+async function cleanupStaleReservations(artifactDir: string): Promise<void> {
+	const threshold = Date.now() - STALE_RESERVATION_TIMEOUT_MS;
+
+	try {
+		const entries = await readdirDirents(artifactDir);
+		await Promise.all(
+			entries.map(async (entry) => {
+				if (entry.isDirectory() || !/^\d{3}-.+\.json$/.test(entry.name)) {
+					return;
+				}
+
+				const targetPath = join(artifactDir, entry.name);
+				const details = await stat(targetPath);
+				if (details.size > 0 || details.mtimeMs >= threshold) {
+					return;
+				}
+
+				await rm(targetPath, {
+					force: true,
+				});
+			}),
+		);
+	} catch {
+		// Treat missing directories as empty.
+	}
+}
+
+async function reserveArtifactPath(
+	artifactDir: string,
+	fileName: string,
+	startIndex: number,
+): Promise<string> {
+	let nextIndex = startIndex;
+
+	for (let attempt = 0; attempt < RESERVATION_RETRY_CAP; attempt += 1) {
+		const candidate = join(
+			artifactDir,
+			`${String(nextIndex).padStart(3, "0")}-${fileName}.json`,
+		);
+
+		try {
+			await writeFile(candidate, "", {
+				flag: "wx",
+			});
+			return candidate;
+		} catch (error) {
+			if (!isAlreadyExistsError(error)) {
+				throw error;
+			}
+			nextIndex += 1;
+		}
+	}
+
+	throw new IndexReservationError(
+		`Failed to reserve an artifact index for ${fileName}.`,
+		`artifactDir=${artifactDir}`,
+	);
+}
+
+function extractArtifactIndex(path: string): number {
+	const match = basename(path).match(/^(\d{3})-/);
+	return Number.parseInt(match?.[1] ?? "0", 10);
+}
+
+function isAlreadyExistsError(error: unknown): boolean {
+	return error instanceof Error && "code" in error && error.code === "EEXIST";
+}
+
 export async function nextArtifactPath(
 	specPackRoot: string,
 	command: string,
@@ -89,7 +172,7 @@ export async function writeJsonArtifact(
 	path: string,
 	payload: unknown,
 ): Promise<void> {
-	await writeTextFile(path, `${JSON.stringify(payload)}\n`);
+	await writeAtomic(path, `${JSON.stringify(payload)}\n`);
 }
 
 export function buildStreamOutputPaths(

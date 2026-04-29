@@ -13,7 +13,7 @@ describe("command error classification", () => {
 		});
 	});
 
-	test("does not misclassify unrelated errors that merely mention config", async () => {
+	test("maps unrelated failures to INTERNAL_ERROR without string matching", async () => {
 		const { classifyCommandError } = await import("../src/core/command-errors");
 
 		expect(
@@ -21,7 +21,7 @@ describe("command error classification", () => {
 				new Error("provider config drift in downstream output"),
 			),
 		).toEqual({
-			code: "UNEXPECTED_ERROR",
+			code: "INTERNAL_ERROR",
 			outcome: "error",
 		});
 	});

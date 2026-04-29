@@ -749,7 +749,7 @@ test("rejects a resume attempt when no follow-up content is provided", async () 
 	expect(envelope.status).toBe("error");
 	expect(envelope.errors).toContainEqual(
 		expect.objectContaining({
-			code: "INVALID_INVOCATION",
+			code: "INVALID_INPUT",
 		}),
 	);
 });

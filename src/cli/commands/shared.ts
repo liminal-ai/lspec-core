@@ -95,7 +95,7 @@ export function createInvalidInvocationEnvelope(input: {
 		outcome: "error",
 		errors: [
 			{
-				code: "INVALID_INVOCATION",
+				code: "INVALID_INPUT",
 				message: input.message,
 			},
 		],

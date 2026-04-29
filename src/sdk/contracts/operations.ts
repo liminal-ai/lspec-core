@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 import type {
 	ChildProcess,
 	ExecFileOptionsWithStringEncoding,
@@ -24,6 +26,7 @@ import {
 	implementorResultSchema,
 	inspectResultSchema,
 	preflightResultSchema,
+	quickFixResultSchema,
 	storySelfReviewResultSchema,
 	storyVerifierResultSchema,
 	type EpicCleanupResult as CoreEpicCleanupResult,
@@ -32,10 +35,11 @@ import {
 	type ImplementorResult as CoreStoryImplementPayload,
 	type InspectResult as CoreInspectPayload,
 	type PreflightResult as CorePreflightPayload,
+	type ContinuationHandle as CoreContinuationHandle,
+	type QuickFixResult as CoreQuickFixPayload,
 	type StorySelfReviewResult as CoreStorySelfReviewPayload,
 	type StoryVerifierResult as CoreStoryVerifyPayload,
 } from "../../core/result-contracts.js";
-import type { QuickFixWorkflowResult } from "../../core/quick-fix.js";
 import type { CliResultEnvelope } from "./envelope.js";
 import type { ContinuationHandle } from "./continuation-handle.js";
 
@@ -46,6 +50,7 @@ export {
 	implementorResultSchema,
 	inspectResultSchema,
 	preflightResultSchema,
+	quickFixResultSchema,
 	storySelfReviewResultSchema,
 	storyVerifierResultSchema,
 };
@@ -145,7 +150,94 @@ export interface StoryVerifyInput extends ProviderOperationInputBase {
 	orchestratorContext?: string;
 }
 
-export type QuickFixPayload = NonNullable<QuickFixWorkflowResult["result"]>;
+const continuationHandleInputSchema = z
+	.object({
+		provider: z.enum(["claude-code", "codex", "copilot"]),
+		sessionId: z.string().min(1),
+		storyId: z.string().min(1),
+	})
+	.strict() satisfies z.ZodType<CoreContinuationHandle>;
+
+const providerStreamOutputPathsSchema = z
+	.object({
+		stdoutPath: z.string().min(1).optional(),
+		stderrPath: z.string().min(1).optional(),
+	})
+	.strict();
+
+const runtimeProgressPathsSchema = z
+	.object({
+		statusPath: z.string().min(1),
+		progressPath: z.string().min(1),
+	})
+	.strict();
+
+const envOverridesSchema = z.custom<Record<string, string | undefined>>(
+	(value) =>
+		typeof value === "object" && value !== null && !Array.isArray(value),
+);
+
+const operationInputBaseSchema = z
+	.object({
+		specPackRoot: z.string().min(1),
+		configPath: z.string().min(1).optional(),
+		env: envOverridesSchema.optional(),
+		fs: z.any().optional(),
+		spawn: z.any().optional(),
+		execFile: z.any().optional(),
+		artifactPath: z.string().min(1).optional(),
+	})
+	.strict();
+
+const providerOperationInputBaseSchema = operationInputBaseSchema.extend({
+	streamOutputPaths: providerStreamOutputPathsSchema.optional(),
+	runtimeProgressPaths: runtimeProgressPathsSchema.optional(),
+});
+
+export const inspectInputSchema = operationInputBaseSchema;
+export const preflightInputSchema = operationInputBaseSchema.extend({
+	storyGate: z.string().min(1).optional(),
+	epicGate: z.string().min(1).optional(),
+});
+export const epicSynthesizeInputSchema =
+	providerOperationInputBaseSchema.extend({
+		verifierReportPaths: z.array(z.string().min(1)),
+	});
+export const epicVerifyInputSchema = providerOperationInputBaseSchema;
+export const epicCleanupInputSchema = providerOperationInputBaseSchema.extend({
+	cleanupBatchPath: z.string().min(1),
+});
+export const quickFixInputSchema = providerOperationInputBaseSchema.extend({
+	request: z.string().min(1),
+	workingDirectory: z.string().min(1).optional(),
+});
+export const storyImplementInputSchema =
+	providerOperationInputBaseSchema.extend({
+		storyId: z.string().min(1),
+	});
+export const storyContinueInputSchema = providerOperationInputBaseSchema.extend(
+	{
+		storyId: z.string().min(1),
+		continuationHandle: continuationHandleInputSchema,
+		followupRequest: z.string().min(1),
+	},
+);
+export const storySelfReviewInputSchema =
+	providerOperationInputBaseSchema.extend({
+		storyId: z.string().min(1),
+		continuationHandle: continuationHandleInputSchema,
+		passes: z.union([z.number(), z.nan()]),
+		passArtifactPaths: z.array(z.string().min(1)),
+	});
+export const storyVerifyInputSchema = providerOperationInputBaseSchema.extend({
+	storyId: z.string().min(1),
+	provider: continuationHandleInputSchema.shape.provider.optional(),
+	sessionId: z.string().min(1).optional(),
+	response: z.string().min(1).optional(),
+	orchestratorContext: z.string().min(1).optional(),
+});
+
+export type QuickFixPayload = CoreQuickFixPayload;
 
 export type InspectPayload = CoreInspectPayload;
 export type PreflightPayload = CorePreflightPayload;

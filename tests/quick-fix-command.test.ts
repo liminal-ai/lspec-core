@@ -139,6 +139,48 @@ test("TC-5.3a runs quick-fix from request-text without requiring story-aware inp
 	);
 });
 
+test("TC-4.6a CLI provider invocation does not leak disallowed parent env keys", async () => {
+	const specPackRoot = await createQuickFixSpecPack("quick-fix-env-allowlist");
+	await writeRunConfig(specPackRoot, createRunConfig());
+	const providerBinDir = await createTempDir("quick-fix-env-provider");
+	const { env, logPath } = await writeFakeProviderExecutable({
+		binDir: providerBinDir,
+		provider: "codex",
+		responses: [
+			{
+				stdout: "Applied the bounded correction.",
+			},
+		],
+	});
+
+	const run = await runSourceCli(
+		[
+			"quick-fix",
+			"--spec-pack-root",
+			specPackRoot,
+			"--request-text",
+			"Apply the bounded correction only.",
+			"--json",
+		],
+		{
+			env: {
+				PATH: `${providerBinDir}:${process.env.PATH ?? ""}`,
+				AWS_SECRET_ACCESS_KEY: "should-not-reach-provider",
+				NODE_OPTIONS: "--conditions=should-not-reach-provider",
+				...env,
+			},
+		},
+	);
+
+	expect(run.exitCode).toBe(0);
+	const invocations = await readJsonLines<{
+		env: Record<string, string | undefined>;
+	}>(logPath);
+	expect(invocations[0]?.env.PATH).toContain(providerBinDir);
+	expect(invocations[0]?.env.AWS_SECRET_ACCESS_KEY).toBeUndefined();
+	expect(invocations[0]?.env.NODE_OPTIONS).toBeUndefined();
+});
+
 test("TC-5.3b accepts --request-file, uses the selected working directory, and keeps provider output free-form inside the envelope", async () => {
 	const specPackRoot = await createQuickFixSpecPack("quick-fix-request-file");
 	await writeRunConfig(specPackRoot, createRunConfig());
@@ -314,7 +356,7 @@ test("rejects missing or duplicate quick-fix request sources", async () => {
 		expect(envelope.errors).toEqual(
 			expect.arrayContaining([
 				expect.objectContaining({
-					code: "INVALID_INVOCATION",
+					code: "INVALID_INPUT",
 				}),
 			]),
 		);
@@ -339,7 +381,7 @@ test("rejects empty quick-fix request text and empty quick-fix request files", a
 	expect(parseJsonOutput<any>(emptyTextRun.stdout).errors).toEqual(
 		expect.arrayContaining([
 			expect.objectContaining({
-				code: "INVALID_INVOCATION",
+				code: "INVALID_INPUT",
 				message: "--request-text cannot be empty.",
 			}),
 		]),
@@ -357,7 +399,7 @@ test("rejects empty quick-fix request text and empty quick-fix request files", a
 	expect(parseJsonOutput<any>(emptyFileRun.stdout).errors).toEqual(
 		expect.arrayContaining([
 			expect.objectContaining({
-				code: "INVALID_INVOCATION",
+				code: "INVALID_INPUT",
 				message: "--request-file cannot point to an empty task description.",
 			}),
 		]),
@@ -412,7 +454,7 @@ test("rejects oversized quick-fix request text and request files before provider
 	expect(parseJsonOutput<any>(oversizedTextRun.stdout).errors).toEqual(
 		expect.arrayContaining([
 			expect.objectContaining({
-				code: "INVALID_INVOCATION",
+				code: "INVALID_INPUT",
 				message: "--request-text exceeds the 128 KiB limit (131072 bytes).",
 			}),
 		]),
@@ -430,7 +472,7 @@ test("rejects oversized quick-fix request text and request files before provider
 	expect(parseJsonOutput<any>(oversizedFileRun.stdout).errors).toEqual(
 		expect.arrayContaining([
 			expect.objectContaining({
-				code: "INVALID_INVOCATION",
+				code: "INVALID_INPUT",
 				message: "--request-file exceeds the 128 KiB limit (131072 bytes).",
 			}),
 		]),
@@ -511,7 +553,7 @@ test("blocks quick-fix when the explicit working directory escapes the repo root
 	expect(envelope.errors).toEqual(
 		expect.arrayContaining([
 			expect.objectContaining({
-				code: "INVALID_WORKING_DIRECTORY",
+				code: "INVALID_INPUT",
 				message:
 					"Quick-fix working directory must stay inside the resolved repo root.",
 			}),
@@ -595,7 +637,7 @@ test("rejects legacy story-aware flags such as --story-id, --story-title, and --
 		expect(envelope.errors).toEqual(
 			expect.arrayContaining([
 				expect.objectContaining({
-					code: "INVALID_INVOCATION",
+					code: "INVALID_INPUT",
 					message:
 						"quick-fix does not accept story-aware flags such as --story-id, --story-title, --story-path, or --scope-file.",
 				}),

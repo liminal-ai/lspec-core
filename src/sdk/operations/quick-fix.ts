@@ -1,41 +1,50 @@
 import { runQuickFix } from "../../core/quick-fix.js";
-import type { QuickFixInput, QuickFixResult } from "../contracts/operations.js";
+import { quickFixResultSchema } from "../../core/result-contracts.js";
+import {
+	quickFixInputSchema,
+	type QuickFixInput,
+	type QuickFixResult,
+} from "../contracts/operations.js";
 import {
 	buildUnexpectedEnvelope,
-	finalizeUnknownEnvelope,
+	finalizeEnvelope,
+	parseSdkInput,
 	resolveOperationArtifactPath,
 	withSdkExecutionContext,
 } from "./shared.js";
 
 export async function quickFix(input: QuickFixInput): Promise<QuickFixResult> {
-	return await withSdkExecutionContext(input, async () => {
+	const parsedInput = parseSdkInput(quickFixInputSchema, input);
+
+	return await withSdkExecutionContext(parsedInput, async () => {
 		const startedAt = new Date().toISOString();
 		const artifactPath = await resolveOperationArtifactPath({
 			command: "quick-fix",
-			specPackRoot: input.specPackRoot,
-			artifactPath: input.artifactPath,
+			specPackRoot: parsedInput.specPackRoot,
+			artifactPath: parsedInput.artifactPath,
 		});
 
 		try {
 			const outcome = await runQuickFix({
-				specPackRoot: input.specPackRoot,
-				request: input.request,
-				workingDirectory: input.workingDirectory,
-				configPath: input.configPath,
-				env: input.env,
+				specPackRoot: parsedInput.specPackRoot,
+				request: parsedInput.request,
+				workingDirectory: parsedInput.workingDirectory,
+				configPath: parsedInput.configPath,
+				env: parsedInput.env,
 				artifactPath,
-				streamOutputPaths: input.streamOutputPaths,
-				runtimeProgressPaths: input.runtimeProgressPaths,
+				streamOutputPaths: parsedInput.streamOutputPaths,
+				runtimeProgressPaths: parsedInput.runtimeProgressPaths,
 			});
-			return (await finalizeUnknownEnvelope({
+			return await finalizeEnvelope({
 				command: "quick-fix",
 				artifactPath,
 				startedAt,
 				outcome: outcome.outcome,
+				resultSchema: quickFixResultSchema,
 				result: outcome.result,
 				errors: outcome.errors,
 				warnings: outcome.warnings,
-			})) as QuickFixResult;
+			});
 		} catch (error) {
 			const envelope = buildUnexpectedEnvelope({
 				command: "quick-fix",
@@ -43,13 +52,14 @@ export async function quickFix(input: QuickFixInput): Promise<QuickFixResult> {
 				startedAt,
 				error,
 			});
-			return (await finalizeUnknownEnvelope({
+			return await finalizeEnvelope({
 				command: envelope.command,
 				artifactPath,
 				startedAt,
 				outcome: envelope.outcome,
+				resultSchema: quickFixResultSchema,
 				errors: envelope.errors,
-			})) as QuickFixResult;
+			});
 		}
 	});
 }

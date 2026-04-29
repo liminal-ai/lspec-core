@@ -112,7 +112,6 @@ export default defineCommand({
 				},
 				followupRequest,
 				configPath: args.config,
-				env: process.env,
 				artifactPath: artifactOptions.artifactPath,
 				streamOutputPaths: artifactOptions.streamOutputPaths,
 				runtimeProgressPaths: artifactOptions.runtimeProgressPaths,

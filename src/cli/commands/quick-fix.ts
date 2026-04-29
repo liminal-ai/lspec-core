@@ -18,6 +18,13 @@ import {
 
 const REQUEST_CONTENT_LIMIT_BYTES = 128 * 1024;
 
+class InvalidQuickFixInvocationError extends Error {
+	constructor(message: string) {
+		super(message);
+		this.name = "InvalidQuickFixInvocationError";
+	}
+}
+
 async function resolveRequest(args: {
 	"request-file"?: string;
 	"request-text"?: string;
@@ -28,16 +35,20 @@ async function resolveRequest(args: {
 	].filter(Boolean);
 
 	if (requestSources.length !== 1) {
-		throw new Error("Provide exactly one of --request-file or --request-text.");
+		throw new InvalidQuickFixInvocationError(
+			"Provide exactly one of --request-file or --request-text.",
+		);
 	}
 
 	if (args["request-text"]) {
 		const request = args["request-text"].trim();
 		if (request.length === 0) {
-			throw new Error("--request-text cannot be empty.");
+			throw new InvalidQuickFixInvocationError(
+				"--request-text cannot be empty.",
+			);
 		}
 		if (Buffer.byteLength(request, "utf8") > REQUEST_CONTENT_LIMIT_BYTES) {
-			throw new Error(
+			throw new InvalidQuickFixInvocationError(
 				`--request-text exceeds the 128 KiB limit (${REQUEST_CONTENT_LIMIT_BYTES} bytes).`,
 			);
 		}
@@ -46,17 +57,19 @@ async function resolveRequest(args: {
 
 	const requestFile = args["request-file"];
 	if (typeof requestFile !== "string") {
-		throw new Error("Provide exactly one of --request-file or --request-text.");
+		throw new InvalidQuickFixInvocationError(
+			"Provide exactly one of --request-file or --request-text.",
+		);
 	}
 
 	const request = (await readFile(resolve(requestFile), "utf8")).trim();
 	if (request.length === 0) {
-		throw new Error(
+		throw new InvalidQuickFixInvocationError(
 			"--request-file cannot point to an empty task description.",
 		);
 	}
 	if (Buffer.byteLength(request, "utf8") > REQUEST_CONTENT_LIMIT_BYTES) {
-		throw new Error(
+		throw new InvalidQuickFixInvocationError(
 			`--request-file exceeds the 128 KiB limit (${REQUEST_CONTENT_LIMIT_BYTES} bytes).`,
 		);
 	}
@@ -125,29 +138,18 @@ export default defineCommand({
 			command: "quick-fix",
 		});
 
-		if (hasLegacyStoryAwareFlags(rawArgs)) {
-			await emitPersistedCommandEnvelope({
-				artifactPath: artifactOptions.artifactPath,
-				envelope: createInvalidInvocationEnvelope({
-					command: "quick-fix",
-					artifactPath: artifactOptions.artifactPath,
-					startedAt,
-					message:
-						"quick-fix does not accept story-aware flags such as --story-id, --story-title, --story-path, or --scope-file.",
-				}),
-				json,
-			});
-			return;
-		}
-
 		try {
+			if (hasLegacyStoryAwareFlags(rawArgs)) {
+				throw new InvalidQuickFixInvocationError(
+					"quick-fix does not accept story-aware flags such as --story-id, --story-title, --story-path, or --scope-file.",
+				);
+			}
 			const request = await resolveRequest(args);
 			const envelope = await quickFix({
 				specPackRoot: args["spec-pack-root"],
 				request,
 				workingDirectory: args["working-directory"],
 				configPath: args.config,
-				env: process.env,
 				artifactPath: artifactOptions.artifactPath,
 				streamOutputPaths: artifactOptions.streamOutputPaths,
 				runtimeProgressPaths: artifactOptions.runtimeProgressPaths,
@@ -158,27 +160,22 @@ export default defineCommand({
 				renderHumanSummary,
 			});
 		} catch (error) {
-			const message = error instanceof Error ? error.message : String(error);
-			const invalidInvocation =
-				message.includes("--request-") ||
-				message.includes("Provide exactly one") ||
-				message.includes("does not accept story-aware flags");
-
 			await emitPersistedCommandEnvelope({
 				artifactPath: artifactOptions.artifactPath,
-				envelope: invalidInvocation
-					? createInvalidInvocationEnvelope({
-							command: "quick-fix",
-							artifactPath: artifactOptions.artifactPath,
-							startedAt,
-							message,
-						})
-					: createCommandErrorEnvelope({
-							command: "quick-fix",
-							artifactPath: artifactOptions.artifactPath,
-							startedAt,
-							error,
-						}),
+				envelope:
+					error instanceof InvalidQuickFixInvocationError
+						? createInvalidInvocationEnvelope({
+								command: "quick-fix",
+								artifactPath: artifactOptions.artifactPath,
+								startedAt,
+								message: error.message,
+							})
+						: createCommandErrorEnvelope({
+								command: "quick-fix",
+								artifactPath: artifactOptions.artifactPath,
+								startedAt,
+								error,
+							}),
 				json,
 			});
 		}

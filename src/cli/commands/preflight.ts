@@ -77,7 +77,6 @@ export default defineCommand({
 				configPath: args.config,
 				storyGate: args["story-gate"],
 				epicGate: args["epic-gate"],
-				env: process.env,
 				artifactPath,
 			});
 			emitCommandEnvelope({

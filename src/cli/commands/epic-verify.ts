@@ -54,7 +54,6 @@ export default defineCommand({
 			const envelope = await epicVerify({
 				specPackRoot: args["spec-pack-root"],
 				configPath: args.config,
-				env: process.env,
 				artifactPath: artifactOptions.artifactPath,
 				streamOutputPaths: artifactOptions.streamOutputPaths,
 				runtimeProgressPaths: artifactOptions.runtimeProgressPaths,

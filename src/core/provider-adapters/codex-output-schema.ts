@@ -94,9 +94,15 @@ export function buildStrictCodexOutputSchema(
 	return jsonSchema;
 }
 
+export interface CodexStructuredOutputError {
+	message: string;
+	code?: string;
+	param?: string;
+}
+
 export function extractCodexStructuredOutputError(
 	stdout: string,
-): string | undefined {
+): CodexStructuredOutputError | undefined {
 	const lines = stdout
 		.split("\n")
 		.map((line) => line.trim())
@@ -116,16 +122,26 @@ export function extractCodexStructuredOutputError(
 				continue;
 			}
 
-			const parts = [parsed.error.message];
-			if (parsed.error.code) {
-				parts.push(`code=${parsed.error.code}`);
-			}
-			if (parsed.error.param) {
-				parts.push(`param=${parsed.error.param}`);
-			}
-			return parts.join(" | ");
+			return {
+				message: parsed.error.message,
+				...(parsed.error.code ? { code: parsed.error.code } : {}),
+				...(parsed.error.param ? { param: parsed.error.param } : {}),
+			};
 		} catch {}
 	}
 
 	return undefined;
+}
+
+export function formatCodexStructuredOutputError(
+	error: CodexStructuredOutputError,
+): string {
+	const parts = [error.message];
+	if (error.code) {
+		parts.push(`code=${error.code}`);
+	}
+	if (error.param) {
+		parts.push(`param=${error.param}`);
+	}
+	return parts.join(" | ");
 }

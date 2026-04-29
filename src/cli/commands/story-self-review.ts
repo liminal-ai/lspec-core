@@ -94,7 +94,6 @@ export default defineCommand({
 				passes: parsePasses(args.passes),
 				passArtifactPaths: [],
 				configPath: args.config,
-				env: process.env,
 			});
 			emitCommandEnvelope({
 				envelope,

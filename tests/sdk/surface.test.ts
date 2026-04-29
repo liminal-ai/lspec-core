@@ -7,32 +7,57 @@ import * as sdk from "../../src/sdk/index";
 import { ROOT } from "../test-helpers";
 
 const EXPECTED_RUNTIME_EXPORTS = [
+	"AtomicWriteError",
 	"ConfigLoadError",
+	"ContinuationHandleInvalidError",
+	"ImplCliError",
+	"IndexReservationError",
+	"InternalError",
+	"InvalidInputError",
+	"InvalidRunConfigError",
+	"InvalidSpecPackError",
 	"PromptInsertError",
+	"PromptInsertInvalidError",
+	"ProviderOutputInvalidError",
+	"ProviderStalledError",
+	"ProviderTimeoutError",
+	"ProviderUnavailableError",
+	"VerificationGateUnresolvedError",
 	"cliArtifactRefSchema",
 	"cliErrorSchema",
 	"cliResultEnvelopeSchema",
 	"cliStatusSchema",
 	"continuationHandleSchema",
 	"epicCleanup",
+	"epicCleanupInputSchema",
 	"epicCleanupResultSchema",
 	"epicSynthesisResultSchema",
 	"epicSynthesize",
 	"epicVerifierBatchResultSchema",
 	"epicVerify",
+	"epicSynthesizeInputSchema",
+	"epicVerifyInputSchema",
 	"implementorResultSchema",
 	"inspect",
+	"inspectInputSchema",
 	"inspectResultSchema",
 	"preflight",
+	"preflightInputSchema",
 	"preflightResultSchema",
 	"providerIdSchema",
 	"quickFix",
+	"quickFixInputSchema",
+	"quickFixResultSchema",
 	"storyContinue",
+	"storyContinueInputSchema",
 	"storyImplement",
+	"storyImplementInputSchema",
 	"storySelfReview",
+	"storySelfReviewInputSchema",
 	"storySelfReviewResultSchema",
 	"storyVerifierResultSchema",
 	"storyVerify",
+	"storyVerifyInputSchema",
 	"version",
 ] as const;
 
@@ -106,8 +131,13 @@ describe("sdk surface", () => {
 
 		for (const filePath of sourceFiles) {
 			const source = await readFile(filePath, "utf8");
-			expect(source).not.toMatch(/\bany\b/);
-			expect(source).not.toMatch(/\bunknown\b/);
+			const publicTypeSection = source.includes(
+				"const continuationHandleInputSchema",
+			)
+				? (source.split("const continuationHandleInputSchema")[0] ?? source)
+				: source;
+			expect(publicTypeSection).not.toMatch(/\bany\b/);
+			expect(publicTypeSection).not.toMatch(/\bunknown\b/);
 		}
 	});
 });

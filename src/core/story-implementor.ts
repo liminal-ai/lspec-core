@@ -23,56 +23,39 @@ import type {
 	ImplementorResult,
 	StorySelfReviewResult,
 } from "./result-contracts";
-import { providerIdSchema } from "./result-contracts";
+import { implementorResultSchema, providerIdSchema } from "./result-contracts";
 import {
 	RuntimeProgressTracker,
 	type RuntimeProgressPaths,
 } from "./runtime-progress";
 import { inspectSpecPack } from "./spec-pack";
 
-export const storyImplementorProviderPayloadSchema = z
+const implementorResultBaseSchema = z
 	.object({
-		outcome: z.enum([
-			"ready-for-verification",
-			"needs-followup-fix",
-			"needs-human-ruling",
-			"blocked",
-		]),
-		planSummary: z.string().min(1),
-		changedFiles: z.array(
-			z
-				.object({
-					path: z.string().min(1),
-					reason: z.string().min(1),
-				})
-				.strict(),
-		),
-		tests: z
-			.object({
-				added: z.array(z.string().min(1)),
-				modified: z.array(z.string().min(1)),
-				removed: z.array(z.string().min(1)),
-				totalAfterStory: z.number().int().nullable(),
-				deltaFromPriorBaseline: z.number().int().nullable(),
-			})
-			.strict(),
-		gatesRun: z.array(
-			z
-				.object({
-					command: z.string().min(1),
-					result: z.enum(["pass", "fail", "not-run"]),
-				})
-				.strict(),
-		),
-		selfReview: z
-			.object({
-				findingsFixed: z.array(z.string()),
-				findingsSurfaced: z.array(z.string()),
-			})
-			.strict(),
-		openQuestions: z.array(z.string()),
-		specDeviations: z.array(z.string()),
-		recommendedNextStep: z.string().min(1),
+		...implementorResultSchema.shape,
+	})
+	.strict();
+
+export const storyImplementorProviderPayloadSchema = implementorResultBaseSchema
+	.omit({
+		resultId: true,
+		provider: true,
+		model: true,
+		role: true,
+		sessionId: true,
+		continuation: true,
+		story: true,
+	})
+	.extend({
+		tests: implementorResultBaseSchema.shape.tests.extend({
+			totalAfterStory:
+				implementorResultBaseSchema.shape.tests.shape.totalAfterStory.nullable(),
+			deltaFromPriorBaseline:
+				implementorResultBaseSchema.shape.tests.shape.deltaFromPriorBaseline.nullable(),
+		}),
+		selfReview: implementorResultBaseSchema.shape.selfReview.omit({
+			passesRun: true,
+		}),
 	})
 	.strict();
 

@@ -2,16 +2,14 @@ import { resolve } from "node:path";
 import { z } from "zod";
 
 import { readTextFile, writeTextFile } from "./fs-utils";
+import { InvalidRunConfigError } from "../sdk/errors/classes.js";
 
 export const RUN_CONFIG_FILE_NAME = "impl-run.config.json";
 
-export class ConfigLoadError extends Error {
-	override cause?: unknown;
-
+export class ConfigLoadError extends InvalidRunConfigError {
 	constructor(message: string, options?: { cause?: unknown }) {
-		super(message);
+		super(message, undefined, options);
 		this.name = "ConfigLoadError";
-		this.cause = options?.cause;
 	}
 }
 

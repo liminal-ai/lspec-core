@@ -14,16 +14,19 @@ import {
 	implementorResultSchema,
 	inspectResultSchema,
 	preflightResultSchema,
+	quickFixResultSchema,
 	storySelfReviewResultSchema,
 	storyVerifierResultSchema,
 } from "../../core/result-contracts.js";
 import { withRuntimeDeps } from "../../core/runtime-deps.js";
+import type { ImplCliError } from "../errors/base.js";
+import { InvalidInputError } from "../errors/classes.js";
 import type {
 	ExecFileImplementation,
 	FileSystemAdapter,
 	SpawnImplementation,
 } from "../contracts/operations.js";
-import type { z } from "zod";
+import { ZodError, z } from "zod";
 
 export {
 	epicCleanupResultSchema,
@@ -32,6 +35,7 @@ export {
 	implementorResultSchema,
 	inspectResultSchema,
 	preflightResultSchema,
+	quickFixResultSchema,
 	storySelfReviewResultSchema,
 	storyVerifierResultSchema,
 };
@@ -56,6 +60,33 @@ export async function withSdkExecutionContext<T>(
 	);
 }
 
+export function parseSdkInput<TSchema extends z.ZodTypeAny>(
+	schema: TSchema,
+	input: unknown,
+): z.infer<TSchema> {
+	try {
+		return schema.parse(input);
+	} catch (error) {
+		if (!(error instanceof ZodError)) {
+			throw error;
+		}
+
+		const issues = error.issues
+			.map((issue) => {
+				const path = issue.path.length > 0 ? issue.path.join(".") : "<root>";
+				return `${path}: ${issue.message}`;
+			})
+			.join("; ");
+		throw new InvalidInputError(
+			`SDK input validation failed: ${issues}`,
+			undefined,
+			{
+				cause: error,
+			},
+		);
+	}
+}
+
 export function buildUnexpectedEnvelope(input: {
 	command: string;
 	outcome?: "block" | "blocked";
@@ -64,11 +95,12 @@ export function buildUnexpectedEnvelope(input: {
 	startedAt: string;
 }) {
 	const classification = classifyCommandError(input.error, input.outcome);
+	const typedError = isImplCliError(input.error) ? input.error : undefined;
 	return createResultEnvelope({
 		command: input.command,
 		outcome: classification.outcome,
 		errors: [
-			{
+			typedError?.toCliError() ?? {
 				code: classification.code,
 				message:
 					input.error instanceof Error
@@ -85,6 +117,16 @@ export function buildUnexpectedEnvelope(input: {
 		startedAt: input.startedAt,
 		finishedAt: new Date().toISOString(),
 	});
+}
+
+function isImplCliError(error: unknown): error is ImplCliError {
+	return (
+		error instanceof Error &&
+		"code" in error &&
+		typeof error.code === "string" &&
+		"toCliError" in error &&
+		typeof error.toCliError === "function"
+	);
 }
 
 export async function finalizeEnvelope<TSchema extends z.ZodTypeAny>(input: {

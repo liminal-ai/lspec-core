@@ -245,6 +245,7 @@ describe("runtime progress artifacts", () => {
 	test("rejects invalid runtime status values through the contract schema", () => {
 		expect(() =>
 			runtimeStatusSchema.parse({
+				version: 1,
 				command: "story-implement",
 				status: "unknown",
 				phase: "initial-implement",

@@ -8,20 +8,14 @@ import {
 	type ProviderName,
 } from "./provider-adapters";
 import type { ProviderStreamOutputPaths } from "./provider-adapters";
-import type { CliError } from "./result-contracts";
+import type {
+	CliError,
+	QuickFixResult as QuickFixResultPayload,
+} from "./result-contracts";
 import {
 	RuntimeProgressTracker,
 	type RuntimeProgressPaths,
 } from "./runtime-progress";
-
-interface QuickFixResultPayload {
-	provider: ProviderName;
-	model: string;
-	rawProviderOutputPreview: string;
-	rawProviderOutputBytes: number;
-	rawProviderOutputTruncated: boolean;
-	rawProviderOutputLogPath: string;
-}
 
 export interface QuickFixWorkflowResult {
 	outcome: "ready-for-verification" | "needs-more-routing" | "blocked";
@@ -143,7 +137,7 @@ async function resolveWorkingDirectory(input: {
 			return {
 				errors: [
 					blockedError(
-						"INVALID_WORKING_DIRECTORY",
+						"INVALID_INPUT",
 						"Quick-fix working directory must stay inside the resolved repo root.",
 						`repoRoot=${repoRoot}; workingDirectory=${workingDirectory}`,
 					),
@@ -194,7 +188,7 @@ export async function runQuickFix(input: {
 			outcome: "blocked",
 			errors: [
 				blockedError(
-					"INVALID_WORKING_DIRECTORY",
+					"INVALID_INPUT",
 					"Quick-fix working directory could not be resolved.",
 				),
 			],

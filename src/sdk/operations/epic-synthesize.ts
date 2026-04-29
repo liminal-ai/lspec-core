@@ -1,12 +1,14 @@
 import { runEpicSynthesize } from "../../core/epic-synthesizer.js";
 import { epicSynthesisResultSchema } from "../../core/result-contracts.js";
-import type {
-	EpicSynthesizeInput,
-	EpicSynthesisResult,
+import {
+	epicSynthesizeInputSchema,
+	type EpicSynthesizeInput,
+	type EpicSynthesisResult,
 } from "../contracts/operations.js";
 import {
 	buildUnexpectedEnvelope,
 	finalizeEnvelope,
+	parseSdkInput,
 	resolveOperationArtifactPath,
 	withSdkExecutionContext,
 } from "./shared.js";
@@ -14,17 +16,19 @@ import {
 export async function epicSynthesize(
 	input: EpicSynthesizeInput,
 ): Promise<EpicSynthesisResult> {
-	return await withSdkExecutionContext(input, async () => {
+	const parsedInput = parseSdkInput(epicSynthesizeInputSchema, input);
+
+	return await withSdkExecutionContext(parsedInput, async () => {
 		const startedAt = new Date().toISOString();
 		const artifactPath = await resolveOperationArtifactPath({
 			command: "epic-synthesize",
-			specPackRoot: input.specPackRoot,
-			artifactPath: input.artifactPath,
+			specPackRoot: parsedInput.specPackRoot,
+			artifactPath: parsedInput.artifactPath,
 			group: "epic",
 			fileName: "epic-synthesis",
 		});
 
-		if (input.verifierReportPaths.length === 0) {
+		if (parsedInput.verifierReportPaths.length === 0) {
 			return await finalizeEnvelope({
 				command: "epic-synthesize",
 				artifactPath,
@@ -33,7 +37,7 @@ export async function epicSynthesize(
 				resultSchema: epicSynthesisResultSchema,
 				errors: [
 					{
-						code: "INVALID_INVOCATION",
+						code: "INVALID_INPUT",
 						message: "Provide at least one verifier report path.",
 					},
 				],
@@ -42,13 +46,13 @@ export async function epicSynthesize(
 
 		try {
 			const outcome = await runEpicSynthesize({
-				specPackRoot: input.specPackRoot,
-				verifierReportPaths: input.verifierReportPaths,
-				configPath: input.configPath,
-				env: input.env,
+				specPackRoot: parsedInput.specPackRoot,
+				verifierReportPaths: parsedInput.verifierReportPaths,
+				configPath: parsedInput.configPath,
+				env: parsedInput.env,
 				artifactPath,
-				streamOutputPaths: input.streamOutputPaths,
-				runtimeProgressPaths: input.runtimeProgressPaths,
+				streamOutputPaths: parsedInput.streamOutputPaths,
+				runtimeProgressPaths: parsedInput.runtimeProgressPaths,
 			});
 			return await finalizeEnvelope({
 				command: "epic-synthesize",

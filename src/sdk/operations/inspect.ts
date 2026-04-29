@@ -1,23 +1,29 @@
 import { inspectSpecPack } from "../../core/spec-pack.js";
 import { inspectResultSchema } from "../../core/result-contracts.js";
-import type { InspectInput, InspectResult } from "../contracts/operations.js";
+import {
+	inspectInputSchema,
+	type InspectInput,
+	type InspectResult,
+} from "../contracts/operations.js";
 import {
 	ensureReadyTeamImplLog,
 	finalizeEnvelope,
+	parseSdkInput,
 	resolveOperationArtifactPath,
 	withSdkExecutionContext,
 } from "./shared.js";
+
+const promptInsertBlockers = new Set([
+	"Unreadable prompt insert: custom-story-impl-prompt-insert.md",
+	"Unreadable prompt insert: custom-story-verifier-prompt-insert.md",
+]);
 
 function inspectErrors(result: Awaited<ReturnType<typeof inspectSpecPack>>) {
 	if (result.status !== "blocked") {
 		return [];
 	}
 
-	if (
-		result.blockers.some((blocker) =>
-			blocker.startsWith("Unreadable prompt insert:"),
-		)
-	) {
+	if (result.blockers.some((blocker) => promptInsertBlockers.has(blocker))) {
 		return [
 			{
 				code: "PROMPT_INSERT_INVALID",
@@ -35,9 +41,11 @@ function inspectErrors(result: Awaited<ReturnType<typeof inspectSpecPack>>) {
 }
 
 export async function inspect(input: InspectInput): Promise<InspectResult> {
-	return await withSdkExecutionContext(input, async () => {
+	const parsedInput = parseSdkInput(inspectInputSchema, input);
+
+	return await withSdkExecutionContext(parsedInput, async () => {
 		const startedAt = new Date().toISOString();
-		const inspection = await inspectSpecPack(input.specPackRoot);
+		const inspection = await inspectSpecPack(parsedInput.specPackRoot);
 		await ensureReadyTeamImplLog({
 			specPackRoot: inspection.specPackRoot,
 			stories: inspection.stories,
@@ -46,7 +54,7 @@ export async function inspect(input: InspectInput): Promise<InspectResult> {
 		const artifactPath = await resolveOperationArtifactPath({
 			command: "inspect",
 			specPackRoot: inspection.specPackRoot,
-			artifactPath: input.artifactPath,
+			artifactPath: parsedInput.artifactPath,
 		});
 
 		return await finalizeEnvelope({

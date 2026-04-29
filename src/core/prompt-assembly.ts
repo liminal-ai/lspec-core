@@ -7,10 +7,11 @@ import {
 	type SnippetId,
 } from "./prompt-assets";
 import { stat } from "./runtime-deps";
+import { PromptInsertInvalidError } from "../sdk/errors/classes.js";
 
 const MAX_PUBLIC_INSERT_BYTES = 64 * 1024;
 
-export class PromptInsertError extends Error {
+export class PromptInsertError extends PromptInsertInvalidError {
 	constructor(message: string) {
 		super(message);
 		this.name = "PromptInsertError";

@@ -2,6 +2,7 @@ import type { ImplRunConfig, SecondaryHarness } from "./config-schema";
 import { resolveGitRepoRoot } from "./git-repo";
 import type { HarnessAvailability, ProviderMatrix } from "./result-contracts";
 import { getExecFileImplementation } from "./runtime-deps";
+import { filterEnv } from "../infra/env-allowlist.js";
 
 const DEFAULT_PROVIDER_CHECK_TIMEOUT_MS = 1_000;
 
@@ -29,10 +30,7 @@ async function runCommand(params: {
 					params.args,
 					{
 						cwd: params.cwd,
-						env: {
-							...process.env,
-							...params.env,
-						},
+						env: filterEnv(process.env, params.env),
 						timeout: params.timeoutMs,
 						encoding: "utf8",
 					},
@@ -129,19 +127,29 @@ function failureNotes(
 	return [`Unable to execute ${executable} ${step}`];
 }
 
-function looksLikeMissingAuthCommand(stderr: string): boolean {
-	const lower = stderr.toLowerCase();
-	return lower.includes("unexpected auth invocation");
-}
+type AuthCheckOutcome =
+	| { kind: "missing-auth-command" }
+	| { kind: "explicit-auth-failure" }
+	| { kind: "unknown" };
 
-function looksLikeExplicitAuthFailure(stderr: string): boolean {
-	const lower = stderr.toLowerCase();
-	return (
-		lower.includes("missing") ||
-		lower.includes("not logged in") ||
-		lower.includes("unauth") ||
-		lower.includes("sign in")
-	);
+const missingAuthCommandPatterns = [/unexpected auth invocation/i] as const;
+const explicitAuthFailurePatterns = [
+	/\bmissing\b/i,
+	/not logged in/i,
+	/unauth/i,
+	/sign in/i,
+] as const;
+
+function parseAuthCheckOutcome(stderr: string): AuthCheckOutcome {
+	if (missingAuthCommandPatterns.some((pattern) => pattern.test(stderr))) {
+		return { kind: "missing-auth-command" };
+	}
+
+	if (explicitAuthFailurePatterns.some((pattern) => pattern.test(stderr))) {
+		return { kind: "explicit-auth-failure" };
+	}
+
+	return { kind: "unknown" };
 }
 
 async function checkHarnessAvailability(input: {
@@ -200,7 +208,9 @@ async function checkHarnessAvailability(input: {
 		timeoutMs: input.timeoutMs,
 	});
 	if (!auth.success) {
-		if (looksLikeMissingAuthCommand(auth.stderr)) {
+		const authOutcome = parseAuthCheckOutcome(auth.stderr);
+
+		if (authOutcome.kind === "missing-auth-command") {
 			return {
 				harness: input.harness,
 				available: true,
@@ -211,7 +221,7 @@ async function checkHarnessAvailability(input: {
 			};
 		}
 
-		if (!auth.timedOut && !looksLikeExplicitAuthFailure(auth.stderr)) {
+		if (!auth.timedOut && authOutcome.kind !== "explicit-auth-failure") {
 			return {
 				harness: input.harness,
 				available: true,
@@ -227,9 +237,8 @@ async function checkHarnessAvailability(input: {
 			available: false,
 			tier: "unavailable",
 			version: version.stdout,
-			authStatus: looksLikeExplicitAuthFailure(auth.stderr)
-				? "missing"
-				: "unknown",
+			authStatus:
+				authOutcome.kind === "explicit-auth-failure" ? "missing" : "unknown",
 			notes: failureNotes(auth, executable, "auth status"),
 		};
 	}

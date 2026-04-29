@@ -545,6 +545,17 @@ export const epicSynthesisResultSchema = z
 	})
 	.strict();
 
+export const quickFixResultSchema = z
+	.object({
+		provider: providerIdSchema,
+		model: z.string().min(1),
+		rawProviderOutputPreview: z.string(),
+		rawProviderOutputBytes: z.number().int().nonnegative(),
+		rawProviderOutputTruncated: z.boolean(),
+		rawProviderOutputLogPath: z.string(),
+	})
+	.strict();
+
 export type CliError = z.infer<typeof cliErrorSchema>;
 export type CliArtifactRef = z.infer<typeof cliArtifactRefSchema>;
 export type CliStatus = z.infer<typeof cliStatusSchema>;
@@ -575,6 +586,7 @@ export type EpicVerifierBatchResult = z.infer<
 	typeof epicVerifierBatchResultSchema
 >;
 export type EpicSynthesisResult = z.infer<typeof epicSynthesisResultSchema>;
+export type QuickFixResult = z.infer<typeof quickFixResultSchema>;
 
 export function statusForOutcome(outcome: string): CliStatus {
 	switch (outcome) {

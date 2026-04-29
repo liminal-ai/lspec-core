@@ -2,8 +2,8 @@ import { dirname } from "node:path";
 
 import { z } from "zod";
 
+import { writeAtomic } from "../infra/fs-atomic.js";
 import type { ProviderName, ProviderLifecycleEvent } from "./provider-adapters";
-import { writeTextFile } from "./fs-utils";
 import { appendFile, mkdir } from "./runtime-deps";
 
 const PROVIDER_OUTPUT_EVENT_INTERVAL_MS = 30_000;
@@ -62,6 +62,7 @@ export const runtimeProgressEventSchema = z
 
 export const runtimeStatusSchema = z
 	.object({
+		version: z.literal(1),
 		command: z.string().min(1),
 		status: runtimeStatusStateSchema,
 		phase: z.string().min(1),
@@ -134,6 +135,7 @@ export class RuntimeProgressTracker {
 		const timestamp = new Date().toISOString();
 		const tracker = new RuntimeProgressTracker(
 			runtimeStatusSchema.parse({
+				version: 1,
 				command: input.command,
 				status: "running",
 				phase: input.phase,
@@ -397,7 +399,7 @@ export class RuntimeProgressTracker {
 	}
 
 	private async writeStatus(): Promise<void> {
-		await writeTextFile(
+		await writeAtomic(
 			this.status.progressPaths.statusPath,
 			`${JSON.stringify(runtimeStatusSchema.parse(this.status), null, 2)}\n`,
 		);

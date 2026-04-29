@@ -159,7 +159,7 @@ function baseSynthesisPayload(
 	};
 }
 
-test("returns INVALID_INVOCATION with exit code 1 when no verifier reports are provided", async () => {
+test("returns INVALID_INPUT with exit code 1 when no verifier reports are provided", async () => {
 	const specPackRoot = await createEpicSpecPack(
 		"epic-synthesize-missing-reports",
 	);
@@ -179,7 +179,7 @@ test("returns INVALID_INVOCATION with exit code 1 when no verifier reports are p
 	expect(envelope.errors).toEqual(
 		expect.arrayContaining([
 			expect.objectContaining({
-				code: "INVALID_INVOCATION",
+				code: "INVALID_INPUT",
 				message: "Provide at least one --verifier-report path.",
 			}),
 		]),

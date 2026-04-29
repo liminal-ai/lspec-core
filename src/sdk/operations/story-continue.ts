@@ -1,12 +1,14 @@
 import { runStoryContinue } from "../../core/story-implementor.js";
 import { implementorResultSchema } from "../../core/result-contracts.js";
-import type {
-	StoryContinueInput,
-	StoryContinueResult,
+import {
+	storyContinueInputSchema,
+	type StoryContinueInput,
+	type StoryContinueResult,
 } from "../contracts/operations.js";
 import {
 	buildUnexpectedEnvelope,
 	finalizeEnvelope,
+	parseSdkInput,
 	resolveOperationArtifactPath,
 	withSdkExecutionContext,
 } from "./shared.js";
@@ -14,28 +16,30 @@ import {
 export async function storyContinue(
 	input: StoryContinueInput,
 ): Promise<StoryContinueResult> {
-	return await withSdkExecutionContext(input, async () => {
+	const parsedInput = parseSdkInput(storyContinueInputSchema, input);
+
+	return await withSdkExecutionContext(parsedInput, async () => {
 		const startedAt = new Date().toISOString();
 		const artifactPath = await resolveOperationArtifactPath({
 			command: "story-continue",
-			specPackRoot: input.specPackRoot,
-			artifactPath: input.artifactPath,
-			group: input.storyId,
+			specPackRoot: parsedInput.specPackRoot,
+			artifactPath: parsedInput.artifactPath,
+			group: parsedInput.storyId,
 			fileName: "continue",
 		});
 
 		try {
 			const outcome = await runStoryContinue({
-				specPackRoot: input.specPackRoot,
-				storyId: input.storyId,
-				provider: input.continuationHandle.provider,
-				sessionId: input.continuationHandle.sessionId,
-				followupRequest: input.followupRequest,
-				configPath: input.configPath,
-				env: input.env,
+				specPackRoot: parsedInput.specPackRoot,
+				storyId: parsedInput.storyId,
+				provider: parsedInput.continuationHandle.provider,
+				sessionId: parsedInput.continuationHandle.sessionId,
+				followupRequest: parsedInput.followupRequest,
+				configPath: parsedInput.configPath,
+				env: parsedInput.env,
 				artifactPath,
-				streamOutputPaths: input.streamOutputPaths,
-				runtimeProgressPaths: input.runtimeProgressPaths,
+				streamOutputPaths: parsedInput.streamOutputPaths,
+				runtimeProgressPaths: parsedInput.runtimeProgressPaths,
 			});
 			return await finalizeEnvelope({
 				command: "story-continue",

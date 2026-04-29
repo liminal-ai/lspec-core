@@ -1,12 +1,14 @@
 import { runStoryImplement } from "../../core/story-implementor.js";
 import { implementorResultSchema } from "../../core/result-contracts.js";
-import type {
-	StoryImplementInput,
-	StoryImplementResult,
+import {
+	storyImplementInputSchema,
+	type StoryImplementInput,
+	type StoryImplementResult,
 } from "../contracts/operations.js";
 import {
 	buildUnexpectedEnvelope,
 	finalizeEnvelope,
+	parseSdkInput,
 	resolveOperationArtifactPath,
 	withSdkExecutionContext,
 } from "./shared.js";
@@ -14,25 +16,27 @@ import {
 export async function storyImplement(
 	input: StoryImplementInput,
 ): Promise<StoryImplementResult> {
-	return await withSdkExecutionContext(input, async () => {
+	const parsedInput = parseSdkInput(storyImplementInputSchema, input);
+
+	return await withSdkExecutionContext(parsedInput, async () => {
 		const startedAt = new Date().toISOString();
 		const artifactPath = await resolveOperationArtifactPath({
 			command: "story-implement",
-			specPackRoot: input.specPackRoot,
-			artifactPath: input.artifactPath,
-			group: input.storyId,
+			specPackRoot: parsedInput.specPackRoot,
+			artifactPath: parsedInput.artifactPath,
+			group: parsedInput.storyId,
 			fileName: "implementor",
 		});
 
 		try {
 			const outcome = await runStoryImplement({
-				specPackRoot: input.specPackRoot,
-				storyId: input.storyId,
-				configPath: input.configPath,
-				env: input.env,
+				specPackRoot: parsedInput.specPackRoot,
+				storyId: parsedInput.storyId,
+				configPath: parsedInput.configPath,
+				env: parsedInput.env,
 				artifactPath,
-				streamOutputPaths: input.streamOutputPaths,
-				runtimeProgressPaths: input.runtimeProgressPaths,
+				streamOutputPaths: parsedInput.streamOutputPaths,
+				runtimeProgressPaths: parsedInput.runtimeProgressPaths,
 			});
 			return await finalizeEnvelope({
 				command: "story-implement",

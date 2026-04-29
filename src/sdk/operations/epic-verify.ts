@@ -1,12 +1,14 @@
 import { runEpicVerify } from "../../core/epic-verifier.js";
 import { epicVerifierBatchResultSchema } from "../../core/result-contracts.js";
-import type {
-	EpicVerifyInput,
-	EpicVerifyResult,
+import {
+	epicVerifyInputSchema,
+	type EpicVerifyInput,
+	type EpicVerifyResult,
 } from "../contracts/operations.js";
 import {
 	buildUnexpectedEnvelope,
 	finalizeEnvelope,
+	parseSdkInput,
 	resolveOperationArtifactPath,
 	withSdkExecutionContext,
 } from "./shared.js";
@@ -14,24 +16,26 @@ import {
 export async function epicVerify(
 	input: EpicVerifyInput,
 ): Promise<EpicVerifyResult> {
-	return await withSdkExecutionContext(input, async () => {
+	const parsedInput = parseSdkInput(epicVerifyInputSchema, input);
+
+	return await withSdkExecutionContext(parsedInput, async () => {
 		const startedAt = new Date().toISOString();
 		const artifactPath = await resolveOperationArtifactPath({
 			command: "epic-verify",
-			specPackRoot: input.specPackRoot,
-			artifactPath: input.artifactPath,
+			specPackRoot: parsedInput.specPackRoot,
+			artifactPath: parsedInput.artifactPath,
 			group: "epic",
 			fileName: "epic-verifier-batch",
 		});
 
 		try {
 			const outcome = await runEpicVerify({
-				specPackRoot: input.specPackRoot,
-				configPath: input.configPath,
-				env: input.env,
+				specPackRoot: parsedInput.specPackRoot,
+				configPath: parsedInput.configPath,
+				env: parsedInput.env,
 				artifactPath,
-				streamOutputPaths: input.streamOutputPaths,
-				runtimeProgressPaths: input.runtimeProgressPaths,
+				streamOutputPaths: parsedInput.streamOutputPaths,
+				runtimeProgressPaths: parsedInput.runtimeProgressPaths,
 			});
 			return await finalizeEnvelope({
 				command: "epic-verify",

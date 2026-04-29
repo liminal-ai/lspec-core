@@ -6,6 +6,7 @@ import type { z } from "zod";
 import {
 	buildStrictCodexOutputSchema,
 	extractCodexStructuredOutputError,
+	formatCodexStructuredOutputError,
 } from "./codex-output-schema";
 import {
 	parseProviderPayload,
@@ -80,10 +81,13 @@ export function createCodexAdapter(
 					);
 					return {
 						...execution,
-						stderr: structuredOutputError ?? execution.stderr,
-						errorCode: structuredOutputError?.includes("invalid_json_schema")
-							? "INVALID_OUTPUT_SCHEMA"
-							: execution.errorCode,
+						stderr: structuredOutputError
+							? formatCodexStructuredOutputError(structuredOutputError)
+							: execution.stderr,
+						errorCode:
+							structuredOutputError?.code === "invalid_json_schema"
+								? "INVALID_OUTPUT_SCHEMA"
+								: execution.errorCode,
 					};
 				}
 

@@ -1,12 +1,14 @@
 import { runEpicCleanup } from "../../core/epic-cleanup.js";
 import { epicCleanupResultSchema } from "../../core/result-contracts.js";
-import type {
-	EpicCleanupInput,
-	EpicCleanupResult,
+import {
+	epicCleanupInputSchema,
+	type EpicCleanupInput,
+	type EpicCleanupResult,
 } from "../contracts/operations.js";
 import {
 	buildUnexpectedEnvelope,
 	finalizeEnvelope,
+	parseSdkInput,
 	resolveOperationArtifactPath,
 	withSdkExecutionContext,
 } from "./shared.js";
@@ -14,25 +16,27 @@ import {
 export async function epicCleanup(
 	input: EpicCleanupInput,
 ): Promise<EpicCleanupResult> {
-	return await withSdkExecutionContext(input, async () => {
+	const parsedInput = parseSdkInput(epicCleanupInputSchema, input);
+
+	return await withSdkExecutionContext(parsedInput, async () => {
 		const startedAt = new Date().toISOString();
 		const artifactPath = await resolveOperationArtifactPath({
 			command: "epic-cleanup",
-			specPackRoot: input.specPackRoot,
-			artifactPath: input.artifactPath,
+			specPackRoot: parsedInput.specPackRoot,
+			artifactPath: parsedInput.artifactPath,
 			group: "cleanup",
 			fileName: "cleanup-result",
 		});
 
 		try {
 			const outcome = await runEpicCleanup({
-				specPackRoot: input.specPackRoot,
-				cleanupBatchPath: input.cleanupBatchPath,
-				configPath: input.configPath,
-				env: input.env,
+				specPackRoot: parsedInput.specPackRoot,
+				cleanupBatchPath: parsedInput.cleanupBatchPath,
+				configPath: parsedInput.configPath,
+				env: parsedInput.env,
 				artifactPath,
-				streamOutputPaths: input.streamOutputPaths,
-				runtimeProgressPaths: input.runtimeProgressPaths,
+				streamOutputPaths: parsedInput.streamOutputPaths,
+				runtimeProgressPaths: parsedInput.runtimeProgressPaths,
 			});
 			return await finalizeEnvelope({
 				command: "epic-cleanup",

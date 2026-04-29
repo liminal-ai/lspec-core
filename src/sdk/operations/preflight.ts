@@ -9,13 +9,15 @@ import { inspectPromptAssets } from "../../core/prompt-assets.js";
 import { resolveProviderMatrix } from "../../core/provider-checks.js";
 import { preflightResultSchema } from "../../core/result-contracts.js";
 import { inspectSpecPack } from "../../core/spec-pack.js";
-import type {
-	PreflightInput,
-	PreflightResult,
+import {
+	preflightInputSchema,
+	type PreflightInput,
+	type PreflightResult,
 } from "../contracts/operations.js";
 import {
 	buildUnexpectedEnvelope,
 	finalizeEnvelope,
+	parseSdkInput,
 	resolveOperationArtifactPath,
 	withSdkExecutionContext,
 } from "./shared.js";
@@ -67,16 +69,18 @@ function authStatusUnknownNotes(
 export async function preflight(
 	input: PreflightInput,
 ): Promise<PreflightResult> {
-	return await withSdkExecutionContext(input, async () => {
+	const parsedInput = parseSdkInput(preflightInputSchema, input);
+
+	return await withSdkExecutionContext(parsedInput, async () => {
 		const startedAt = new Date().toISOString();
 		const artifactPath = await resolveOperationArtifactPath({
 			command: "preflight",
-			specPackRoot: input.specPackRoot,
-			artifactPath: input.artifactPath,
+			specPackRoot: parsedInput.specPackRoot,
+			artifactPath: parsedInput.artifactPath,
 		});
 
 		try {
-			const inspectResult = await inspectSpecPack(input.specPackRoot);
+			const inspectResult = await inspectSpecPack(parsedInput.specPackRoot);
 			if (inspectResult.status !== "ready") {
 				return await finalizeEnvelope({
 					command: "preflight",
@@ -101,17 +105,17 @@ export async function preflight(
 
 			let validatedConfig = await loadRunConfig({
 				specPackRoot: inspectResult.specPackRoot,
-				configPath: input.configPath,
+				configPath: parsedInput.configPath,
 			});
 			const providerMatrix = await resolveProviderMatrix({
 				specPackRoot: inspectResult.specPackRoot,
 				config: validatedConfig,
-				env: input.env,
+				env: parsedInput.env,
 			});
 			const gateResolution = await resolveVerificationGates({
 				specPackRoot: inspectResult.specPackRoot,
-				explicitStoryGate: input.storyGate,
-				explicitEpicGate: input.epicGate,
+				explicitStoryGate: parsedInput.storyGate,
+				explicitEpicGate: parsedInput.epicGate,
 				persistedVerificationGates:
 					resolveConfiguredVerificationGates(validatedConfig),
 			});
@@ -138,7 +142,7 @@ export async function preflight(
 				) {
 					await writeRunConfig({
 						specPackRoot: inspectResult.specPackRoot,
-						configPath: input.configPath,
+						configPath: parsedInput.configPath,
 						config: nextConfig,
 					});
 					validatedConfig = nextConfig;
@@ -181,7 +185,7 @@ export async function preflight(
 			) {
 				outcome = "blocked";
 				errors.push({
-					code: "PROMPT_ASSET_MISSING",
+					code: "INVALID_SPEC_PACK",
 					message: "Embedded prompt assets are incomplete",
 					detail: promptAssets.notes.join("; "),
 				});

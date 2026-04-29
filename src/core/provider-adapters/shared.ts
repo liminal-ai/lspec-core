@@ -7,6 +7,7 @@ import {
 	getSpawnImplementation,
 	mkdir,
 } from "../runtime-deps";
+import { filterEnv } from "../../infra/env-allowlist.js";
 
 export type ProviderName = "claude-code" | "codex" | "copilot";
 
@@ -300,10 +301,7 @@ export async function runProviderCommand(params: {
 
 		const child = getSpawnImplementation()(params.executable, params.args, {
 			cwd: params.cwd,
-			env: {
-				...process.env,
-				...params.env,
-			},
+			env: filterEnv(process.env, params.env),
 			stdio: ["pipe", "pipe", "pipe"],
 		});
 
@@ -461,8 +459,9 @@ export async function runProviderCommand(params: {
 					: stderr;
 
 			if ((timedOut || stalled) && timeoutMessage.length > 0 && stderrStream) {
+				const stderrNeedsLeadingNewline = finalStderr.at(-1) !== "\n";
 				stderrStream.write(
-					`${finalStderr.endsWith("\n") ? "" : "\n"}${timeoutMessage}\n`,
+					`${stderrNeedsLeadingNewline ? "\n" : ""}${timeoutMessage}\n`,
 				);
 			}
 
