@@ -76,9 +76,10 @@ test("TC-6.5e: all gates green publishes", async () => {
 	const workflow = await readPublishWorkflow();
 
 	expect(workflow).toContain("scripts/check-release-version-sync.ts");
-	expect(workflow).toContain("npm publish --access public");
-	expect(workflow).toContain("npm publish --access public --dry-run");
-	expect(workflow).not.toContain("--provenance");
+	expect(workflow).toContain("npm publish --access public --provenance");
+	expect(workflow).toContain(
+		"npm publish --access public --provenance --dry-run",
+	);
 	expect(workflow).toContain('npm view "$package_id" version');
 	expect(workflow).toContain("npm pack --dry-run --json");
 	expect(workflow).toContain(
@@ -102,6 +103,11 @@ test("workflow YAML remains release-ready", async () => {
 		expect(workflow).not.toContain("\t");
 		expect(workflow).toContain("uses: actions/checkout@v5");
 		expect(workflow).toContain("uses: actions/setup-node@v6");
+		if (fileName === "publish.yml") {
+			expect(workflow).toContain(BLACKSMITH_RUNNER);
+			expect(workflow).toContain("runs-on: ubuntu-latest");
+			continue;
+		}
 		expect(workflow).toContain(BLACKSMITH_RUNNER);
 		expect(workflow).not.toContain("runs-on: ubuntu-latest");
 	}

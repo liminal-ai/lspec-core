@@ -207,7 +207,7 @@ docs/
 
 ## Release
 
-Release automation runs on Blacksmith-hosted GitHub Actions runners. The publish workflow gates live publication on:
+Release automation uses Blacksmith-hosted GitHub Actions runners for verification gates and a GitHub-hosted runner for the final npm publish so provenance can be attached. The publish workflow gates live publication on:
 
 - default CI
 - package/release tests
@@ -227,7 +227,7 @@ See [docs/release-runbook.md](docs/release-runbook.md) for the maintainer proced
 
 ## Status
 
-Indie open-source pre-release (`0.2.2`). The CLI and SDK are usable, but the API may evolve as the broader Liminal Build platform stabilizes.
+Indie open-source pre-release (`0.2.3`). The CLI and SDK are usable, but the API may evolve as the broader Liminal Build platform stabilizes.
 
 ## License
 

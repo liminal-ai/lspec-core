@@ -1,12 +1,16 @@
 # Changelog
 
+## 0.2.3 - 2026-04-30
+
+- Restores npm provenance by running only the final publish job on GitHub-hosted runners while keeping CI, gorilla evidence, and real-provider integration gates on Blacksmith.
+
 ## 0.2.2 - 2026-04-30
 
 - Reworks the root CLI help into an agent-oriented onboarding screen that appears for no args, `-h`, and `--help`.
 - Clarifies the relationship between `liminal-spec` spec packs and `lbuild-impl` story build/verify workflows.
 - Refreshes README, current-state docs, and the release runbook after the initial public publish and Blacksmith CI migration.
 - Loosens help-output tests so they guard CLI behavior without freezing specific help wording.
-- Publishes from Blacksmith without npm provenance, which npm currently supports only from GitHub-hosted runners.
+- Published from Blacksmith without npm provenance; superseded by `0.2.3` for a provenance-backed publish.
 
 ## 0.2.0 - 2026-04-29
 

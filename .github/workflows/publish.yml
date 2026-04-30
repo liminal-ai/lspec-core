@@ -177,7 +177,7 @@ jobs:
         run: npx tsx scripts/check-release-evidence.ts --reference-date "$(date -u +%F)" --release-window-days "${{ env.RELEASE_WINDOW_DAYS }}"
 
   publish:
-    runs-on: blacksmith-2vcpu-ubuntu-2404
+    runs-on: ubuntu-latest
     needs:
       - default-ci
       - integration
@@ -233,11 +233,11 @@ jobs:
               echo "$package_id already exists on npm; validating package shape with npm pack --dry-run instead."
               npm pack --dry-run --json
             else
-              npm publish --access public --dry-run
+              npm publish --access public --provenance --dry-run
             fi
           elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             echo "Manual workflow_dispatch runs only support dry_run=true. Push a vX.Y.Z tag for a live publish."
             exit 1
           else
-            npm publish --access public
+            npm publish --access public --provenance
           fi

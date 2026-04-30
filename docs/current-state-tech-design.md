@@ -60,14 +60,14 @@ Active workflows:
 - `.github/workflows/integration.yml`: manual and weekly real-provider integration.
 - `.github/workflows/publish.yml`: tag-push publish and manual dry-run rehearsal.
 
-All active workflows run on `blacksmith-2vcpu-ubuntu-2404`.
+CI, gorilla evidence, and integration gates run on `blacksmith-2vcpu-ubuntu-2404`. The final npm publish job runs on `ubuntu-latest` because npm provenance currently requires a GitHub-hosted runner.
 
 The publish workflow has four jobs:
 
 - `default-ci`: validates manual inputs, installs dependencies, runs `npm run verify`, and runs `npm run test:package`.
 - `integration`: installs/authenticates real provider CLIs and runs `npm run test:integration`.
 - `gorilla-evidence`: validates committed gorilla evidence freshness and report shape.
-- `publish`: builds, verifies version markers, and either publishes live on tag push or performs manual dry-run validation.
+- `publish`: builds on a GitHub-hosted runner, verifies version markers, and either publishes live with npm provenance on tag push or performs manual dry-run validation.
 
 Manual publish runs cannot publish live. Live publication only occurs from a pushed `vX.Y.Z` tag.
 
@@ -103,4 +103,3 @@ The repo contains historical epic docs that were written before the final packag
 Real-provider tests require valid `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, and `GH_TOKEN` secrets in CI. Local integration runs require equivalent credentials and installed provider CLIs.
 
 Manual release rehearsal validates a GitHub-visible ref, not an unpushed local tag. If the version already exists on npm, the dry-run path validates package shape with `npm pack --dry-run --json`.
-

@@ -10,7 +10,7 @@ Historical drafts used broader standalone SDK/CLI naming. Current package identi
 
 ## Version Status
 
-The package release marker is `0.2.2`. Any doc that still describes the project as only `0.1.0` or first-publish pending is stale.
+The package release marker is `0.2.3`. Any doc that still describes the project as only `0.1.0` or first-publish pending is stale.
 
 ## Test Topology
 
@@ -25,7 +25,7 @@ Historical paths that referenced flatter test locations should be treated as acc
 
 ## CI Runner
 
-Active GitHub Actions workflows now run on Blacksmith with `blacksmith-2vcpu-ubuntu-2404`. Historical references to `ubuntu-latest` are no longer current.
+Active GitHub Actions verification gates run on Blacksmith with `blacksmith-2vcpu-ubuntu-2404`. The final npm publish job intentionally runs on GitHub-hosted `ubuntu-latest` so npm provenance can verify the runner environment.
 
 ## Release Evidence Scope
 
