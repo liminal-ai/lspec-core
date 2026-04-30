@@ -12,7 +12,7 @@ Every TC in the epic maps to a test in this section. The TC ID appears in the te
 
 ### Flow 1: Toolchain Migration
 
-#### `tests/foundation.test.ts`
+#### `tests/package/build/foundation.test.ts`
 
 Structural tests for the package directory and configuration. No production code paths involved.
 
@@ -24,7 +24,7 @@ Structural tests for the package directory and configuration. No production code
 | TC-1.3a | TC-1.3a: package.json declares all four verification scripts | Read `package.json` | Inspect `scripts` block | `red-verify`, `verify`, `green-verify`, `verify-all` keys all present |
 | TC-1.4a | TC-1.4a: build output produced | Run `npm run build` in a clean checkout | Inspect `dist/` | `dist/bin/lbuild-impl.js`, `dist/sdk/index.js`, and matching `.d.ts` files all present |
 
-#### `tests/verification-scripts.test.ts`
+#### `tests/unit/core/verification-scripts.test.ts`
 
 Behavioral tests for each verification tier's composition.
 
@@ -35,7 +35,7 @@ Behavioral tests for each verification tier's composition.
 | TC-1.3b (cont.) | TC-1.3b: green-verify adds the immutability guard | Stub child commands; ensure baseline manifest exists | Invoke `npm run green-verify` | verify steps + guard-no-test-changes invocation observed |
 | TC-1.3b (cont.) | TC-1.3b: verify-all adds the package and integration projects | Set LSPEC_INTEGRATION=1; stub Vitest | Invoke `npm run verify-all` | verify steps + Vitest with `--project package` and `--project integration` observed |
 
-#### `tests/build-output.test.ts`
+#### `tests/package/build/build-output.test.ts`
 
 CLI bin smoke against the freshly built output.
 
@@ -67,7 +67,7 @@ TC-1.5b is the in-repo follow-up that asserts intentional divergence introduced 
 
 ### Flow 2: SDK Programmatic Surface
 
-#### `tests/sdk/surface.test.ts`
+#### `tests/unit/sdk/surface.test.ts`
 
 Public-export-surface tests.
 
@@ -78,7 +78,7 @@ Public-export-surface tests.
 | TC-2.2b | TC-2.2b: package.json exports declare distinct subpaths | Read `package.json.exports` | Inspect subpaths | `.` (or `./`), `./sdk`, `./sdk/contracts`, `./sdk/errors` all declared; bin entry distinct |
 | TC-2.3a | TC-2.3a: SDK function signatures are typed | Run `tsc --noEmit` against `src/sdk/index.ts` reachable types | Inspect emitted declarations | No `any` or `unknown` in any public function's input or return type |
 
-#### `tests/code-quality/zod-v4-syntax.test.ts`
+#### `tests/unit/quality/zod-v4-syntax.test.ts`
 
 Static-grep tests asserting the Zod 3 → Zod 4 migration is complete in `src/`.
 
@@ -87,7 +87,7 @@ Static-grep tests asserting the Zod 3 → Zod 4 migration is complete in `src/`.
 | TC-2.6a | TC-2.6a: no v3-only schema constructor params | Walk `src/` (excluding `tests/`) | Grep for `errorMap:`, `invalid_type_error:`, and the v3-style `message:` parameter on schema constructors | Zero matches in production code |
 | TC-2.6b | TC-2.6b: top-level string formats and post-`ZodEffects` refinements | Walk `src/` | Grep for v3-style `z.string().email()`/`.uuid()`/`.url()` chain forms and any `ZodEffects` import | All string-format declarations use top-level form (`z.email()` / `z.uuidv4()` / `z.url()`); no `ZodEffects` imports remain |
 
-#### `tests/sdk/operations.test.ts`
+#### `tests/unit/sdk/operations.test.ts`
 
 SDK function behavior tests with mocked filesystem and subprocess.
 
@@ -97,7 +97,7 @@ SDK function behavior tests with mocked filesystem and subprocess.
 | TC-2.4b | TC-2.4b: SDK callable from a script | Build dist; install package locally; run a small Node script importing from `lbuild-impl/sdk` | Script calls `inspect({ specPackRoot })` against fixture | Script terminates with valid envelope and exit 0 |
 | TC-2.5a | TC-2.5a: dependency-injection adapters are honored | Provide `fs` and `spawn` adapters that record calls | Invoke an SDK operation that touches both | Adapter calls captured; default fs and child_process not invoked |
 
-#### `tests/sdk/per-operation/*.test.ts`
+#### `tests/unit/sdk/per-operation/*.test.ts`
 
 Per-operation envelope-shape tests (ten files, one per operation). Non-TC defensive tests asserting the result envelope matches the documented shape under happy-path and error inputs. These are listed in §Non-TC Decided Tests below.
 
@@ -105,38 +105,38 @@ Per-operation envelope-shape tests (ten files, one per operation). Non-TC defens
 
 ### Flow 3: CLI Invocation Surface
 
-#### `tests/command/help.test.ts`
+#### `tests/package/cli/help.test.ts`
 
 | TC | Test Name | Setup | Action | Assert |
 |----|-----------|-------|--------|--------|
 | TC-3.1a | TC-3.1a: --help lists all ten subcommands | Build CLI bin | Spawn `node dist/bin/lbuild-impl.js --help` | Stdout names each of the ten operations |
 
-#### `tests/command/structure.test.ts`
+#### `tests/unit/cli/structure.test.ts`
 
 | TC | Test Name | Setup | Action | Assert |
 |----|-----------|-------|--------|--------|
 | TC-3.2a | TC-3.2a: command modules are thin wrappers | Read each `src/cli/commands/*.ts` source | Inspect each module's body | Module composed of arg parse + SDK call + envelope render + exit-code map; no business logic between the SDK call return and the envelope render |
 
-#### `tests/command/exit-codes.test.ts`
+#### `tests/unit/cli/exit-codes.test.ts`
 
 | TC | Test Name | Setup | Action | Assert |
 |----|-----------|-------|--------|--------|
 | TC-3.3a | TC-3.3a: exit codes map deterministically | Stub SDK to return each status | Invoke command and capture `process.exitCode` | `ok` → 0, `error` → 1, `needs-user-decision` → 2, `blocked` → 3 |
 
-#### `tests/command/envelope.test.ts`
+#### `tests/unit/cli/envelope.test.ts`
 
 | TC | Test Name | Setup | Action | Assert |
 |----|-----------|-------|--------|--------|
 | TC-3.4a | TC-3.4a: stdout envelope shape stable | Run any command with `--json` against fixture | Capture stdout | JSON parses; contains `command`, `version: 1`, `status`, `outcome`, `errors`, `warnings`, `artifacts`, `startedAt`, `finishedAt` |
 | TC-3.4b | TC-3.4b: stdout matches persisted artifact | Run any command with `--json` and an artifact path | Read persisted artifact JSON | Equals stdout envelope byte-for-byte |
 
-#### `tests/command/invocation.test.ts`
+#### `tests/package/cli/invocation.test.ts`
 
 | TC | Test Name | Setup | Action | Assert |
 |----|-----------|-------|--------|--------|
 | TC-3.5a | TC-3.5a: node invocation works | Build dist | Spawn `node dist/bin/lbuild-impl.js inspect --spec-pack-root ./fixture --json` | Exit 0; stdout envelope valid |
 
-#### `tests/command/pack-and-install-smoke.test.ts`
+#### `tests/package/cli/pack-and-install-smoke.test.ts`
 
 | TC | Test Name | Setup | Action | Assert |
 |----|-----------|-------|--------|--------|
@@ -146,94 +146,94 @@ Per-operation envelope-shape tests (ten files, one per operation). Non-TC defens
 
 ### Flow 4: Runtime Contract Hardening
 
-#### `tests/sdk/envelope.test.ts`
+#### `tests/unit/sdk/operations.test.ts`
 
 | TC | Test Name | Setup | Action | Assert |
 |----|-----------|-------|--------|--------|
 | TC-4.1a | TC-4.1a: every envelope carries version 1 | Run each command; collect envelopes | Inspect `version` field | Every envelope `version === 1` |
 
-#### `tests/infra/persisted-state.test.ts`
+#### `tests/unit/infra/persisted-state.test.ts`
 
 | TC | Test Name | Setup | Action | Assert |
 |----|-----------|-------|--------|--------|
 | TC-4.1b | TC-4.1b: persisted state files carry version markers | Run any operation that writes run-config consumption, progress snapshot, status file | Read each persisted file | Each has a version marker at document root |
 
-#### `tests/sdk/errors.test.ts`
+#### `tests/unit/sdk/errors.test.ts`
 
 | TC | Test Name | Setup | Action | Assert |
 |----|-----------|-------|--------|--------|
 | TC-4.2a | TC-4.2a: structured failure paths surface in envelope.errors with stable codes | Trigger each structured failure path with controlled inputs against a fixture spec pack | Read the returned envelope (no `try/catch` needed — SDK does not throw) | `envelope.status === 'error'` (or `'blocked'` / `'needs-user-decision'` per the failure semantics); `envelope.errors[0].code` is a stable string from the taxonomy; `envelope.errors[0]` matches `{ code, message, detail? }` shape; the SDK function did NOT throw |
 | TC-4.2c | TC-4.2c: SDK throws typed errors for programming-error inputs | Construct an SDK function call with input that fails Zod parse at the boundary (e.g., wrong type, missing required key) | Invoke the SDK function and expect a throw | Function throws an instance of `InvalidInputError` (the §Q8 class for boundary parse failures); `error.code` matches the taxonomy; the throw is the documented signal that the caller's input was wrong, not that the workflow failed |
 
-#### `tests/code-quality/no-string-error-detection.test.ts`
+#### `tests/unit/quality/no-string-error-detection.test.ts`
 
 | TC | Test Name | Setup | Action | Assert |
 |----|-----------|-------|--------|--------|
 | TC-4.2b | TC-4.2b: no string-matched error detection in non-test code | Walk `src/` (excluding `tests/`) | Grep for branching against `error.message` substrings (`includes(`, `startsWith(`, regex literals matching message text) | Zero matches in branching logic |
 
-#### `tests/core/schema-derivation.test.ts`
+#### `tests/unit/core/schema-derivation.test.ts`
 
 | TC | Test Name | Setup | Action | Assert |
 |----|-----------|-------|--------|--------|
 | TC-4.3a | TC-4.3a: provider-payload schemas derived from canonical | Read each provider-payload schema declaration | Inspect derivation form | Each is `canonical.omit(...)` or `canonical.pick(...)`; no standalone declaration |
 | TC-4.3b | TC-4.3b: drift cannot occur silently | Mutate one canonical field locally; rebuild | Run `tsc --noEmit` and `vitest run` | Mutation surfaces as a build error or test failure, not a runtime fault |
 
-#### `tests/infra/fs-atomic.test.ts`
+#### `tests/unit/infra/fs-atomic.test.ts`
 
 | TC | Test Name | Setup | Action | Assert |
 |----|-----------|-------|--------|--------|
 | TC-4.4a | TC-4.4a: atomic-write behavior under simulated rename failure | Stub `fs.rename` to reject; pre-populate destination with prior content | Invoke `writeAtomic(path, newContent)` | `writeAtomic` throws `AtomicWriteError`; destination still contains prior content; no temp file remains in the directory |
 
-#### `tests/infra/index-reservation.test.ts`
+#### `tests/unit/infra/index-reservation.test.ts`
 
 | TC | Test Name | Setup | Action | Assert |
 |----|-----------|-------|--------|--------|
 | TC-4.5a | TC-4.5a: concurrent reservations receive distinct indexes | Set up empty artifacts directory | Call `nextArtifactPath` from two concurrent promises with the same name | Each resolves to a distinct index path; both placeholder files exist; neither overwrites the other |
 | TC-4.5c | TC-4.5c: stale placeholder cleanup during reserveIndex | Pre-populate artifacts directory with zero-byte placeholder files for the same `<name>` whose mtimes are older than the configured stale-reservation timeout (default: 5 minutes; use `fs.utimes` to backdate them in test); also create one fresh zero-byte placeholder within the timeout | Call `nextArtifactPath(specPackRoot, name)` | Stale placeholders are unlinked from the directory; the fresh placeholder is preserved; the returned reserved index does NOT skip the slots formerly occupied by stale placeholders; `inspect` is not invoked anywhere in this test path (cleanup happens in `reserveIndex` itself) |
 
-#### `tests/infra/env-allowlist.test.ts`
+#### `tests/unit/infra/env-allowlist.test.ts`
 
 | TC | Test Name | Setup | Action | Assert |
 |----|-----------|-------|--------|--------|
 | TC-4.6a | TC-4.6a: env allowlist filters parent env | Construct synthetic parent env with `PATH`, `HOME`, `NODE_OPTIONS`, `AWS_SECRET_ACCESS_KEY`, `CUSTOM_LEAK` | Invoke `filterEnv(parent, { GITHUB_TOKEN: 'override' })` | Result contains `PATH`, `HOME`, `GITHUB_TOKEN`; does not contain `NODE_OPTIONS`, `AWS_SECRET_ACCESS_KEY`, `CUSTOM_LEAK` |
 
-#### `tests/sdk/codex-resume.test.ts` (uses mock-codex shim, runs on default CI)
+#### `tests/unit/core/provider-adapter.test.ts` (uses mock-codex shim, runs on default CI)
 
-This file lives under `tests/sdk/` and runs on every default CI execution. It is intentionally outside `tests/integration/` because the integration project is env-gated to `LSPEC_INTEGRATION=1` and only runs with real provider binaries. AC-4.7a is a regression-prevention test that must run on every PR — placing it in the always-run sdk suite ensures it does.
+This file lives under `tests/unit/sdk/` and runs on every default CI execution. It is intentionally outside `tests/integration/` because the integration project is env-gated to `LSPEC_INTEGRATION=1` and only runs with real provider binaries. AC-4.7a is a regression-prevention test that must run on every PR — placing it in the always-run sdk suite ensures it does.
 
 | TC | Test Name | Setup | Action | Assert |
 |----|-----------|-------|--------|--------|
 | TC-4.7a | TC-4.7a: Codex retained-session reuse | Use mock-codex shim that emits a captured fixture; story-implement returns `sessionId` | Story-continue with the captured `sessionId` | Mock invoked with `exec resume <sessionId>`; subsequent envelope echoes the same `sessionId` |
 
-#### `tests/sdk/preflight.test.ts`
+#### `tests/unit/cli/preflight-command.test.ts`
 
 | TC | Test Name | Setup | Action | Assert |
 |----|-----------|-------|--------|--------|
 | TC-4.7b | TC-4.7b: preflight returns ready when binary present and auth unknown | Stub Codex binary as present; stub auth probe to return "unknown" | Invoke `preflight` | Envelope `status === 'ok'`; canonical `result.status === 'ready'`; `result.providerMatrix` has Codex with `tier: 'auth-unknown'`; `result.notes` (or the matching harness's `notes`) records the degraded fallback rationale |
 
-#### `tests/code-quality/no-internal-mocks.test.ts`
+#### `tests/unit/quality/no-internal-mocks.test.ts`
 
 | TC | Test Name | Setup | Action | Assert |
 |----|-----------|-------|--------|--------|
 | TC-4.8a | TC-4.8a: no mocks target internal modules | Walk `tests/` for mock declarations (`vi.mock`, `vi.spyOn` on imports) | Cross-reference targeted modules | Every targeted module is a Node builtin: `node:fs`, `node:fs/promises`, or `node:child_process`. No mock targets any path under `src/`. Provider behavior is substituted via the SpawnAdapter DI hook from AC-2.5 (a `spawn` function injected at the SDK boundary), not by mocking `src/core/provider-adapters/*`. |
 
-#### `tests/parser-contract/fixtures.test.ts`
+#### `tests/unit/parser-contract/fixtures.test.ts`
 
 | TC | Test Name | Setup | Action | Assert |
 |----|-----------|-------|--------|--------|
-| TC-4.8b | TC-4.8b: external mock fixtures sourced from captured real output | Walk `tests/parser-contract/fixtures/` | Read each fixture's leading comment | Provenance comment present (provider, command, capture date); date parsable; no fixture missing provenance |
+| TC-4.8b | TC-4.8b: external mock fixtures sourced from captured real output | Walk `tests/support/parser-contract-fixtures/providers/` | Read each fixture's leading comment | Provenance comment present (provider, command, capture date); date parsable; no fixture missing provenance |
 
 ---
 
 ### Flow 5: Integration Verification
 
-#### `tests/parser-contract/{claude-code,codex,copilot}.test.ts` — three files
+#### `tests/unit/parser-contract/{claude-code,codex,copilot}.test.ts` — three files
 
 Each provider's parser-contract suite runs every captured fixture through the corresponding parser and asserts the parsed output against an inline snapshot.
 
 | TC | Test Name | Setup | Action | Assert |
 |----|-----------|-------|--------|--------|
-| TC-5.3a | TC-5.3a: captured-output contract tests run on default CI | Read each `tests/parser-contract/fixtures/<provider>/<scenario>.txt` | Invoke `parse<Provider>...(stdout)` | Parsed payload matches inline snapshot; assertion runs on default CI workflow |
+| TC-5.3a | TC-5.3a: captured-output contract tests run on default CI | Read each `tests/support/parser-contract-fixtures/providers/<provider>/<scenario>.txt` | Invoke `parse<Provider>...(stdout)` | Parsed payload matches inline snapshot; assertion runs on default CI workflow |
 | TC-5.3b | TC-5.3b: drift detection produces clear diff | Modify the parser locally to drop a field | Run the parser-contract test against an unchanged fixture | Test fails with a snapshot diff naming the missing field |
 
 #### `tests/integration/smoke.test.ts` (env-gated)
@@ -267,32 +267,32 @@ Each provider's parser-contract suite runs every captured fixture through the co
 | TC-5.2a | TC-5.2a: integration suite skipped without env flag | `LSPEC_INTEGRATION` unset | Run `vitest run --project integration` | Suite reports skipped (or zero tests run); no provider invoked |
 | TC-5.2b | TC-5.2b: integration suite runs with env flag | `LSPEC_INTEGRATION=1`; provider binaries available | Run `vitest run --project integration` | All four scenario files execute and report per-provider results |
 
-#### `tests/gorilla/fixture.test.ts`
+#### `tests/unit/gorilla/fixture.test.ts`
 
 | TC | Test Name | Setup | Action | Assert |
 |----|-----------|-------|--------|--------|
 | TC-5.4a | TC-5.4a: fixture present and complete | Read `gorilla/fixture-spec-pack/` | List required artifacts | `epic.md`, `tech-design.md`, `test-plan.md`, `stories/` directory with at least one story, `target-codebase/` directory all present |
 
-#### `tests/gorilla/distribution.test.ts`
+#### `tests/package/gorilla/distribution.test.ts`
 
 | TC | Test Name | Setup | Action | Assert |
 |----|-----------|-------|--------|--------|
 | TC-5.4b | TC-5.4b: fixture excluded from published tarball | Run `npm pack` | List tarball contents | No path under `gorilla/` appears in the listing |
 
-#### `tests/gorilla/reset.test.ts`
+#### `tests/unit/gorilla/reset.test.ts`
 
 | TC | Test Name | Setup | Action | Assert |
 |----|-----------|-------|--------|--------|
 | TC-5.5a | TC-5.5a: reset returns fixture to baseline | Snapshot fixture state pre-mutation; mutate fixture (write/delete a few files) | Run `gorilla/reset.ts` | Fixture state matches snapshot byte-for-byte |
 
-#### `tests/gorilla/prompt-coverage.test.ts`
+#### `tests/unit/gorilla/prompt-coverage.test.ts`
 
 | TC | Test Name | Setup | Action | Assert |
 |----|-----------|-------|--------|--------|
 | TC-5.6a | TC-5.6a: prompt covers every operation | Read `gorilla/prompt.md` | Extract backticked `$CLI ...` command invocations | All ten operations from the inventory appear as explicit `$CLI <operation>` invocations |
 | TC-5.6b | TC-5.6b: prompt covers each provider for provider-consuming operations | Read `gorilla/prompt.md` | Extract backticked `$CLI ...` command invocations and evidence filenames | Claude Code, Codex, and Copilot run configs are used by explicit invocations, and canonical evidence filenames name each provider |
 
-#### `tests/gorilla/template.test.ts`
+#### `tests/unit/gorilla/template.test.ts`
 
 | TC | Test Name | Setup | Action | Assert |
 |----|-----------|-------|--------|--------|
@@ -307,32 +307,32 @@ This is a manual pre-release verification, not an automated test. Documented in 
 
 ### Flow 6: Distribution and Release
 
-#### `tests/dist/metadata.test.ts`
+#### `tests/package/dist/metadata.test.ts`
 
 | TC | Test Name | Setup | Action | Assert |
 |----|-----------|-------|--------|--------|
 | TC-6.1a | TC-6.1a: distribution metadata complete | Read `package.json` | Inspect required fields | `name`, `version`, `bin`, `exports` (with `.`, `./sdk`, `./sdk/contracts`, `./sdk/errors` subpaths), `files` allowlist, `types` all declared correctly |
 
-#### `tests/dist/pack-install.test.ts`
+#### `tests/package/dist/pack-install.test.ts`
 
 | TC | Test Name | Setup | Action | Assert |
 |----|-----------|-------|--------|--------|
 | TC-6.2a | TC-6.2a: pack and install round trip | Run `npm pack`; create a fresh sandbox project; install tarball | Run `npx lbuild-impl inspect ./fixture --json` from sandbox | Exit 0; envelope valid |
 | TC-6.2b | TC-6.2b: tarball respects files allowlist | List tarball contents | Cross-reference against `files` allowlist | Only `dist/`, `README*`, `LICENSE*`, `CHANGELOG*` present; no `tests/`, `gorilla/`, `scripts/`, source files |
 
-#### `tests/dist/types.test.ts`
+#### `tests/package/dist/types.test.ts`
 
 | TC | Test Name | Setup | Action | Assert |
 |----|-----------|-------|--------|--------|
 | TC-6.3a | TC-6.3a: types resolve under TypeScript | Set up a TypeScript consumer project that imports SDK types | Run `tsc --noEmit` | No errors; no `@ts-ignore` or manual declarations needed |
 
-#### `tests/dist/version-sync.test.ts`
+#### `tests/package/dist/version-sync.test.ts`
 
 | TC | Test Name | Setup | Action | Assert |
 |----|-----------|-------|--------|--------|
 | TC-6.4a | TC-6.4a: version sync | Read `package.json.version`, parse top-of-file CHANGELOG header, read any version-marker file | Compare values | All three values equal |
 
-#### `tests/release/workflow.test.ts`
+#### `tests/package/release/workflow.test.ts`
 
 | TC | Test Name | Setup | Action | Assert |
 |----|-----------|-------|--------|--------|
@@ -342,7 +342,7 @@ This is a manual pre-release verification, not an automated test. Documented in 
 | TC-6.5d | TC-6.5d: gorilla evidence required for publish | Inspect publish.yml and `scripts/check-release-evidence.ts` | Check evidence-verification step and script contract | Step verifies that at least one `gorilla/evidence/<YYYY-MM-DD>/` directory exists at HEAD where the directory date is within the configured release window (default 7 days before tag push); the directory contains the complete required release smoke matrix `claude-code-smoke.md`, `codex-resume.md`, `copilot-structured-output.md`, and `codex-stall.md`; fails with named-gate error message if absent, incomplete, or stale |
 | TC-6.5e | TC-6.5e: all gates green publishes | Simulate a successful workflow run via dry-run mode | Run release workflow on a test tag | Publish runs; version on registry matches tag |
 
-#### Manual / `tests/release/runbook.test.ts`
+#### Manual / `tests/package/release/runbook.test.ts`
 
 | TC | Test Name | Setup | Action | Assert |
 |----|-----------|-------|--------|--------|
@@ -357,17 +357,17 @@ This is a manual pre-release verification, not an automated test. Documented in 
 
 **Mock at external boundaries only. Never mock internal modules.**
 
-This rule is enforced by AC-4.8 and verified by `tests/code-quality/no-internal-mocks.test.ts`. Internal modules are mocked only by accident — every such accident is a test bug, not a feature.
+This rule is enforced by AC-4.8 and verified by `tests/unit/quality/no-internal-mocks.test.ts`. Internal modules are mocked only by accident — every such accident is a test bug, not a feature.
 
 ### What Gets Mocked
 
 | Layer | Mocked? | Notes |
 |-------|---------|-------|
 | Filesystem at temp-dir granularity | **No** | Tests create real temp directories under `os.tmpdir()`; fast, deterministic, exercises real `fs` behavior |
-| `fs.rename` for atomic-write failure simulation | **Yes** (one test) | Single test in `tests/infra/fs-atomic.test.ts`; targeted external boundary mock for failure-injection |
+| `fs.rename` for atomic-write failure simulation | **Yes** (one test) | Single test in `tests/unit/infra/fs-atomic.test.ts`; targeted external boundary mock for failure-injection |
 | Provider subprocess (in unit/command/sdk tests) | **Yes** | Spawn boundary; mock-provider stub reads a captured fixture file and emits its content as stdout |
 | Provider subprocess (in integration tests) | **No** | Real-harness suite spawns real provider binaries; env-gated |
-| `child_process.spawn` (in env-allowlist test) | **Yes** (one test) | Single test in `tests/infra/env-allowlist.test.ts`; targeted to capture env passed to spawn |
+| `child_process.spawn` (in env-allowlist test) | **Yes** (one test) | Single test in `tests/unit/infra/env-allowlist.test.ts`; targeted to capture env passed to spawn |
 | Internal workflow modules (`src/core/{story-implementor,story-verifier,epic-synthesizer,epic-verifier,epic-cleanup,quick-fix}.ts`) | **Never** | Forbidden; exercised through SDK function entry points |
 | Internal SDK operations | **Never** | Forbidden; exercised through CLI commands |
 | Internal infrastructure (`src/infra/*`) | **Never** | Forbidden; exercised through callers |
@@ -375,7 +375,7 @@ This rule is enforced by AC-4.8 and verified by `tests/code-quality/no-internal-
 
 ### Captured-Output Fixtures Are Not Hand-Written Mocks
 
-Provider subprocess mocks in unit/command/sdk tests use the captured-output fixtures from `tests/parser-contract/fixtures/<provider>/<scenario>.txt`. The mock-provider stub reads the requested fixture and pipes its content as the subprocess's stdout. This means: every "mock" of a provider is actually replaying real captured output. There are no hand-written mock outputs in the test suite.
+Provider subprocess mocks in unit/command/sdk tests use the captured-output fixtures from `tests/support/parser-contract-fixtures/providers/<provider>/<scenario>.txt`. The mock-provider stub reads the requested fixture and pipes its content as the subprocess's stdout. This means: every "mock" of a provider is actually replaying real captured output. There are no hand-written mock outputs in the test suite.
 
 The captured-output refresh procedure (per `scripts/capture-provider-output.ts`) re-records fixtures against current provider versions. The maintainer runs this on a cadence (per minor provider version bump, before each release if the prior fixture is older than 90 days, on every parser-contract test failure). This is documented in tech-design §Testing Strategy — Captured-Output Refresh Cadence.
 
@@ -385,7 +385,7 @@ The captured-output refresh procedure (per `scripts/capture-provider-output.ts`)
 
 ### Captured Provider Output
 
-`tests/parser-contract/fixtures/<provider>/<scenario>.txt` — twelve files (3 providers × 4 scenarios). Each file's first line is a comment with provenance:
+`tests/support/parser-contract-fixtures/providers/<provider>/<scenario>.txt` — twelve files (3 providers × 4 scenarios). Each file's first line is a comment with provenance:
 
 ```
 # Provider: codex
@@ -406,7 +406,7 @@ The trailing content is exact captured stdout. Whitespace, ordering, and field s
 
 ### Workspace Builders
 
-`tests/fixtures/workspaces.ts` — helper functions that create temp directories with controlled spec-pack content. Used by command tests, SDK tests, and unit tests.
+`tests/support/test-helpers.ts` — helper functions that create temp directories with controlled spec-pack content. Used by command tests, SDK tests, and unit tests.
 
 | Helper | Purpose |
 |--------|---------|
@@ -419,7 +419,7 @@ The trailing content is exact captured stdout. Whitespace, ordering, and field s
 
 ### Mock Provider Stubs
 
-`tests/fixtures/mock-providers.ts` — provides spawn-time stubs that emit captured fixture content as stdout for unit/command/sdk tests.
+`tests/support/fixtures/real-provider-scenarios.ts` — provides spawn-time stubs that emit captured fixture content as stdout for unit/command/sdk tests.
 
 ```typescript
 // Test usage example
@@ -450,82 +450,41 @@ The fixture is reset between gorilla runs by `gorilla/reset.ts`, which restores 
 
 ```
 tests/
-├── foundation.test.ts                    # Story 0 structural smoke
-├── verification-scripts.test.ts          # Story 0 script composition
-├── build-output.test.ts                  # Story 0 dist sanity
-├── parity.test.ts                        # Story 3 divergence assertion only (TC-1.5b); TC-1.5a is a maintainer-run check, not in-repo
-├── sdk/
-│   ├── surface.test.ts                   # Story 1 public surface
-│   ├── operations.test.ts                # Story 1 SDK behavior
-│   ├── envelope.test.ts                  # Story 3 envelope version
-│   ├── errors.test.ts                    # Story 3 error taxonomy
-│   ├── preflight.test.ts                 # Story 3 preflight regression
-│   ├── codex-resume.test.ts              # Story 3 codex retained-session regression (mock-codex; default CI)
-│   └── per-operation/                    # Story 1 envelope-shape per op
-│       ├── inspect.test.ts
-│       ├── preflight.test.ts
-│       ├── epic-synthesize.test.ts
-│       ├── epic-verify.test.ts
-│       ├── epic-cleanup.test.ts
-│       ├── quick-fix.test.ts
-│       ├── story-implement.test.ts
-│       ├── story-continue.test.ts
-│       ├── story-self-review.test.ts
-│       └── story-verify.test.ts
-├── command/
-│   ├── help.test.ts                      # Story 2
-│   ├── structure.test.ts                 # Story 2
-│   ├── exit-codes.test.ts                # Story 2
-│   ├── envelope.test.ts                  # Story 2
-│   ├── invocation.test.ts                # Story 2
-│   └── pack-and-install-smoke.test.ts    # Story 2
-├── core/
-│   └── schema-derivation.test.ts         # Story 3
-├── infra/
-│   ├── fs-atomic.test.ts                 # Story 3
-│   ├── env-allowlist.test.ts             # Story 3
-│   ├── index-reservation.test.ts         # Story 3
-│   └── persisted-state.test.ts           # Story 3
-├── code-quality/
-│   ├── no-string-error-detection.test.ts # Story 3
-│   └── no-internal-mocks.test.ts         # Story 3
-├── parser-contract/                       # Story 4 — runs on default CI
-│   ├── claude-code.test.ts
-│   ├── codex.test.ts
-│   ├── copilot.test.ts
-│   ├── fixtures.test.ts                  # Story 3 — provenance check
-│   └── fixtures/
-│       ├── claude-code/                  # 4 captured fixtures
-│       ├── codex/                        # 4 captured fixtures
-│       └── copilot/                      # 4 captured fixtures
-├── integration/                           # Story 4 — env-gated, real provider binaries only
+├── unit/                                  # npm test / Vitest default project
+│   ├── cli/                              # source CLI behavior and migrated command tests
+│   ├── core/                             # runtime contracts, adapters, prompts, gate discovery
+│   ├── gorilla/                          # gorilla fixture/reset/prompt/template checks
+│   ├── infra/                            # env, atomic write, artifact reservation, persisted state
+│   ├── parser-contract/                  # parser tests over captured provider fixtures
+│   ├── quality/                          # static code-quality guards
+│   ├── sdk/                              # SDK surface and operation behavior
+│   └── smoke.test.ts                     # package metadata smoke
+├── package/                               # npm run test:package / Vitest package project
+│   ├── build/                            # foundation and built-output checks
+│   ├── cli/                              # built CLI invocation and pack/install smoke
+│   ├── dist/                             # exports, tarball, metadata, type checks
+│   ├── gorilla/                          # tarball exclusion for gorilla assets
+│   └── release/                          # publish workflow, runbook, evidence gate
+├── integration/                           # npm run test:integration / real provider binaries only
 │   ├── smoke.test.ts
 │   ├── resume.test.ts
 │   ├── structured-output.test.ts
 │   ├── stall.test.ts
 │   └── gating.test.ts
-├── gorilla/                               # Story 5
-│   ├── fixture.test.ts
-│   ├── distribution.test.ts
-│   ├── reset.test.ts
-│   ├── prompt-coverage.test.ts
-│   └── template.test.ts
-├── dist/                                  # Stories 6-7
-│   ├── metadata.test.ts
-│   ├── pack-install.test.ts
-│   ├── types.test.ts
-│   ├── version-sync.test.ts
-│   └── subpath-imports.test.ts           # Non-TC defensive
-├── release/                               # Story 7
-│   ├── workflow.test.ts
-│   ├── evidence-script.test.ts
-│   └── runbook.test.ts
-└── fixtures/
-    ├── workspaces.ts
-    └── mock-providers.ts
+└── support/
+    ├── setup.ts
+    ├── bun-shim.ts
+    ├── test-helpers.ts                   # temp dirs, spec-pack builders, CLI runners
+    ├── fixtures/
+    │   └── real-provider-scenarios.ts    # shared scenario definitions
+    └── parser-contract-fixtures/
+        └── providers/
+            ├── claude-code/              # 4 captured fixtures
+            ├── codex/                    # 4 captured fixtures
+            └── copilot/                  # 4 captured fixtures
 ```
 
-The `migrated/` test files from `liminal-spec/processes/impl-cli/tests/` keep their existing structure under `tests/` rather than getting renamed into the new layout above. The new layout above describes the new tests added by this epic; migrated tests retain their existing organization.
+The suite is tier-first after release hardening: `tests/unit/**` is the default PR gate, `tests/package/**` contains package-shape and release-automation checks, `tests/integration/**` contains env-gated real-provider checks, and `tests/support/**` contains shared helpers and fixtures. Migrated tests from the original bundled runtime now live under the closest matching tier and domain.
 
 ---
 
@@ -537,11 +496,11 @@ Each chunk's test count is the sum of its file totals below. Running totals prop
 
 | Test File | New Tests | TCs Covered |
 |-----------|-----------|-------------|
-| `tests/foundation.test.ts` | 4 | TC-1.1a, TC-1.1b, TC-1.2a, TC-1.3a, TC-1.4a |
-| `tests/verification-scripts.test.ts` | 4 | TC-1.3b (×4 sub-cases) |
-| `tests/build-output.test.ts` | 1 | TC-1.4b |
+| `tests/package/build/foundation.test.ts` | 4 | TC-1.1a, TC-1.1b, TC-1.2a, TC-1.3a, TC-1.4a |
+| `tests/unit/core/verification-scripts.test.ts` | 4 | TC-1.3b (×4 sub-cases) |
+| `tests/package/build/build-output.test.ts` | 1 | TC-1.4b |
 | `tests/parity.test.ts` | 1 | TC-1.5b (TC-1.5a is a maintainer-run parity check, not an automated test in `lspec-core`; see §Manual: TC-1.5a) |
-| `tests/foundation.test.ts` (CI workflow assertions) | 1 | TC-1.6a |
+| `tests/package/build/foundation.test.ts` (CI workflow assertions) | 1 | TC-1.6a |
 | Migrated tests | ~226 | (all from liminal-spec/processes/impl-cli/tests/) |
 | **Chunk 0 Total** | **~237** | |
 
@@ -551,22 +510,22 @@ Note: TC-1.1a covers four assertions in one test; TC-1.3a covers four script nam
 
 | Test File | New Tests | TCs Covered |
 |-----------|-----------|-------------|
-| `tests/sdk/surface.test.ts` | 4 | TC-2.1a, TC-2.2a, TC-2.2b, TC-2.3a |
-| `tests/sdk/operations.test.ts` | 3 | TC-2.4a, TC-2.4b, TC-2.5a |
-| `tests/code-quality/zod-v4-syntax.test.ts` | 2 | TC-2.6a, TC-2.6b |
-| `tests/sdk/per-operation/*.test.ts` (10 files) | 10 | (non-TC envelope-shape; one test per operation) |
+| `tests/unit/sdk/surface.test.ts` | 4 | TC-2.1a, TC-2.2a, TC-2.2b, TC-2.3a |
+| `tests/unit/sdk/operations.test.ts` | 3 | TC-2.4a, TC-2.4b, TC-2.5a |
+| `tests/unit/quality/zod-v4-syntax.test.ts` | 2 | TC-2.6a, TC-2.6b |
+| `tests/unit/sdk/per-operation/*.test.ts` (10 files) | 10 | (non-TC envelope-shape; one test per operation) |
 | **Chunk 1 Total** | **19** | |
 
 ### Chunk 2: CLI Invocation Surface
 
 | Test File | New Tests | TCs Covered |
 |-----------|-----------|-------------|
-| `tests/command/help.test.ts` | 1 | TC-3.1a |
-| `tests/command/structure.test.ts` | 1 | TC-3.2a |
-| `tests/command/exit-codes.test.ts` | 4 | TC-3.3a (×4 status values) |
-| `tests/command/envelope.test.ts` | 2 | TC-3.4a, TC-3.4b |
-| `tests/command/invocation.test.ts` | 1 | TC-3.5a |
-| `tests/command/pack-and-install-smoke.test.ts` | 1 | TC-3.5b |
+| `tests/package/cli/help.test.ts` | 1 | TC-3.1a |
+| `tests/unit/cli/structure.test.ts` | 1 | TC-3.2a |
+| `tests/unit/cli/exit-codes.test.ts` | 4 | TC-3.3a (×4 status values) |
+| `tests/unit/cli/envelope.test.ts` | 2 | TC-3.4a, TC-3.4b |
+| `tests/package/cli/invocation.test.ts` | 1 | TC-3.5a |
+| `tests/package/cli/pack-and-install-smoke.test.ts` | 1 | TC-3.5b |
 | Help-text format / arg-parse error tests | 2 | (non-TC defensive) |
 | **Chunk 2 Total** | **12** | |
 
@@ -574,18 +533,18 @@ Note: TC-1.1a covers four assertions in one test; TC-1.3a covers four script nam
 
 | Test File | New Tests | TCs Covered |
 |-----------|-----------|-------------|
-| `tests/sdk/envelope.test.ts` | 1 | TC-4.1a |
-| `tests/infra/persisted-state.test.ts` | 1 | TC-4.1b |
-| `tests/sdk/errors.test.ts` | 2 | TC-4.2a, TC-4.2c |
-| `tests/code-quality/no-string-error-detection.test.ts` | 1 | TC-4.2b |
-| `tests/core/schema-derivation.test.ts` | 2 | TC-4.3a, TC-4.3b |
-| `tests/infra/fs-atomic.test.ts` | 1 | TC-4.4a |
-| `tests/infra/index-reservation.test.ts` | 2 | TC-4.5a, TC-4.5c |
-| `tests/infra/env-allowlist.test.ts` | 1 | TC-4.6a |
-| `tests/sdk/codex-resume.test.ts` | 1 | TC-4.7a |
-| `tests/sdk/preflight.test.ts` | 1 | TC-4.7b |
-| `tests/code-quality/no-internal-mocks.test.ts` | 1 | TC-4.8a |
-| `tests/parser-contract/fixtures.test.ts` | 1 | TC-4.8b |
+| `tests/unit/sdk/operations.test.ts` | 1 | TC-4.1a |
+| `tests/unit/infra/persisted-state.test.ts` | 1 | TC-4.1b |
+| `tests/unit/sdk/errors.test.ts` | 2 | TC-4.2a, TC-4.2c |
+| `tests/unit/quality/no-string-error-detection.test.ts` | 1 | TC-4.2b |
+| `tests/unit/core/schema-derivation.test.ts` | 2 | TC-4.3a, TC-4.3b |
+| `tests/unit/infra/fs-atomic.test.ts` | 1 | TC-4.4a |
+| `tests/unit/infra/index-reservation.test.ts` | 2 | TC-4.5a, TC-4.5c |
+| `tests/unit/infra/env-allowlist.test.ts` | 1 | TC-4.6a |
+| `tests/unit/core/provider-adapter.test.ts` | 1 | TC-4.7a |
+| `tests/unit/cli/preflight-command.test.ts` | 1 | TC-4.7b |
+| `tests/unit/quality/no-internal-mocks.test.ts` | 1 | TC-4.8a |
+| `tests/unit/parser-contract/fixtures.test.ts` | 1 | TC-4.8b |
 | Atomic-write concurrency-stress | 1 | (non-TC) |
 | Index-reservation 3+ parallel | 1 | (non-TC) |
 | Index-reservation retry-cap exhaustion | 1 | (non-TC) |
@@ -602,9 +561,9 @@ Note: TC-1.1a covers four assertions in one test; TC-1.3a covers four script nam
 
 | Test File | New Tests | TCs Covered |
 |-----------|-----------|-------------|
-| `tests/parser-contract/claude-code.test.ts` | 4 (one per scenario) | TC-5.3a, TC-5.3b |
-| `tests/parser-contract/codex.test.ts` | 4 | TC-5.3a |
-| `tests/parser-contract/copilot.test.ts` | 4 | TC-5.3a |
+| `tests/unit/parser-contract/claude-code.test.ts` | 4 (one per scenario) | TC-5.3a, TC-5.3b |
+| `tests/unit/parser-contract/codex.test.ts` | 4 | TC-5.3a |
+| `tests/unit/parser-contract/copilot.test.ts` | 4 | TC-5.3a |
 | `tests/integration/smoke.test.ts` | 3 (one per provider) | TC-5.1a |
 | `tests/integration/resume.test.ts` | 3 | TC-5.1b |
 | `tests/integration/structured-output.test.ts` | 3 | TC-5.1c |
@@ -618,14 +577,14 @@ Note: TC-1.1a covers four assertions in one test; TC-1.3a covers four script nam
 
 | Test File | New Tests | TCs Covered |
 |-----------|-----------|-------------|
-| `tests/gorilla/fixture.test.ts` | 1 | TC-5.4a |
-| `tests/gorilla/distribution.test.ts` | 1 | TC-5.4b |
-| `tests/gorilla/reset.test.ts` | 1 | TC-5.5a |
-| `tests/gorilla/prompt-coverage.test.ts` | 2 | TC-5.6a, TC-5.6b |
-| `tests/gorilla/template.test.ts` | 2 | TC-5.7a, TC-5.7b |
+| `tests/unit/gorilla/fixture.test.ts` | 1 | TC-5.4a |
+| `tests/package/gorilla/distribution.test.ts` | 1 | TC-5.4b |
+| `tests/unit/gorilla/reset.test.ts` | 1 | TC-5.5a |
+| `tests/unit/gorilla/prompt-coverage.test.ts` | 2 | TC-5.6a, TC-5.6b |
+| `tests/unit/gorilla/template.test.ts` | 2 | TC-5.7a, TC-5.7b |
 | Reset idempotency | 1 | (non-TC) |
 | Fixture validates with `inspect` operation | 1 | (non-TC) |
-| `tests/gorilla/evidence-layout.test.ts` | 1 | TC-5.9a |
+| `tests/unit/gorilla/evidence-layout.test.ts` | 1 | TC-5.9a |
 | **Chunk 5 Total** | **10** | |
 
 Note: TC-5.8a is manual pre-release verification, not an automated test; not counted here.
@@ -634,20 +593,20 @@ Note: TC-5.8a is manual pre-release verification, not an automated test; not cou
 
 | Test File | New Tests | TCs Covered |
 |-----------|-----------|-------------|
-| `tests/dist/metadata.test.ts` | 1 | TC-6.1a |
-| `tests/dist/pack-install.test.ts` | 2 | TC-6.2a, TC-6.2b |
-| `tests/dist/types.test.ts` | 1 | TC-6.3a |
-| `tests/dist/subpath-imports.test.ts` | 3 | (non-TC: TS-import, JS-import, types-only-import) |
+| `tests/package/dist/metadata.test.ts` | 1 | TC-6.1a |
+| `tests/package/dist/pack-install.test.ts` | 2 | TC-6.2a, TC-6.2b |
+| `tests/package/dist/types.test.ts` | 1 | TC-6.3a |
+| `tests/package/dist/subpath-imports.test.ts` | 3 | (non-TC: TS-import, JS-import, types-only-import) |
 | **Chunk 6 Total** | **7** | |
 
 ### Chunk 7: Release Automation
 
 | Test File | New Tests | TCs Covered |
 |-----------|-----------|-------------|
-| `tests/dist/version-sync.test.ts` | 1 | TC-6.4a |
-| `tests/release/workflow.test.ts` | 7 | TC-6.5a, TC-6.5b, TC-6.5c, TC-6.5d, TC-6.5e; plus workflow_dispatch checkout and YAML readiness non-TC checks |
-| `tests/release/evidence-script.test.ts` | 3 | TC-6.5d matrix script coverage |
-| `tests/release/runbook.test.ts` | 1 | TC-6.6a |
+| `tests/package/dist/version-sync.test.ts` | 1 | TC-6.4a |
+| `tests/package/release/workflow.test.ts` | 7 | TC-6.5a, TC-6.5b, TC-6.5c, TC-6.5d, TC-6.5e; plus workflow_dispatch checkout and YAML readiness non-TC checks |
+| `tests/package/release/evidence-script.test.ts` | 3 | TC-6.5d matrix script coverage |
+| `tests/package/release/runbook.test.ts` | 1 | TC-6.6a |
 | YAML lint (workflow files) | 1 | (non-TC) |
 | First-publish smoke (manual) | — | TC-6.7a (manual; not automated) |
 | **Chunk 7 Total** | **13** | |

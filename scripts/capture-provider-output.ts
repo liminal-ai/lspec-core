@@ -7,10 +7,16 @@ import {
 	executeScenario,
 	type ParserScenarioName,
 	type RealProviderName,
-} from "../tests/fixtures/real-provider-scenarios";
+} from "../tests/support/fixtures/real-provider-scenarios";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const FIXTURE_ROOT = join(ROOT, "tests", "parser-contract", "fixtures");
+const FIXTURE_ROOT = join(
+	ROOT,
+	"tests",
+	"support",
+	"parser-contract-fixtures",
+	"providers",
+);
 const PROVIDERS: RealProviderName[] = ["claude-code", "codex", "copilot"];
 const SCENARIOS: ParserScenarioName[] = [
 	"smoke",

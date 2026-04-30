@@ -17,13 +17,13 @@ import {
 import {
 	getProviderExecutable,
 	type RealProviderName,
-} from "../fixtures/real-provider-scenarios";
+} from "../support/fixtures/real-provider-scenarios";
 import {
 	createImplementorSpecPack,
 	createRunConfig,
 	writeRunConfig,
 	writeTextFile,
-} from "../test-helpers";
+} from "../support/test-helpers";
 
 export const INTEGRATION_ENABLED = process.env.LSPEC_INTEGRATION === "1";
 export const INTEGRATION_AUTH_SKIP_MODE =

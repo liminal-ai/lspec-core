@@ -38,7 +38,7 @@ env:
 
 jobs:
   default-ci:
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-2vcpu-ubuntu-2404
     steps:
       - name: Check out repository
         uses: actions/checkout@v5
@@ -79,7 +79,7 @@ jobs:
         run: npm run test:package
 
   integration:
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-2vcpu-ubuntu-2404
     needs: default-ci
     timeout-minutes: 30
     env:
@@ -139,7 +139,7 @@ jobs:
         run: npm run test:integration
 
   gorilla-evidence:
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-2vcpu-ubuntu-2404
     steps:
       - name: Check out repository
         uses: actions/checkout@v5
@@ -177,7 +177,7 @@ jobs:
         run: npx tsx scripts/check-release-evidence.ts --reference-date "$(date -u +%F)" --release-window-days "${{ env.RELEASE_WINDOW_DAYS }}"
 
   publish:
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-2vcpu-ubuntu-2404
     needs:
       - default-ci
       - integration

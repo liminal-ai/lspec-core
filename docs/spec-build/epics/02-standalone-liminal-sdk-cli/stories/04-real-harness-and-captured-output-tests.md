@@ -74,9 +74,9 @@ Add captured real-provider fixtures, parser-contract tests, and an env-gated rea
   - When: The default CI workflow runs
   - Then: The contract test fails with a clear diff between expected and actual parsed shape
 - **TC-4.8b.2:** Captured real-provider fixtures used by parser-contract tests are sourced from real captured output (satisfying half of Story 3's AC-4.8b)
-  - Given: The committed fixture files under `tests/parser-contract/fixtures/<provider>/<scenario>.txt` at the end of this story
+  - Given: The committed fixture files under `tests/support/parser-contract-fixtures/providers/<provider>/<scenario>.txt` at the end of this story
   - When: A reviewer inspects each fixture's leading provenance comment
-  - Then: Each fixture identifies a real provider run by provider, command, and capture date; the dates parse; the parser-contract tests defined in Story 3 (`tests/parser-contract/{claude-code,codex,copilot}.test.ts`) pass against these real fixtures, proving the AC-4.8b rule end-to-end
+  - Then: Each fixture identifies a real provider run by provider, command, and capture date; the dates parse; the parser-contract tests defined in Story 3 (`tests/unit/parser-contract/{claude-code,codex,copilot}.test.ts`) pass against these real fixtures, proving the AC-4.8b rule end-to-end
 
 ### Technical Design
 <!-- Jira: Technical Notes or sub-section of Description -->
