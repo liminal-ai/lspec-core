@@ -3,7 +3,7 @@
   "config": "Config A",
   "repository": "liminal-ai/lbuild-impl",
   "packageName": "lbuild-impl",
-  "packageVersion": "0.2.1",
+  "packageVersion": "0.2.2",
   "currentStateDocs": [
     "docs/current-state.md",
     "docs/current-state-tech-design.md",

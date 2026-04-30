@@ -227,7 +227,7 @@ See [docs/release-runbook.md](docs/release-runbook.md) for the maintainer proced
 
 ## Status
 
-Indie open-source pre-release (`0.2.1`). The CLI and SDK are usable, but the API may evolve as the broader Liminal Build platform stabilizes.
+Indie open-source pre-release (`0.2.2`). The CLI and SDK are usable, but the API may evolve as the broader Liminal Build platform stabilizes.
 
 ## License
 

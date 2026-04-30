@@ -6,7 +6,7 @@ This is a Config A compact current-state baseline. The repository is small enoug
 
 ## Status
 
-`lbuild-impl` is a standalone Node 24+ npm package that exposes the Liminal Build implementation runtime as both a CLI and SDK. The current release marker is `lbuild-impl@0.2.1`.
+`lbuild-impl` is a standalone Node 24+ npm package that exposes the Liminal Build implementation runtime as both a CLI and SDK. The current release marker is `lbuild-impl@0.2.2`.
 
 The package is no longer just an epic artifact. It has a tested distribution surface, real-provider integration gates, committed gorilla release evidence, and a live publish workflow.
 
@@ -52,7 +52,7 @@ Release automation uses:
 - Real-provider gate: `npm run test:integration`.
 - Gorilla evidence gate: `scripts/check-release-evidence.ts`.
 - Version sync gate: `scripts/check-release-version-sync.ts`.
-- Live publish on tag push with `npm publish --access public --provenance`.
+- Live publish on tag push with `npm publish --access public`.
 
 Manual `workflow_dispatch` publish runs are rehearsal-only. They validate the release candidate and run dry-run publication logic. If the requested package version already exists on npm, the workflow validates package shape with `npm pack --dry-run --json` instead of trying to republish the existing version.
 

@@ -76,10 +76,9 @@ test("TC-6.5e: all gates green publishes", async () => {
 	const workflow = await readPublishWorkflow();
 
 	expect(workflow).toContain("scripts/check-release-version-sync.ts");
-	expect(workflow).toContain("npm publish --access public --provenance");
-	expect(workflow).toContain(
-		"npm publish --access public --provenance --dry-run",
-	);
+	expect(workflow).toContain("npm publish --access public");
+	expect(workflow).toContain("npm publish --access public --dry-run");
+	expect(workflow).not.toContain("--provenance");
 	expect(workflow).toContain('npm view "$package_id" version');
 	expect(workflow).toContain("npm pack --dry-run --json");
 	expect(workflow).toContain(

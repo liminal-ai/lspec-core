@@ -10,7 +10,7 @@ Historical drafts used broader standalone SDK/CLI naming. Current package identi
 
 ## Version Status
 
-The package release marker is `0.2.1`. Any doc that still describes the project as only `0.1.0` or first-publish pending is stale.
+The package release marker is `0.2.2`. Any doc that still describes the project as only `0.1.0` or first-publish pending is stale.
 
 ## Test Topology
 

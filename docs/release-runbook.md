@@ -4,14 +4,15 @@ This runbook covers maintainer-owned release work for `lbuild-impl`: configure n
 
 ## Current release baseline
 
-Current package: `lbuild-impl@0.2.1`
+Current package: `lbuild-impl@0.2.2`
 
 Release infrastructure:
 
 - Node 24.
 - Blacksmith runner label `blacksmith-2vcpu-ubuntu-2404`.
 - Public unscoped npm package `lbuild-impl`.
-- Live publish uses `npm publish --access public --provenance`.
+- Live publish uses `npm publish --access public` on Blacksmith runners.
+- npm provenance is not enabled while publishing from Blacksmith, because npm currently accepts provenance only from GitHub-hosted runners.
 - Manual publish workflow runs are rehearsal-only and cannot publish live.
 
 Recent known-good runs:
@@ -79,7 +80,7 @@ Run one rehearsal before every live publish for a version.
 10. Leave `dry_run` enabled.
 11. Confirm the workflow completes `default-ci`, `integration`, `gorilla-evidence`, and `publish`.
 
-Manual `workflow_dispatch` runs validate the requested tag string, check out `ref`, verify the release markers against `tag`, and then run dry-run package validation. If the package version does not yet exist on npm, the final publish step runs `npm publish --access public --provenance --dry-run`. If the package version already exists on npm, the workflow runs `npm pack --dry-run --json` instead so rehearsals remain possible after an earlier publish.
+Manual `workflow_dispatch` runs validate the requested tag string, check out `ref`, verify the release markers against `tag`, and then run dry-run package validation. If the package version does not yet exist on npm, the final publish step runs `npm publish --access public --dry-run`. If the package version already exists on npm, the workflow runs `npm pack --dry-run --json` instead so rehearsals remain possible after an earlier publish.
 
 ## Tag and publish
 
