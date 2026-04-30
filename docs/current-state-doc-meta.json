@@ -1,0 +1,27 @@
+{
+  "generatedAt": "2026-04-30",
+  "config": "Config A",
+  "repository": "liminal-ai/lbuild-impl",
+  "packageName": "lbuild-impl",
+  "packageVersion": "0.2.1",
+  "currentStateDocs": [
+    "docs/current-state.md",
+    "docs/current-state-tech-design.md",
+    "docs/current-state-code-map.md",
+    "docs/current-state-drift-ledger.md"
+  ],
+  "releaseDocs": [
+    "docs/release-runbook.md",
+    "gorilla/README.md",
+    "gorilla/prompt.md",
+    "gorilla/evidence-template.md",
+    "CHANGELOG.md",
+    "VERSION"
+  ],
+  "verifiedRuns": {
+    "ci": "25141574466",
+    "integration": "25141423544",
+    "publishDryRun": "25141577186",
+    "livePublishV020": "25139094562"
+  }
+}

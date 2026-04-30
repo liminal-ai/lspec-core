@@ -1,56 +1,85 @@
 # Release Runbook
 
-This runbook covers the maintainer-owned steps around Story 7 release automation: configure npm once, keep release markers in sync, produce fresh gorilla evidence before tagging, rehearse the publish, and verify the first public artifact after publish.
+This runbook covers maintainer-owned release work for `lbuild-impl`: configure npm, keep release markers in sync, produce fresh gorilla evidence, rehearse the publish workflow, tag the live release, and verify the published artifact.
+
+## Current release baseline
+
+Current package: `lbuild-impl@0.2.1`
+
+Release infrastructure:
+
+- Node 24.
+- Blacksmith runner label `blacksmith-2vcpu-ubuntu-2404`.
+- Public unscoped npm package `lbuild-impl`.
+- Live publish uses `npm publish --access public --provenance`.
+- Manual publish workflow runs are rehearsal-only and cannot publish live.
+
+Recent known-good runs:
+
+- CI on Blacksmith: `25141574466`
+- Integration on Blacksmith: `25141423544`
+- Publish dry-run on Blacksmith: `25141577186`
+- Live `v0.2.0` publish: `25139094562`
 
 ## npm token configuration
 
 1. Create or refresh an npm automation token with publish rights for `lbuild-impl`.
 2. Add the token to the GitHub repository as the `NPM_TOKEN` Actions secret.
-3. Confirm the release workflow also has the provider secrets already used by the real-harness job:
+3. Confirm the release workflow also has the provider secrets used by the real-harness job:
    - `ANTHROPIC_API_KEY`
    - `OPENAI_API_KEY`
    - `GH_TOKEN`
-4. If the token was rotated, rerun `npm whoami` locally before the next tag so the first live release is not the first auth check.
+4. If the token was rotated, rerun `npm whoami` locally before the next tag so the live workflow is not the first auth check.
 
 ## Package access setup
 
-`lbuild-impl` publishes as an unscoped public package. Before the first live publish:
+`lbuild-impl` publishes as an unscoped public package.
 
-1. Confirm the maintainer account has publish access to the `lbuild-impl` package on the npm registry.
-2. Confirm the package is configured for public access (default for unscoped packages).
-3. Keep `package.json`, `CHANGELOG.md`, and `VERSION` aligned to the same semantic version before tagging.
+Before releasing:
+
+1. Confirm the maintainer account has publish access to the `lbuild-impl` package on npm.
+2. Confirm the package remains public.
+3. Confirm `npm view lbuild-impl version` returns the latest expected published version.
+4. Keep `package.json`, `CHANGELOG.md`, and `VERSION` aligned to the same semantic version before tagging.
 
 ## Pre-tag gorilla evidence procedure
 
-The publish workflow will not generate gorilla evidence for you. The maintainer must commit it before tagging.
+The publish workflow validates gorilla evidence but does not generate it. The maintainer must commit fresh evidence before tagging.
 
 1. Reset the fixture: `npx tsx gorilla/reset.ts`
 2. Build the package: `npm run build`
-3. Follow [`gorilla/prompt.md`](../../gorilla/prompt.md) and write evidence into `gorilla/evidence/<YYYY-MM-DD>/`.
-   Use the fixture's `*-smoke` configs for release evidence; the non-smoke configs are intentionally allowed to run longer implementation-grade provider work.
-4. Keep the canonical filename format: `<provider>-<scenario>.md`
-5. The default release gate requires the canonical Story 7 matrix: `claude-code-smoke.md`, `codex-resume.md`, `copilot-structured-output.md`, and `codex-stall.md`.
-6. If a release intentionally uses a smaller or different matrix, pass `--matrix <comma-separated reports>` to `scripts/check-release-evidence.ts` and document the explicit matrix in the release notes before tagging.
-7. For a clean report, record `- Unexpected behaviors observed: none` in the `## Divergences` section.
-8. If the gorilla run finds issues, fix them before tagging instead of committing unresolved release evidence.
-9. Commit the fresh evidence directory before creating the release tag.
+3. Follow `gorilla/prompt.md` and write evidence into `gorilla/evidence/<YYYY-MM-DD>/`.
+4. Use the fixture's `*-smoke` configs for release evidence. Non-smoke configs are intentionally allowed to run longer implementation-grade provider work.
+5. Keep the canonical filename format: `<provider>-<scenario>.md`
+6. The default release gate requires this four-report matrix:
+   - `claude-code-smoke.md`
+   - `codex-resume.md`
+   - `copilot-structured-output.md`
+   - `codex-stall.md`
+7. If a release intentionally uses a smaller or different matrix, pass `--matrix <comma-separated reports>` to `scripts/check-release-evidence.ts` and document the explicit matrix in the release notes before tagging.
+8. For a clean report, record `- Unexpected behaviors observed: none` in the `## Divergences` section.
+9. If the gorilla run finds issues, fix them before tagging instead of committing unresolved release evidence.
+10. Commit the fresh evidence directory before creating the release tag.
 
 The publish workflow accepts evidence directories dated within the last 7 days by default. Use the workflow-dispatch `release_window_days` input only when you intentionally need a wider pre-tag window.
 
 ## First publish rehearsal
 
-Do one rehearsal before the first live publish for a version:
+Run one rehearsal before every live publish for a version.
 
 1. Update `package.json`, `CHANGELOG.md`, and `VERSION` to the target version.
 2. Run `npm run green-verify`.
-3. Run `npm run verify-all`.
+3. Run `npm run verify-all` if provider credentials are available locally.
 4. Run `npm run pack-and-install-smoke`.
 5. Push the release branch or commit SHA you want to rehearse so GitHub Actions can check it out.
-6. Optionally create a local-only `v<version>` tag for your own shell checks; the workflow does not need the tag to exist on GitHub during rehearsal.
-7. Start the `Publish` workflow manually with `workflow_dispatch`, set `tag` to `v<version>`, set `ref` to the GitHub-visible release branch/SHA/ref from step 5, and leave `dry_run` enabled.
-8. Confirm the workflow reaches the `npm publish --dry-run` step only after the default CI, real-harness, gorilla evidence, and version-sync checks are green.
+6. Optionally create a local-only `v<version>` tag for shell checks. The workflow does not need the tag to exist on GitHub during rehearsal.
+7. Start the `Publish` workflow manually with `workflow_dispatch`.
+8. Set `tag` to `v<version>`.
+9. Set `ref` to the GitHub-visible release branch, SHA, or ref from step 5.
+10. Leave `dry_run` enabled.
+11. Confirm the workflow completes `default-ci`, `integration`, `gorilla-evidence`, and `publish`.
 
-Manual `workflow_dispatch` runs are rehearsal-only. The workflow checks out `ref`, validates the requested `tag` string, and verifies that `package.json`, `CHANGELOG.md`, and `VERSION` match that tag before running `npm publish --dry-run`. It does not require the release tag to exist on GitHub.
+Manual `workflow_dispatch` runs validate the requested tag string, check out `ref`, verify the release markers against `tag`, and then run dry-run package validation. If the package version does not yet exist on npm, the final publish step runs `npm publish --access public --provenance --dry-run`. If the package version already exists on npm, the workflow runs `npm pack --dry-run --json` instead so rehearsals remain possible after an earlier publish.
 
 ## Tag and publish
 
@@ -61,21 +90,41 @@ Manual `workflow_dispatch` runs are rehearsal-only. The workflow checks out `ref
    - the fresh gorilla evidence directory committed to `gorilla/evidence/`
 2. Create and push the release tag: `git tag v<version>` then `git push origin v<version>`
 3. Watch the `Publish` workflow for the tagged commit.
-4. If any gate fails, fix the issue on a new commit, regenerate evidence if needed, and create a new tag for the corrected version instead of rerunning an old broken tag.
+4. Confirm `default-ci`, `integration`, `gorilla-evidence`, and `publish` all complete.
+5. If any gate fails, fix the issue on a new commit, regenerate evidence if needed, and create a new tag for the corrected version instead of rerunning an old broken tag.
 
 ## Post-publish verification
 
 After the live publish completes:
 
-1. In a fresh temp directory, run `npx lbuild-impl inspect --spec-pack-root ./fixture --json` against a minimal fixture pack.
-2. Confirm the command returns an `inspect` envelope with `status: ok` and `outcome: ready`.
-3. Confirm the persisted artifact path named in the envelope exists on disk.
-4. Run `npm view lbuild-impl version` and confirm the registry version matches the pushed tag.
-5. Record the first successful `npx` smoke result in the release notes or maintainer log for TC-6.7a traceability.
+1. Run `npm view lbuild-impl version dist-tags --json` and confirm the registry version and `latest` tag match the pushed tag.
+2. In a fresh temp directory outside this repo, create a minimal spec-pack fixture inside a git repository.
+3. Run `npx --yes lbuild-impl@<version> inspect --spec-pack-root ./fixture --json`.
+4. Confirm the command returns an `inspect` envelope with `status: ok` and `outcome: ready`.
+5. Confirm the persisted artifact path named in the envelope exists on disk.
+6. Install globally with `npm install -g lbuild-impl@<version>`.
+7. Run the global `lbuild-impl --version`, `lbuild-impl --help`, and `lbuild-impl inspect --spec-pack-root ./fixture --json` smoke checks.
+8. In a fresh temp package, import the SDK with `import { version, inspect } from "lbuild-impl/sdk"` and confirm the version and function surface.
+9. Record the successful `npx`, global install, and SDK import smoke results in release notes or a maintainer log for traceability.
 
-### v0.1.0 post-publish smoke evidence
+Run `npx` smoke checks from a neutral temp directory, not from inside this repository. A package can confuse `npx` when the current working tree has the same package name but no local `.bin` entry.
+
+### v0.2.0 post-publish smoke evidence
 
 Recorded on 2026-04-29 after the public npm publish:
+
+- Live publish workflow succeeded in GitHub Actions run `25139094562`.
+- `npm view lbuild-impl@0.2.0` showed `0.2.0` as the current published package.
+- `npx --yes lbuild-impl@0.2.0 --version` and `--help` worked from a neutral temp directory.
+- `npx --yes lbuild-impl@0.2.0 inspect --spec-pack-root ./fixture --json` returned a successful `inspect` envelope against a minimal git-backed fixture.
+- The `inspect` envelope's persisted artifact path existed on disk.
+- `npm install -g lbuild-impl@0.2.0` installed a working global `lbuild-impl` binary.
+- Global `--version`, `--help`, `inspect --json`, artifact existence, and unknown-flag rejection checks passed.
+- A fresh temp SDK import confirmed `version === "0.2.0"` and `inspect` is exported as a function from `lbuild-impl/sdk`.
+
+### v0.1.0 historical smoke evidence
+
+Recorded on 2026-04-29 after the first public npm publish:
 
 - `npm view lbuild-impl version dist-tags --json` returned `version: "0.1.0"` and `latest: "0.1.0"`.
 - `npx --yes lbuild-impl@0.1.0 inspect --spec-pack-root ./fixture --json` was run in a fresh temp directory against a minimal fixture pack initialized as a git repository.
