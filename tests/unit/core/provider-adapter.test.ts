@@ -1140,8 +1140,11 @@ describe("provider availability checks", () => {
 		const stderrPath = join(streamDir, "stdin-close.stderr.log");
 		const execution = await runProviderCommand({
 			provider: "codex",
-			executable: "sh",
-			args: ["-lc", "read x; echo done"],
+			executable: process.execPath,
+			args: [
+				"-e",
+				"process.stdin.resume(); process.stdin.on('end', () => console.log('done'));",
+			],
 			cwd: ROOT,
 			timeoutMs: 1_000,
 			streamOutputPaths: {
@@ -1163,8 +1166,8 @@ describe("provider availability checks", () => {
 
 		const execution = await runProviderCommand({
 			provider: "codex",
-			executable: "sh",
-			args: ["-lc", "sleep 2"],
+			executable: process.execPath,
+			args: ["-e", "setTimeout(() => {}, 2_000);"],
 			cwd: ROOT,
 			timeoutMs: 50,
 		});
