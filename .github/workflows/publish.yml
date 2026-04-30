@@ -228,7 +228,13 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.dry_run }}" = "true" ]; then
-            npm publish --access public --provenance --dry-run
+            package_id="$(node -p "const p=require('./package.json'); p.name + '@' + p.version")"
+            if npm view "$package_id" version >/dev/null 2>&1; then
+              echo "$package_id already exists on npm; validating package shape with npm pack --dry-run instead."
+              npm pack --dry-run --json
+            else
+              npm publish --access public --provenance --dry-run
+            fi
           elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             echo "Manual workflow_dispatch runs only support dry_run=true. Push a vX.Y.Z tag for a live publish."
             exit 1

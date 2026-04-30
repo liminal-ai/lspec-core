@@ -80,6 +80,8 @@ test("TC-6.5e: all gates green publishes", async () => {
 	expect(workflow).toContain(
 		"npm publish --access public --provenance --dry-run",
 	);
+	expect(workflow).toContain('npm view "$package_id" version');
+	expect(workflow).toContain("npm pack --dry-run --json");
 	expect(workflow).toContain(
 		"Manual workflow_dispatch runs only support dry_run=true.",
 	);
