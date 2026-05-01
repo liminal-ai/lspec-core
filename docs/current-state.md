@@ -1,21 +1,22 @@
 # Current State: lbuild-impl
 
-Generated: 2026-04-30
+Generated: 2026-05-01
 
 This is a Config A compact current-state baseline. The repository is small enough that one functional baseline, one technical baseline, one code map, and one drift ledger are more useful than a large reconstructed architecture packet.
 
 ## Status
 
-`lbuild-impl` is a standalone Node 24+ npm package that exposes the Liminal Build implementation runtime as both a CLI and SDK. The current release marker is `lbuild-impl@0.2.3`.
+`lbuild-impl` is a standalone Node 24+ npm package that exposes the Liminal Build implementation runtime as both a CLI and SDK. The current release marker is `lbuild-impl@0.3.0`.
 
 The package is no longer just an epic artifact. It has a tested distribution surface, real-provider integration gates, committed gorilla release evidence, and a live publish workflow.
 
 Recent release evidence:
 
-- GitHub Actions CI on Blacksmith succeeded in run `25141574466`.
-- Manual Integration on Blacksmith succeeded in run `25141423544`.
-- Manual Publish dry-run on Blacksmith succeeded in run `25141577186`.
-- Live `v0.2.0` publish succeeded in run `25139094562`.
+- Live `v0.2.3` Publish workflow succeeded in run `25170738326`.
+- Blacksmith `default-ci` gate succeeded in job `73789122944`.
+- Blacksmith `gorilla-evidence` gate succeeded in job `73789123001`.
+- Blacksmith `integration` gate succeeded in job `73789468736`.
+- GitHub-hosted final publish job succeeded in job `73790052013` with npm provenance.
 
 ## Functional Baseline
 
@@ -33,8 +34,11 @@ Current operations:
 - `epic-verify`
 - `epic-synthesize`
 - `epic-cleanup`
+- `skill`
 
 Each operation returns or prints a versioned result envelope. Envelopes carry the command name, status, outcome, error details when applicable, warnings, artifact references, timestamps, and operation-specific data.
+
+The `skill` command is the exception to the envelope contract: it is a model-facing markdown delivery surface for the `ls-impl` orchestration skill. The root load prints authored skill onboarding plus an auto-generated directory, and chunk loads return bounded markdown sections with carry-forward guidance.
 
 The implementation runtime writes durable artifacts under the spec pack. `inspect` is intentionally read-only. Mutating operations reserve artifact paths, write through atomic helpers, and preserve continuation/progress information where the operation supports it.
 

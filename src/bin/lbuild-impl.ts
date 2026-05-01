@@ -9,6 +9,7 @@ import epicVerifyCommand from "../cli/commands/epic-verify";
 import inspectCommand from "../cli/commands/inspect";
 import preflightCommand from "../cli/commands/preflight";
 import quickFixCommand from "../cli/commands/quick-fix";
+import skillCommand from "../cli/commands/skill";
 import storyContinueCommand from "../cli/commands/story-continue";
 import storyImplementCommand from "../cli/commands/story-implement";
 import storySelfReviewCommand from "../cli/commands/story-self-review";
@@ -40,6 +41,10 @@ BASIC PROCESS
 
   Repeat steps 3-6 per story. Run cleanup only when batch prepared.
 
+SKILL DELIVERY
+  skill        Read the CLI-delivered ls-impl orchestration skill in bounded
+               chunks. Start with: lbuild-impl skill ls-impl
+
 USAGE
   lbuild-impl <command> [options]
   lbuild-impl <command> --help
@@ -64,6 +69,7 @@ COMMANDS
   epic-verify         Run epic-level verification.
   epic-synthesize     Summarize/reconcile epic verifier findings.
   epic-cleanup        Apply prepared cleanup batch.
+  skill               Read CLI-delivered skill onboarding/docs.
 
 OUTPUT CONTRACT
   Use --json for agent automation. Every command returns an envelope.
@@ -122,6 +128,7 @@ const main = defineCommand({
 		inspect: inspectCommand,
 		preflight: preflightCommand,
 		"quick-fix": quickFixCommand,
+		skill: skillCommand,
 		"story-implement": storyImplementCommand,
 		"story-continue": storyContinueCommand,
 		"story-self-review": storySelfReviewCommand,

@@ -46,7 +46,9 @@ If you need to create the build pack first, start with [`liminal-spec`](https://
 
 ## Core Concepts
 
-**Spec pack**: a directory containing the epic, tech design, test plan, story files, run config, and generated implementation artifacts.
+**Spec pack**: the authored implementation input bundle: epic, tech design, test plan, and story files.
+
+**Run state**: implementation-run files layered beside the authored pack, including `impl-run.config.json`, `team-impl-log.md`, and generated artifacts.
 
 **Operation**: one bounded runtime action, such as inspecting a pack, preflighting readiness, implementing a story, verifying a story, continuing stalled work, or synthesizing epic status.
 
@@ -112,13 +114,25 @@ Example envelope shape:
 | `epic-verify` | Verify epic-level completion |
 | `epic-synthesize` | Synthesize epic status from stories and evidence |
 | `epic-cleanup` | Run cleanup batches after implementation |
+| `skill` | Read CLI-delivered skill onboarding and reference docs in bounded markdown chunks |
 
-Every command supports the same envelope-oriented contract through the CLI and SDK.
+Implementation commands support the same envelope-oriented contract through the CLI and SDK. The `skill` command is intentionally model-facing markdown instead of an operation envelope.
+
+### CLI-Delivered Skill
+
+`lbuild-impl` can deliver its orchestration skill directly through the CLI, so a coding agent can onboard without a separately installed skill bundle:
+
+```sh
+lbuild-impl skill ls-impl
+lbuild-impl skill ls-impl onboarding/01-orientation.md 1
+```
+
+The initial load prints the authored skill root page plus an auto-generated directory of every loadable skill document, including chunk counts and exact follow-up commands. Chunk reads return plain markdown with a line range and carry-forward guidance.
 
 ## SDK Usage
 
 ```ts
-import { inspect, preflight } from "lbuild-impl/sdk";
+import { inspect, loadSkill, preflight, readSkillChunk } from "lbuild-impl/sdk";
 
 const inspection = await inspect({
   specPackRoot: "./docs/spec-build/epics/my-epic",
@@ -126,6 +140,13 @@ const inspection = await inspect({
 
 const readiness = await preflight({
   specPackRoot: "./docs/spec-build/epics/my-epic",
+});
+
+const skillRoot = loadSkill({ skillName: "ls-impl" });
+const orientation = readSkillChunk({
+  skillName: "ls-impl",
+  path: "onboarding/01-orientation.md",
+  chunkNumber: 1,
 });
 ```
 
@@ -193,7 +214,10 @@ src/
   core/                # Runtime orchestration and provider adapters
   infra/               # Filesystem and environment helpers
   prompts/             # Embedded operation prompts
+  skills/              # Editable CLI-delivered skill markdown
   references/          # Embedded reference material
+scripts/
+  sync-impl-cli-assets.ts # Embeds prompts and skill markdown for package builds
 tests/
   unit/                # Default fast test project
   package/             # Package, release, workflow, and install tests
@@ -227,7 +251,7 @@ See [docs/release-runbook.md](docs/release-runbook.md) for the maintainer proced
 
 ## Status
 
-Indie open-source pre-release (`0.2.3`). The CLI and SDK are usable, but the API may evolve as the broader Liminal Build platform stabilizes.
+Indie open-source pre-release (`0.3.0`). The CLI and SDK are usable, but the API may evolve as the broader Liminal Build platform stabilizes.
 
 ## License
 

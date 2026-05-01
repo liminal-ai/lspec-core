@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.0 - 2026-05-01
+
+- Adds CLI-delivered `ls-impl` skill onboarding through `lbuild-impl skill ls-impl`, with bounded markdown chunk reads and an auto-generated skill directory.
+- Adds public SDK helpers for loading embedded skill content and reading individual skill chunks.
+- Embeds editable skill markdown assets in the package build so the CLI and SDK stay version-aligned with the implementation runtime.
+
 ## 0.2.3 - 2026-04-30
 
 - Restores npm provenance by running only the final publish job on GitHub-hosted runners while keeping CI, gorilla evidence, and real-provider integration gates on Blacksmith.

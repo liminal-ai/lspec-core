@@ -1,6 +1,6 @@
 {
   "name": "lbuild-impl",
-  "version": "0.2.3",
+  "version": "0.3.0",
   "description": "Implementation runtime for Liminal Build — agentic impl/verify orchestration.",
   "type": "module",
   "main": "./dist/sdk/index.js",
@@ -45,7 +45,7 @@
     "capture:test-baseline": "tsx scripts/capture-test-baseline.ts",
     "capture:provider-output": "tsx scripts/capture-provider-output.ts",
     "guard:no-test-changes": "tsx scripts/guard-no-test-changes.ts",
-    "build": "tsup && node scripts/ensure-bin-shebang.mjs",
+    "build": "tsx scripts/sync-impl-cli-assets.ts && tsup && node scripts/ensure-bin-shebang.mjs",
     "pack-and-install-smoke": "tsx scripts/pack-and-install-smoke.ts",
     "red-verify": "npm run format:check && npm run lint && npm run typecheck && npm run capture:test-baseline",
     "verify": "npm run red-verify && npm run test",

@@ -1,6 +1,6 @@
 # Current State Drift Ledger
 
-Generated: 2026-04-30
+Generated: 2026-05-01
 
 This ledger records the main places where implemented reality has intentionally moved beyond, narrowed, or corrected the historical epic docs.
 
@@ -10,7 +10,7 @@ Historical drafts used broader standalone SDK/CLI naming. Current package identi
 
 ## Version Status
 
-The package release marker is `0.2.3`. Any doc that still describes the project as only `0.1.0` or first-publish pending is stale.
+The package release marker is `0.3.0`. Any doc that still describes the project as only `0.1.0` or first-publish pending is stale.
 
 ## Test Topology
 
@@ -61,7 +61,8 @@ The current implementation has the corrected runtime behavior expected after rel
 
 The latest verified release automation evidence is:
 
-- CI: GitHub Actions run `25141574466`
-- Integration: GitHub Actions run `25141423544`
-- Publish dry-run: GitHub Actions run `25141577186`
-- Live `v0.2.0` publish: GitHub Actions run `25139094562`
+- Live `v0.2.3` Publish workflow: GitHub Actions run `25170738326`
+- Blacksmith `default-ci` gate: job `73789122944`
+- Blacksmith `gorilla-evidence` gate: job `73789123001`
+- Blacksmith `integration` gate: job `73789468736`
+- GitHub-hosted provenance publish job: job `73790052013`

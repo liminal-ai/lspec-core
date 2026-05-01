@@ -4,7 +4,7 @@ This runbook covers maintainer-owned release work for `lbuild-impl`: configure n
 
 ## Current release baseline
 
-Current package: `lbuild-impl@0.2.3`
+Current package: `lbuild-impl@0.3.0`
 
 Release infrastructure:
 
@@ -18,10 +18,11 @@ Release infrastructure:
 
 Recent known-good runs:
 
-- CI on Blacksmith: `25141574466`
-- Integration on Blacksmith: `25141423544`
-- Publish dry-run on Blacksmith: `25141577186`
-- Live `v0.2.0` publish: `25139094562`
+- Publish workflow for `v0.2.3`: `25170738326`
+- Blacksmith `default-ci` gate: `73789122944`
+- Blacksmith `gorilla-evidence` gate: `73789123001`
+- Blacksmith `integration` gate: `73789468736`
+- GitHub-hosted provenance publish job: `73790052013`
 
 ## npm token configuration
 
@@ -110,6 +111,20 @@ After the live publish completes:
 9. Record the successful `npx`, global install, and SDK import smoke results in release notes or a maintainer log for traceability.
 
 Run `npx` smoke checks from a neutral temp directory, not from inside this repository. A package can confuse `npx` when the current working tree has the same package name but no local `.bin` entry.
+
+### v0.2.3 post-publish smoke evidence
+
+Recorded on 2026-04-30 after the provenance-backed public npm publish:
+
+- Live publish workflow succeeded in GitHub Actions run `25170738326`.
+- `npm view lbuild-impl version` returned `0.2.3`, and `npm view lbuild-impl dist-tags --json` returned `latest: "0.2.3"`.
+- The publish log confirmed npm signed the provenance statement and published it to the Sigstore transparency log.
+- `npx --yes lbuild-impl@0.2.3 --version`, `--help`, and the no-args help screen worked from a neutral temp directory.
+- `npx --yes lbuild-impl@0.2.3 inspect --spec-pack-root ./fixture --json` returned a successful `inspect` envelope against a minimal git-backed fixture.
+- The `inspect` envelope's persisted artifact path existed on disk.
+- `npm install -g lbuild-impl@0.2.3` installed a working global `lbuild-impl` binary.
+- Global `--version`, `--help`, no-args help, `inspect --json`, artifact existence, and unknown-flag rejection checks passed.
+- A fresh temp SDK import confirmed `version === "0.2.3"` and SDK `inspect()` returned a ready envelope from `lbuild-impl/sdk`.
 
 ### v0.2.0 post-publish smoke evidence
 

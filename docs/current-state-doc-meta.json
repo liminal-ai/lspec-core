@@ -1,9 +1,9 @@
 {
-  "generatedAt": "2026-04-30",
+  "generatedAt": "2026-05-01",
   "config": "Config A",
   "repository": "liminal-ai/lbuild-impl",
   "packageName": "lbuild-impl",
-  "packageVersion": "0.2.3",
+  "packageVersion": "0.3.0",
   "currentStateDocs": [
     "docs/current-state.md",
     "docs/current-state-tech-design.md",

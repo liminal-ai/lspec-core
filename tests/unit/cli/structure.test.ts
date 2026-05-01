@@ -5,7 +5,7 @@ import { expect, test } from "vitest";
 
 const ROOT = resolve(import.meta.dirname, "../../..");
 const COMMANDS_DIR = join(ROOT, "src/cli/commands");
-const COMMAND_HELPERS = new Set(["shared.ts"]);
+const COMMAND_HELPERS = new Set(["shared.ts", "skill.ts"]);
 const IMPORT_SPECIFIER_PATTERN =
 	/import(?:\s+type)?[\s\S]*?\sfrom\s+["']([^"']+)["'];/g;
 const ALLOWED_COMMAND_IMPORTS = new Set([
