@@ -61,8 +61,8 @@ The current implementation has the corrected runtime behavior expected after rel
 
 The latest verified release automation evidence is:
 
-- Live `v0.2.3` Publish workflow: GitHub Actions run `25170738326`
-- Blacksmith `default-ci` gate: job `73789122944`
-- Blacksmith `gorilla-evidence` gate: job `73789123001`
-- Blacksmith `integration` gate: job `73789468736`
-- GitHub-hosted provenance publish job: job `73790052013`
+- Live `v0.3.0` Publish workflow: GitHub Actions run `25197337957`
+- Blacksmith `default-ci` gate: job `73880814695`
+- Blacksmith `gorilla-evidence` gate: job `73880814701`
+- Blacksmith `integration` gate: job `73880962070`
+- GitHub-hosted provenance publish job: job `73881155110`

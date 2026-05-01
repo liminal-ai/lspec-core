@@ -19,9 +19,10 @@
     "VERSION"
   ],
   "verifiedRuns": {
-    "ci": "25141574466",
-    "integration": "25141423544",
-    "publishDryRun": "25141577186",
-    "livePublishV020": "25139094562"
+    "publishV030": "25197337957",
+    "defaultCiJob": "73880814695",
+    "gorillaEvidenceJob": "73880814701",
+    "integrationJob": "73880962070",
+    "provenancePublishJob": "73881155110"
   }
 }

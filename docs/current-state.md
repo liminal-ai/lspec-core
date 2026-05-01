@@ -12,11 +12,11 @@ The package is no longer just an epic artifact. It has a tested distribution sur
 
 Recent release evidence:
 
-- Live `v0.2.3` Publish workflow succeeded in run `25170738326`.
-- Blacksmith `default-ci` gate succeeded in job `73789122944`.
-- Blacksmith `gorilla-evidence` gate succeeded in job `73789123001`.
-- Blacksmith `integration` gate succeeded in job `73789468736`.
-- GitHub-hosted final publish job succeeded in job `73790052013` with npm provenance.
+- Live `v0.3.0` Publish workflow succeeded in run `25197337957`.
+- Blacksmith `default-ci` gate succeeded in job `73880814695`.
+- Blacksmith `gorilla-evidence` gate succeeded in job `73880814701`.
+- Blacksmith `integration` gate succeeded in job `73880962070`.
+- GitHub-hosted final publish job succeeded in job `73881155110` with npm provenance.
 
 ## Functional Baseline
 

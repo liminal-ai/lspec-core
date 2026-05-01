@@ -18,11 +18,11 @@ Release infrastructure:
 
 Recent known-good runs:
 
-- Publish workflow for `v0.2.3`: `25170738326`
-- Blacksmith `default-ci` gate: `73789122944`
-- Blacksmith `gorilla-evidence` gate: `73789123001`
-- Blacksmith `integration` gate: `73789468736`
-- GitHub-hosted provenance publish job: `73790052013`
+- Publish workflow for `v0.3.0`: `25197337957`
+- Blacksmith `default-ci` gate: `73880814695`
+- Blacksmith `gorilla-evidence` gate: `73880814701`
+- Blacksmith `integration` gate: `73880962070`
+- GitHub-hosted provenance publish job: `73881155110`
 
 ## npm token configuration
 
@@ -111,6 +111,19 @@ After the live publish completes:
 9. Record the successful `npx`, global install, and SDK import smoke results in release notes or a maintainer log for traceability.
 
 Run `npx` smoke checks from a neutral temp directory, not from inside this repository. A package can confuse `npx` when the current working tree has the same package name but no local `.bin` entry.
+
+### v0.3.0 post-publish smoke evidence
+
+Recorded on 2026-05-01 after the provenance-backed public npm publish:
+
+- Live publish workflow succeeded in GitHub Actions run `25197337957`.
+- `npm view lbuild-impl version` returned `0.3.0`, and `npm view lbuild-impl dist-tags --json` returned `latest: "0.3.0"`.
+- `npx --yes lbuild-impl@0.3.0 --version`, `--help`, `skill ls-impl`, and `skill ls-impl onboarding/01-orientation.md 1` worked from a neutral temp directory.
+- `npx --yes lbuild-impl@0.3.0 inspect --spec-pack-root ./fixture --json` returned a successful `inspect` envelope against a minimal git-backed fixture.
+- The `inspect` envelope's persisted artifact path existed on disk.
+- `npm install -g lbuild-impl@0.3.0` installed a working global `lbuild-impl` binary.
+- Global `--version`, `--help`, `skill ls-impl`, `inspect --json`, and artifact existence checks passed.
+- A fresh temp SDK import confirmed `version === "0.3.0"`, SDK `inspect()` returned a ready envelope, and SDK `loadSkill()` / `readSkillChunk()` returned the CLI-delivered skill content.
 
 ### v0.2.3 post-publish smoke evidence
 
