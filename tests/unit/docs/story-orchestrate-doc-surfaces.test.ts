@@ -17,4 +17,6 @@ test("story-orchestrate appears in both README and root help with durable story-
 	expect(help.stderr).toBe("");
 	expect(help.stdout).toContain("story-orchestrate");
 	expect(help.stdout).toContain("durable story-lead attempt");
+	expect(readme).toContain("invalid-story-run-id");
+	expect(readme).toContain("persisted review-request or ruling artifact refs");
 });

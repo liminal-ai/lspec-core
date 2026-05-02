@@ -1,13 +1,13 @@
 import { join, resolve } from "node:path";
 import { InvalidSpecPackError } from "../sdk/errors/classes.js";
 import { pathExists } from "./fs-utils.js";
+import { readdirDirents } from "./runtime-deps.js";
 import {
 	type StoryRunSelection,
 	storyRunSelectionSchema,
 } from "./story-orchestrate-contracts.js";
-import { createStoryRunLedger } from "./story-run-ledger.js";
-import { readdirDirents } from "./runtime-deps.js";
 import { resolveStoryOrder } from "./story-order.js";
+import { createStoryRunLedger } from "./story-run-ledger.js";
 
 async function listPrimitiveArtifacts(
 	specPackRoot: string,
@@ -101,8 +101,8 @@ export async function discoverStoryRunState(input: {
 	);
 	const resumableAttempts = candidatePool.filter(
 		(attempt) =>
-			attempt.currentSnapshot.status !== "accepted" &&
-			attempt.currentSnapshot.status !== "running",
+			attempt.currentSnapshot.status !== "running" &&
+			!(attempt.currentSnapshot.status === "accepted" && attempt.finalPackage),
 	);
 
 	if (

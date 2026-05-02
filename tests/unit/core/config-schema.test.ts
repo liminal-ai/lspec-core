@@ -64,6 +64,105 @@ describe("impl-run config schema", () => {
 		expect(parsed.story_implementor.reasoning_effort).toBe("high");
 	});
 
+	test("accepts story_lead_provider as the canonical story-orchestrate provider key", async () => {
+		const { implRunConfigSchema } = await import(
+			"../../../src/core/config-schema"
+		);
+
+		const parsed = implRunConfigSchema.parse({
+			version: 1,
+			primary_harness: "claude-code",
+			story_lead_provider: {
+				secondary_harness: "codex",
+				model: "gpt-5.4",
+				reasoning_effort: "high",
+			},
+			story_implementor: {
+				secondary_harness: "codex",
+				model: "gpt-5.4",
+				reasoning_effort: "high",
+			},
+			quick_fixer: {
+				secondary_harness: "codex",
+				model: "gpt-5.4",
+				reasoning_effort: "medium",
+			},
+			story_verifier: {
+				secondary_harness: "codex",
+				model: "gpt-5.4",
+				reasoning_effort: "xhigh",
+			},
+			self_review: {
+				passes: 3,
+			},
+			epic_verifiers: [
+				{
+					label: "epic-verifier-1",
+					secondary_harness: "codex",
+					model: "gpt-5.4",
+					reasoning_effort: "xhigh",
+				},
+			],
+			epic_synthesizer: {
+				secondary_harness: "codex",
+				model: "gpt-5.4",
+				reasoning_effort: "xhigh",
+			},
+		});
+
+		expect(parsed.story_lead_provider?.secondary_harness).toBe("codex");
+	});
+
+	test("accepts deprecated story_lead as a compatibility alias and normalizes it to story_lead_provider", async () => {
+		const { implRunConfigSchema } = await import(
+			"../../../src/core/config-schema"
+		);
+
+		const parsed = implRunConfigSchema.parse({
+			version: 1,
+			primary_harness: "claude-code",
+			story_lead: {
+				secondary_harness: "copilot",
+				model: "gpt-5.4",
+				reasoning_effort: "high",
+			},
+			story_implementor: {
+				secondary_harness: "codex",
+				model: "gpt-5.4",
+				reasoning_effort: "high",
+			},
+			quick_fixer: {
+				secondary_harness: "codex",
+				model: "gpt-5.4",
+				reasoning_effort: "medium",
+			},
+			story_verifier: {
+				secondary_harness: "codex",
+				model: "gpt-5.4",
+				reasoning_effort: "xhigh",
+			},
+			self_review: {
+				passes: 3,
+			},
+			epic_verifiers: [
+				{
+					label: "epic-verifier-1",
+					secondary_harness: "codex",
+					model: "gpt-5.4",
+					reasoning_effort: "xhigh",
+				},
+			],
+			epic_synthesizer: {
+				secondary_harness: "codex",
+				model: "gpt-5.4",
+				reasoning_effort: "xhigh",
+			},
+		});
+
+		expect(parsed.story_lead_provider?.secondary_harness).toBe("copilot");
+		expect("story_lead" in parsed).toBe(false);
+	});
+
 	test("TC-2.3b accepts the Claude-only story implementor fallback shape", async () => {
 		const { implRunConfigSchema } = await import(
 			"../../../src/core/config-schema"

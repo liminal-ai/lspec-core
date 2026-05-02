@@ -1,19 +1,663 @@
-import { describe, expect, test, vi } from "vitest";
-
-import { createStoryRunLedger } from "../../../src/core/story-run-ledger";
+import { describe, expect, test } from "vitest";
 import { runStoryLead } from "../../../src/core/story-lead";
+import { createStoryRunLedger } from "../../../src/core/story-run-ledger";
 import {
 	storyOrchestrateResume,
+	storyOrchestrateRun,
 	storyOrchestrateStatus,
 } from "../../../src/sdk/operations/story-orchestrate";
-import { readJsonLines } from "../../support/test-helpers";
+import {
+	createMiniStoryRuntimeProofFixture,
+	installMiniStoryRuntimeProofProviders,
+} from "../../support/story-lead-runtime-proof-fixture";
 import {
 	createStoryOrchestrateSpecPack,
 	seedPrimitiveArtifact,
 	seedStoryRunAttempt,
 } from "../../support/story-orchestrate-fixtures";
+import {
+	createTempDir,
+	readJsonLines,
+	writeFakeProviderExecutable,
+} from "../../support/test-helpers";
+
+function providerWrapper(sessionId: string, payload: unknown): string {
+	return JSON.stringify({
+		sessionId,
+		result: payload,
+	});
+}
 
 describe("story-lead loop", () => {
+	test("proof: story-orchestrate should dispatch child operations and persist their artifacts for a fresh mini runtime fixture", async () => {
+		const fixture = await createMiniStoryRuntimeProofFixture(
+			"story-lead-loop-proof-runtime-dispatch",
+		);
+		const providers = await installMiniStoryRuntimeProofProviders(fixture);
+		const childArtifactPaths = Object.values(fixture.childArtifactPaths);
+
+		for (const artifactPath of childArtifactPaths) {
+			expect(await Bun.file(artifactPath).exists()).toBe(false);
+		}
+
+		const runEnvelope = await storyOrchestrateRun({
+			specPackRoot: fixture.specPackRoot,
+			storyId: fixture.storyId,
+			env: providers.env,
+		});
+
+		if (runEnvelope.result?.case !== "completed") {
+			throw new Error(
+				`Expected the mini runtime proof fixture to complete, received ${runEnvelope.result?.case ?? runEnvelope.status}.`,
+			);
+		}
+
+		const storyLeadInvocations = await readJsonLines<
+			Array<{ provider: string; args: string[] }>[number]
+		>(providers.storyLeadLogPath);
+		const childInvocations = (await Bun.file(
+			providers.childProviderLogPath,
+		).exists())
+			? await readJsonLines<
+					Array<{ provider: string; args: string[] }>[number]
+				>(providers.childProviderLogPath)
+			: [];
+		const currentSnapshot = JSON.parse(
+			await Bun.file(runEnvelope.result.currentSnapshotPath).text(),
+		) as {
+			latestArtifacts: Array<{ kind: string; path: string }>;
+			latestContinuationHandles: Record<
+				string,
+				{ provider: string; sessionId: string; storyId: string }
+			>;
+		};
+		const events = await readJsonLines<
+			Array<{ type: string; artifact?: string }>[number]
+		>(runEnvelope.result.eventHistoryPath);
+
+		expect(storyLeadInvocations).toHaveLength(4);
+		expect(childInvocations).toHaveLength(3);
+		expect(
+			storyLeadInvocations.some((invocation) =>
+				invocation.args.includes("resume"),
+			),
+		).toBe(true);
+		expect(
+			childInvocations.some((invocation) =>
+				invocation.args.some((arg) => arg.includes("--resume=")),
+			),
+		).toBe(true);
+		for (const artifactPath of childArtifactPaths) {
+			expect(await Bun.file(artifactPath).exists()).toBe(true);
+		}
+		expect(
+			runEnvelope.result.finalPackage.evidence.implementorArtifacts,
+		).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					path: fixture.childArtifactPaths.implementor,
+				}),
+			]),
+		);
+		expect(
+			runEnvelope.result.finalPackage.evidence.selfReviewArtifacts,
+		).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					path: fixture.childArtifactPaths.selfReviewBatch,
+				}),
+			]),
+		);
+		expect(runEnvelope.result.finalPackage.evidence.verifierArtifacts).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					path: fixture.childArtifactPaths.verifier,
+				}),
+			]),
+		);
+		expect(currentSnapshot.latestArtifacts).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					path: fixture.childArtifactPaths.implementor,
+				}),
+				expect.objectContaining({
+					path: fixture.childArtifactPaths.selfReviewBatch,
+				}),
+				expect.objectContaining({
+					path: fixture.childArtifactPaths.verifier,
+				}),
+			]),
+		);
+		expect(Object.values(currentSnapshot.latestContinuationHandles)).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					storyId: fixture.storyId,
+				}),
+			]),
+		);
+		expect(
+			events.some((event) => childArtifactPaths.includes(event.artifact ?? "")),
+		).toBe(true);
+	});
+
+	test("collects current-run quick-fix artifacts into the final package when the story-lead chooses run-quick-fix", async () => {
+		const fixture = await createMiniStoryRuntimeProofFixture(
+			"story-lead-loop-quick-fix-evidence",
+		);
+		const providerBinDir = await createTempDir(
+			`story-lead-loop-quick-fix-${fixture.storyId}`,
+		);
+		const storyLead = await writeFakeProviderExecutable({
+			binDir: providerBinDir,
+			provider: "codex",
+			responses: [
+				{
+					stdout: providerWrapper("codex-story-lead-quick-fix-001", {
+						type: "run-quick-fix",
+						request:
+							"Apply one bounded quick-fix change for the mini runtime proof fixture only.",
+						rationale:
+							"Exercise the quick-fix lane and require the runtime to collect fresh quick-fix evidence.",
+					}),
+				},
+				{
+					stdout: providerWrapper("codex-story-lead-quick-fix-001", {
+						type: "accept-story",
+						rationale:
+							"The quick-fix artifact is present and ready for scoped acceptance packaging.",
+						acceptance: {
+							acceptanceChecks: [
+								{
+									name: "quick-fix-artifact-created",
+									status: "pass" as const,
+									evidence: ["quick-fix-result"],
+									reasoning:
+										"The bounded quick-fix operation produced a fresh artifact during the story-lead run.",
+								},
+							],
+							recommendedImplLeadAction: "accept" as const,
+						},
+					}),
+				},
+			],
+		});
+		const childProvider = await writeFakeProviderExecutable({
+			binDir: providerBinDir,
+			provider: "copilot",
+			responses: [
+				{
+					stdout:
+						"Applied the bounded quick-fix correction for the mini runtime proof fixture.\n",
+				},
+			],
+		});
+
+		const runEnvelope = await storyOrchestrateRun({
+			specPackRoot: fixture.specPackRoot,
+			storyId: fixture.storyId,
+			env: {
+				PATH: `${providerBinDir}:${process.env.PATH ?? ""}`,
+				...storyLead.env,
+				...childProvider.env,
+			},
+		});
+
+		if (runEnvelope.result?.case !== "completed") {
+			throw new Error(
+				`Expected the quick-fix fixture to complete, received ${runEnvelope.result?.case ?? runEnvelope.status}.`,
+			);
+		}
+
+		expect(runEnvelope.result.finalPackage.evidence.quickFixArtifacts).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					path: expect.stringContaining("/artifacts/quick-fix/"),
+				}),
+			]),
+		);
+		expect(runEnvelope.result.finalPackage.acceptanceChecks).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					name: "quick-fix-artifact-created",
+				}),
+			]),
+		);
+		expect(runEnvelope.result.finalPackage.recommendedImplLeadAction).toBe(
+			"reopen",
+		);
+	});
+
+	test("preserves verifier dispositions and shim/mock audit findings through final package handoffs", async () => {
+		const fixture = await createMiniStoryRuntimeProofFixture(
+			"story-lead-loop-flow-3-verifier-risk-handoff",
+		);
+		const providerBinDir = await createTempDir(
+			`story-lead-loop-flow-3-${fixture.storyId}`,
+		);
+		const storyLead = await writeFakeProviderExecutable({
+			binDir: providerBinDir,
+			provider: "codex",
+			responses: [
+				{
+					stdout: providerWrapper("codex-story-lead-flow-3-001", {
+						type: "run-story-implement",
+						rationale: "Create implementor evidence before verification.",
+					}),
+				},
+				{
+					stdout: providerWrapper("codex-story-lead-flow-3-001", {
+						type: "run-story-self-review",
+						continuationHandleRef: "storyImplementor",
+						passes: 1,
+						rationale: "Create self-review evidence before verification.",
+					}),
+				},
+				{
+					stdout: providerWrapper("codex-story-lead-flow-3-001", {
+						type: "run-story-verify-initial",
+						rationale:
+							"Run story verification so verifier findings and shim audit data exist.",
+					}),
+				},
+				{
+					stdout: providerWrapper("codex-story-lead-flow-3-001", {
+						type: "accept-story",
+						rationale:
+							"Preserve explicit verifier dispositions into Flow 3 handoffs.",
+						verification: {
+							finalVerifierOutcome: "pass" as const,
+							findings: [
+								{
+									id: "F-fixed",
+									status: "fixed" as const,
+									evidence: ["quick-fix-result"],
+								},
+								{
+									id: "F-risk",
+									status: "accepted-risk" as const,
+									evidence: ["risk-ruling.md"],
+								},
+								{
+									id: "F-defer",
+									status: "defer" as const,
+									evidence: ["cleanup-followup.md"],
+								},
+							],
+						},
+						acceptance: {
+							acceptanceChecks: [
+								{
+									name: "flow-3-disposition-handoff",
+									status: "pass" as const,
+									evidence: ["story-lead-action"],
+									reasoning:
+										"Story-lead explicitly classified verifier finding dispositions for handoff packaging.",
+								},
+							],
+							recommendedImplLeadAction: "accept" as const,
+						},
+					}),
+				},
+			],
+		});
+		const childProvider = await writeFakeProviderExecutable({
+			binDir: providerBinDir,
+			provider: "copilot",
+			responses: [
+				{
+					stdout: providerWrapper("copilot-flow-3-implement-001", {
+						outcome: "ready-for-verification",
+						planSummary: "Prepared Flow 3 risk handoff evidence.",
+						changedFiles: [
+							{
+								path: "integration-fixture.txt",
+								reason: "Keep the mini story deterministic.",
+							},
+						],
+						tests: {
+							added: [],
+							modified: [],
+							removed: [],
+							totalAfterStory: 3,
+							deltaFromPriorBaseline: 0,
+						},
+						gatesRun: [
+							{ command: "npm run green-verify", result: "pass" as const },
+						],
+						selfReview: {
+							findingsFixed: [],
+							findingsSurfaced: [],
+						},
+						openQuestions: [],
+						specDeviations: [],
+						recommendedNextStep: "Run self-review.",
+					}),
+				},
+				{
+					stdout: providerWrapper("copilot-flow-3-implement-001", {
+						outcome: "ready-for-verification",
+						planSummary: "Self-reviewed Flow 3 risk handoff evidence.",
+						changedFiles: [
+							{
+								path: "integration-fixture.txt",
+								reason: "Keep the mini story deterministic.",
+							},
+						],
+						tests: {
+							added: [],
+							modified: [],
+							removed: [],
+							totalAfterStory: 3,
+							deltaFromPriorBaseline: 0,
+						},
+						gatesRun: [
+							{ command: "npm run green-verify", result: "pass" as const },
+						],
+						selfReview: {
+							findingsFixed: ["F-fixed"],
+							findingsSurfaced: [],
+						},
+						openQuestions: [],
+						specDeviations: [],
+						recommendedNextStep: "Run verification.",
+					}),
+				},
+				{
+					stdout: providerWrapper("copilot-flow-3-verify-001", {
+						artifactsRead: [
+							fixture.storyPath,
+							fixture.techDesignPath,
+							fixture.childArtifactPaths.implementor,
+							fixture.childArtifactPaths.selfReviewBatch,
+						],
+						reviewScopeSummary:
+							"Reviewed Flow 3 disposition and shim/mock handoff behavior.",
+						priorFindingStatuses: [],
+						newFindings: [
+							{
+								id: "F-risk",
+								severity: "major" as const,
+								title: "Accepted risk needs receipt carry-forward.",
+								evidence: "risk-ruling.md",
+								affectedFiles: ["src/core/story-lead.ts"],
+								requirementIds: ["AC-3.7"],
+								recommendedFixScope: "human-ruling" as const,
+								blocking: false,
+							},
+							{
+								id: "F-defer",
+								severity: "minor" as const,
+								title: "Deferred finding needs cleanup carry-forward.",
+								evidence: "cleanup-followup.md",
+								affectedFiles: ["src/core/cleanup-handoff.ts"],
+								requirementIds: ["AC-3.10"],
+								recommendedFixScope: "fresh-fix-path" as const,
+								blocking: false,
+							},
+						],
+						openFindings: [
+							{
+								id: "F-risk",
+								severity: "major" as const,
+								title: "Accepted risk needs receipt carry-forward.",
+								evidence: "risk-ruling.md",
+								affectedFiles: ["src/core/story-lead.ts"],
+								requirementIds: ["AC-3.7"],
+								recommendedFixScope: "human-ruling" as const,
+								blocking: false,
+							},
+							{
+								id: "F-defer",
+								severity: "minor" as const,
+								title: "Deferred finding needs cleanup carry-forward.",
+								evidence: "cleanup-followup.md",
+								affectedFiles: ["src/core/cleanup-handoff.ts"],
+								requirementIds: ["AC-3.10"],
+								recommendedFixScope: "fresh-fix-path" as const,
+								blocking: false,
+							},
+						],
+						requirementCoverage: {
+							verified: ["AC-3.7", "AC-3.10"],
+							unverified: [],
+						},
+						gatesRun: [
+							{ command: "npm run green-verify", result: "pass" as const },
+						],
+						mockOrShimAuditFindings: [
+							"Verifier found a production-path mock fallback that requires explicit approval.",
+						],
+						recommendedNextStep: "pass" as const,
+						recommendedFixScope: "same-session-implementor" as const,
+						openQuestions: [],
+						additionalObservations: [],
+					}),
+				},
+			],
+		});
+
+		const runEnvelope = await storyOrchestrateRun({
+			specPackRoot: fixture.specPackRoot,
+			storyId: fixture.storyId,
+			env: {
+				PATH: `${providerBinDir}:${process.env.PATH ?? ""}`,
+				...storyLead.env,
+				...childProvider.env,
+			},
+		});
+
+		if (runEnvelope.result?.case !== "completed") {
+			throw new Error(
+				`Expected Flow 3 handoff fixture to complete, received ${runEnvelope.result?.case ?? runEnvelope.status}.`,
+			);
+		}
+
+		const finalPackage = runEnvelope.result.finalPackage;
+		expect(finalPackage.verification.findings).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ id: "F-fixed", status: "fixed" }),
+				expect.objectContaining({ id: "F-risk", status: "accepted-risk" }),
+				expect.objectContaining({ id: "F-defer", status: "defer" }),
+			]),
+		);
+		expect(finalPackage.logHandoff.storyReceiptDraft.dispositions).toEqual(
+			finalPackage.verification.findings,
+		);
+		expect(finalPackage.cleanupHandoff.acceptedRiskItems).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					description: "Verification finding F-risk accepted as risk.",
+				}),
+			]),
+		);
+		expect(finalPackage.cleanupHandoff.deferredItems).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					description:
+						"Verification finding F-defer deferred for follow-up cleanup.",
+				}),
+			]),
+		);
+		expect(
+			finalPackage.riskAndDeviationReview.shimMockFallbackDecisions,
+		).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					description:
+						"Verifier found a production-path mock fallback that requires explicit approval.",
+					approvalStatus: "needs-ruling",
+				}),
+			]),
+		);
+		expect(
+			finalPackage.acceptanceChecks.find(
+				(check) => check.name === "shim-mock-fallback-status",
+			)?.status,
+		).toBe("fail");
+	});
+
+	test("keeps production shim/mock needs-ruling decisions on the ruling path instead of exporting them as cleanup debt", async () => {
+		const { specPackRoot, storyId } = await createStoryOrchestrateSpecPack(
+			"story-lead-loop-shim-ruling",
+			{
+				includeStoryLead: true,
+			},
+		);
+		await seedPrimitiveArtifact({
+			specPackRoot,
+			storyId,
+			fileName: "001-implementor.json",
+			payload: {
+				command: "story-implement",
+				outcome: "ready-for-verification",
+			},
+		});
+		await seedPrimitiveArtifact({
+			specPackRoot,
+			storyId,
+			fileName: "002-verifier.json",
+			payload: {
+				command: "story-verify",
+				outcome: "pass",
+			},
+		});
+
+		const providerBinDir = await createTempDir(
+			`story-lead-loop-shim-ruling-${storyId}`,
+		);
+		const storyLead = await writeFakeProviderExecutable({
+			binDir: providerBinDir,
+			provider: "codex",
+			responses: [
+				{
+					stdout: providerWrapper("codex-story-lead-shim-ruling-001", {
+						type: "accept-story",
+						rationale:
+							"Acceptance can proceed only if the caller explicitly approves the production fallback.",
+						acceptance: {
+							acceptanceChecks: [
+								{
+									name: "shim-ruling-required",
+									status: "pass" as const,
+									evidence: ["fallback.md"],
+									reasoning:
+										"Story-lead preserved the shim/mock authority boundary instead of silently accepting it.",
+								},
+							],
+							recommendedImplLeadAction: "accept" as const,
+						},
+						riskAndDeviationReview: {
+							shimMockFallbackDecisions: [
+								{
+									description:
+										"Production fallback still needs caller approval.",
+									reasoning:
+										"Story-lead cannot silently approve a production fallback in the acceptance path.",
+									evidence: ["fallback.md"],
+									approvalStatus: "needs-ruling" as const,
+									approvalSource: null,
+								},
+							],
+						},
+					}),
+				},
+			],
+		});
+
+		const runEnvelope = await storyOrchestrateRun({
+			specPackRoot,
+			storyId,
+			env: {
+				PATH: `${providerBinDir}:${process.env.PATH ?? ""}`,
+				...storyLead.env,
+			},
+		});
+
+		if (runEnvelope.result?.case !== "completed") {
+			throw new Error(
+				`Expected shim/mock ruling fixture to complete, received ${runEnvelope.result?.case ?? runEnvelope.status}.`,
+			);
+		}
+
+		expect(runEnvelope.result.finalPackage.outcome).toBe("needs-ruling");
+		expect(runEnvelope.result.finalPackage.rulingRequest).toEqual(
+			expect.objectContaining({
+				decisionType: "shim-mock-fallback",
+			}),
+		);
+		expect(
+			runEnvelope.result.finalPackage.cleanupHandoff.acceptedRiskItems,
+		).toEqual([]);
+		expect(
+			runEnvelope.result.finalPackage.cleanupHandoff.deferredItems,
+		).toEqual([]);
+		expect(runEnvelope.result.finalPackage.cleanupHandoff.cleanupRequired).toBe(
+			false,
+		);
+	});
+
+	test("returns a real failed story-lead outcome when a child operation itself fails terminally", async () => {
+		const fixture = await createMiniStoryRuntimeProofFixture(
+			"story-lead-loop-failed-outcome",
+		);
+		const providerBinDir = await createTempDir(
+			`story-lead-loop-failed-${fixture.storyId}`,
+		);
+		const storyLead = await writeFakeProviderExecutable({
+			binDir: providerBinDir,
+			provider: "codex",
+			responses: [
+				{
+					stdout: providerWrapper("codex-story-lead-failed-001", {
+						type: "run-story-implement",
+						rationale:
+							"Attempt the bounded implementor step so the runtime can surface a terminal child-operation failure.",
+					}),
+				},
+			],
+		});
+		const childProvider = await writeFakeProviderExecutable({
+			binDir: providerBinDir,
+			provider: "copilot",
+			responses: [
+				{
+					stderr: "simulated child provider failure",
+					exitCode: 1,
+				},
+			],
+		});
+
+		const runEnvelope = await storyOrchestrateRun({
+			specPackRoot: fixture.specPackRoot,
+			storyId: fixture.storyId,
+			env: {
+				PATH: `${providerBinDir}:${process.env.PATH ?? ""}`,
+				...storyLead.env,
+				...childProvider.env,
+			},
+		});
+
+		if (runEnvelope.result?.case !== "completed") {
+			throw new Error(
+				`Expected the failed-outcome fixture to complete, received ${runEnvelope.result?.case ?? runEnvelope.status}.`,
+			);
+		}
+
+		const currentSnapshot = JSON.parse(
+			await Bun.file(runEnvelope.result.currentSnapshotPath).text(),
+		) as {
+			status: string;
+		};
+		const events = await readJsonLines<Array<{ type: string }>[number]>(
+			runEnvelope.result.eventHistoryPath,
+		);
+
+		expect(runEnvelope.result.finalPackage.outcome).toBe("failed");
+		expect(runEnvelope.outcome).toBe("failed");
+		expect(currentSnapshot.status).toBe("failed");
+		expect(events.map((event) => event.type)).toContain("failed");
+	});
+
 	test("TC-2.6b, TC-3.5d, TC-3.9a, and TC-3.9b preserve review history across a reopened accepted attempt", async () => {
 		const { specPackRoot, storyId } = await createStoryOrchestrateSpecPack(
 			"story-lead-loop-reopen",
@@ -353,11 +997,11 @@ describe("story-lead loop", () => {
 			specPackRoot,
 			storyId,
 		});
+		const priorFailureMode =
+			process.env.LBUILD_IMPL_STORY_ORCHESTRATE_FAILURE_MODE;
 
-		vi.stubEnv(
-			"LBUILD_IMPL_STORY_ORCHESTRATE_FAILURE_MODE",
-			"provider-output-invalid",
-		);
+		process.env.LBUILD_IMPL_STORY_ORCHESTRATE_FAILURE_MODE =
+			"provider-output-invalid";
 		const providerFailure = await runStoryLead({
 			specPackRoot,
 			storyId,
@@ -368,10 +1012,8 @@ describe("story-lead loop", () => {
 			],
 		});
 
-		vi.stubEnv(
-			"LBUILD_IMPL_STORY_ORCHESTRATE_FAILURE_MODE",
-			"context-window-limit",
-		);
+		process.env.LBUILD_IMPL_STORY_ORCHESTRATE_FAILURE_MODE =
+			"context-window-limit";
 		const contextLedger = createStoryRunLedger({
 			specPackRoot,
 			storyId,
@@ -385,7 +1027,12 @@ describe("story-lead loop", () => {
 				`${specPackRoot}/artifacts/${storyId}/001-implementor.json`,
 			],
 		});
-		vi.unstubAllEnvs();
+
+		if (typeof priorFailureMode === "string") {
+			process.env.LBUILD_IMPL_STORY_ORCHESTRATE_FAILURE_MODE = priorFailureMode;
+		} else {
+			delete process.env.LBUILD_IMPL_STORY_ORCHESTRATE_FAILURE_MODE;
+		}
 
 		if (
 			providerFailure.case !== "interrupted" ||

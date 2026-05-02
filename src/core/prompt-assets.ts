@@ -1,6 +1,7 @@
 import { EMBEDDED_PROMPT_ASSETS } from "./embedded-assets.generated";
 
 export type BasePromptId =
+	| "story-lead"
 	| "story-implementor"
 	| "story-verifier"
 	| "quick-fixer"
@@ -12,6 +13,9 @@ export type SnippetId =
 	| "gate-instructions"
 	| "report-contract"
 	| "mock-audit"
+	| "story-lead-action-protocol"
+	| "story-lead-acceptance-rubric"
+	| "story-lead-ruling-boundaries"
 	| "self-review-pass-1"
 	| "self-review-pass-2"
 	| "self-review-pass-3";
@@ -22,6 +26,7 @@ export interface EmbeddedPromptAssets {
 }
 
 const REQUIRED_BASE_PROMPTS: BasePromptId[] = [
+	"story-lead",
 	"story-implementor",
 	"story-verifier",
 	"quick-fixer",
@@ -34,6 +39,9 @@ const REQUIRED_SNIPPETS: SnippetId[] = [
 	"gate-instructions",
 	"report-contract",
 	"mock-audit",
+	"story-lead-action-protocol",
+	"story-lead-acceptance-rubric",
+	"story-lead-ruling-boundaries",
 	"self-review-pass-1",
 	"self-review-pass-2",
 	"self-review-pass-3",

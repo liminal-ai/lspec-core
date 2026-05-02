@@ -1,15 +1,15 @@
 import { describe, expect, test } from "vitest";
-
+import { readTextFile } from "../../../src/core/fs-utils";
 import type { StoryLeadFinalPackage } from "../../../src/core/story-orchestrate-contracts";
 import {
 	storyOrchestrateResume,
 	storyOrchestrateStatus,
 } from "../../../src/sdk/operations/story-orchestrate";
-import { readJsonLines } from "../../support/test-helpers";
 import {
 	createStoryOrchestrateSpecPack,
 	seedStoryRunAttempt,
 } from "../../support/story-orchestrate-fixtures";
+import { readJsonLines } from "../../support/test-helpers";
 
 describe("story-orchestrate resume sdk operation", () => {
 	function createNeedsRulingFinalPackage(input: {
@@ -173,6 +173,105 @@ describe("story-orchestrate resume sdk operation", () => {
 				}),
 			}),
 		);
+	});
+
+	test("returns the persisted review-request artifact reference when a reopen request is accepted", async () => {
+		const { specPackRoot, storyId } = await createStoryOrchestrateSpecPack(
+			"story-orchestrate-sdk-resume-review-artifact",
+		);
+		const acceptedAttempt = await seedStoryRunAttempt({
+			specPackRoot,
+			storyId,
+			status: "accepted",
+			finalPackageOutcome: "accepted",
+		});
+
+		const envelope = await storyOrchestrateResume({
+			specPackRoot,
+			storyId,
+			storyRunId: acceptedAttempt.storyRunId,
+			reviewRequest: {
+				source: "impl-lead",
+				decision: "reopen",
+				summary: "Reopen for one more receipt pass.",
+				items: [
+					{
+						id: "review-001",
+						severity: "major",
+						concern: "Receipt notes are missing.",
+						requiredResponse: "Add the missing receipt notes.",
+					},
+				],
+			},
+		});
+
+		if (
+			!envelope.result ||
+			envelope.result.case !== "completed" ||
+			!envelope.result.acceptedReviewRequestArtifact
+		) {
+			throw new Error(
+				"Expected a completed resume result with review artifact.",
+			);
+		}
+
+		expect(envelope.result.acceptedReviewRequestId).toBe("impl-lead");
+		expect(envelope.result.acceptedReviewRequestArtifact.kind).toBe(
+			"review-request",
+		);
+		expect(envelope.result.acceptedReviewRequestArtifact.path).toContain(
+			"review-request-001.json",
+		);
+
+		const persisted = JSON.parse(
+			await readTextFile(envelope.result.acceptedReviewRequestArtifact.path),
+		) as { summary: string };
+		expect(persisted.summary).toBe("Reopen for one more receipt pass.");
+	});
+
+	test("returns an explicit no-op result when resume targets an accepted attempt without new review or ruling input", async () => {
+		const { specPackRoot, storyId } = await createStoryOrchestrateSpecPack(
+			"story-orchestrate-sdk-resume-accepted-noop",
+		);
+		const acceptedAttempt = await seedStoryRunAttempt({
+			specPackRoot,
+			storyId,
+			status: "accepted",
+			finalPackageOutcome: "accepted",
+			latestEventSequence: 2,
+		});
+
+		const envelope = await storyOrchestrateResume({
+			specPackRoot,
+			storyId,
+			storyRunId: acceptedAttempt.storyRunId,
+		});
+		const statusEnvelope = await storyOrchestrateStatus({
+			specPackRoot,
+			storyId,
+			storyRunId: acceptedAttempt.storyRunId,
+		});
+		const events = await readJsonLines<Array<{ sequence: number }>[number]>(
+			acceptedAttempt.eventHistoryPath,
+		);
+
+		expect(envelope.outcome).toBe("existing-accepted-attempt");
+		expect(envelope.result).toEqual({
+			case: "existing-accepted-attempt",
+			storyId,
+			storyRunId: acceptedAttempt.storyRunId,
+			finalPackagePath: acceptedAttempt.finalPackagePath,
+			suggestedNext: "resume-with-review-request",
+		});
+		expect(statusEnvelope.result).toEqual(
+			expect.objectContaining({
+				case: "single-attempt",
+				storyRunId: acceptedAttempt.storyRunId,
+				currentStatus: "accepted",
+				latestEventSequence: 2,
+			}),
+		);
+		expect(events.map((event) => event.sequence)).toEqual([2]);
 	});
 
 	test("returns invalid-story-run-id when resume is asked to reopen an unknown explicit attempt", async () => {

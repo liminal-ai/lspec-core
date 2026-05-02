@@ -59,6 +59,10 @@ describe("story-orchestrate resume CLI", () => {
 			result: {
 				case: string;
 				storyRunId: string;
+				acceptedReviewRequestArtifact?: {
+					kind: string;
+					path: string;
+				};
 				finalPackage: {
 					callerInputHistory: {
 						reviewRequests: Array<{ summary: string }>;
@@ -71,6 +75,10 @@ describe("story-orchestrate resume CLI", () => {
 		expect(envelope.outcome).toBe("blocked");
 		expect(envelope.result.case).toBe("completed");
 		expect(envelope.result.storyRunId).not.toBe(acceptedAttempt.storyRunId);
+		expect(envelope.result.acceptedReviewRequestArtifact).toEqual({
+			kind: "review-request",
+			path: expect.stringContaining("review-request-001.json"),
+		});
 		expect(
 			envelope.result.finalPackage.callerInputHistory.reviewRequests[0]
 				?.summary,

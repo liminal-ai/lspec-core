@@ -1,16 +1,15 @@
 import { describe, expect, test } from "vitest";
-
-import { createStoryRunLedger } from "../../../src/core/story-run-ledger";
 import { runStoryLead } from "../../../src/core/story-lead";
+import { createStoryRunLedger } from "../../../src/core/story-run-ledger";
+import {
+	createStoryOrchestrateSpecPack,
+	seedPrimitiveArtifact,
+} from "../../support/story-orchestrate-fixtures";
 import {
 	createTempDir,
 	readJsonLines,
 	writeFakeProviderExecutable,
 } from "../../support/test-helpers";
-import {
-	createStoryOrchestrateSpecPack,
-	seedPrimitiveArtifact,
-} from "../../support/story-orchestrate-fixtures";
 
 function codexJsonlEventStream(sessionId: string, finalText: string): string {
 	return [
@@ -71,13 +70,45 @@ describe("story-lead provider selection", () => {
 					stdout: codexJsonlEventStream(
 						sessionId,
 						JSON.stringify({
-							summary:
-								"Codex story-lead bootstrap confirmed the configured provider session.",
+							type: "accept-story",
+							rationale:
+								"Configured Codex story-lead provider accepted the preseeded primitive evidence for provider-selection coverage.",
+							acceptance: {
+								acceptanceChecks: [
+									{
+										name: "configured-provider-session",
+										status: "pass",
+										evidence: [
+											`${specPackRoot}/artifacts/${storyId}/001-implementor.json`,
+											`${specPackRoot}/artifacts/${storyId}/002-verifier.json`,
+										],
+										reasoning:
+											"The configured Codex story-lead provider produced a valid bounded action.",
+									},
+								],
+								recommendedImplLeadAction: "accept",
+							},
 						}),
 					),
 					lastMessage: JSON.stringify({
-						summary:
-							"Codex story-lead bootstrap confirmed the configured provider session.",
+						type: "accept-story",
+						rationale:
+							"Configured Codex story-lead provider accepted the preseeded primitive evidence for provider-selection coverage.",
+						acceptance: {
+							acceptanceChecks: [
+								{
+									name: "configured-provider-session",
+									status: "pass",
+									evidence: [
+										`${specPackRoot}/artifacts/${storyId}/001-implementor.json`,
+										`${specPackRoot}/artifacts/${storyId}/002-verifier.json`,
+									],
+									reasoning:
+										"The configured Codex story-lead provider produced a valid bounded action.",
+								},
+							],
+							recommendedImplLeadAction: "accept",
+						},
 					}),
 				},
 			],
@@ -133,11 +164,18 @@ describe("story-lead provider selection", () => {
 				expect.objectContaining({
 					type: "story-lead-provider-started",
 					summary:
-						"Codex story-lead bootstrap confirmed the configured provider session.",
+						"Story-lead provider session started for bounded action execution.",
 					data: expect.objectContaining({
 						provider: "codex",
 						model: "gpt-5.4",
 						sessionId,
+					}),
+				}),
+				expect.objectContaining({
+					type: "story-lead-action-selected",
+					summary: "Story-lead selected accept-story.",
+					data: expect.objectContaining({
+						actionType: "accept-story",
 					}),
 				}),
 			]),
@@ -155,5 +193,11 @@ describe("story-lead provider selection", () => {
 		expect(invocations[0]?.args).toContain("--output-schema");
 		expect(invocations[0]?.args).toContain("-o");
 		expect(invocations[0]?.args.join(" ")).toContain(`Story id: ${storyId}`);
+		expect(invocations[0]?.args.join(" ")).toContain(
+			"# Story Lead Base Prompt",
+		);
+		expect(invocations[0]?.args.join(" ")).toContain("## Action Protocol");
+		expect(invocations[0]?.args.join(" ")).toContain("## Acceptance Rubric");
+		expect(invocations[0]?.args.join(" ")).toContain("## Ruling Boundaries");
 	});
 });

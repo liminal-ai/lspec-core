@@ -102,6 +102,11 @@ function claudeOnlyConfig() {
 	return {
 		version: 1,
 		primary_harness: "claude-code",
+		story_lead_provider: {
+			secondary_harness: "none",
+			model: "claude-sonnet",
+			reasoning_effort: "high",
+		},
 		story_implementor: {
 			secondary_harness: "none",
 			model: "claude-sonnet",
@@ -781,6 +786,69 @@ describe("preflight command", () => {
 		).toBe("none");
 		expect(envelope.result.providerMatrix.secondary).toEqual([]);
 		expect(envelope.result.notes).toContain(
+			"GPT-capable secondary harnesses are unavailable for this run; the orchestrator should record the Claude-only degraded mode.",
+		);
+	});
+
+	test("does not report Claude-only degraded mode when story_lead_provider uses Codex", async () => {
+		const specPackRoot = await createSpecPack("preflight-story-lead-codex");
+		await writeRunConfig(specPackRoot, {
+			...claudeOnlyConfig(),
+			story_lead_provider: {
+				secondary_harness: "codex",
+				model: "gpt-5.4",
+				reasoning_effort: "high",
+			},
+		});
+		await writeTextFile(
+			join(specPackRoot, "package.json"),
+			JSON.stringify(
+				{
+					scripts: {
+						"green-verify": "bun run green-verify",
+						"verify-all": "bun run verify-all",
+					},
+				},
+				null,
+				2,
+			),
+		);
+		const pathValue = await setupProviderPath(
+			"preflight-story-lead-codex-bins",
+			[
+				{
+					name: "claude",
+					version: "claude 1.0.0",
+				},
+				{
+					name: "codex",
+					version: "codex 2.0.0",
+				},
+			],
+		);
+
+		const run = await runSourceCli(
+			["preflight", "--spec-pack-root", specPackRoot, "--json"],
+			{
+				env: {
+					PATH: pathValue,
+				},
+			},
+		);
+
+		expect(run.exitCode).toBe(0);
+
+		const envelope = parseJsonOutput(run.stdout);
+		expect(
+			envelope.result.validatedConfig.story_lead_provider.secondary_harness,
+		).toBe("codex");
+		expect(envelope.result.providerMatrix.secondary).toContainEqual(
+			expect.objectContaining({
+				harness: "codex",
+				available: true,
+			}),
+		);
+		expect(envelope.result.notes).not.toContain(
 			"GPT-capable secondary harnesses are unavailable for this run; the orchestrator should record the Claude-only degraded mode.",
 		);
 	});

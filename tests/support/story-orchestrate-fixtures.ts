@@ -48,7 +48,7 @@ export async function createStoryOrchestrateSpecPack(
 			},
 			...(options.includeStoryLead
 				? {
-						story_lead: {
+						story_lead_provider: {
 							secondary_harness: "codex" as const,
 							model: "gpt-5.4",
 							reasoning_effort: "high" as const,

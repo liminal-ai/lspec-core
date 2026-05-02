@@ -42,6 +42,7 @@ Story-orchestrate surface:
 - `src/core/story-run-discovery.ts`: durable story-run selection by story id / story run id.
 - `src/core/story-run-ledger.ts`: current snapshot, event history, and final-package persistence for story-lead attempts.
 - `src/core/story-lead.ts`: story-lead runtime surface, provider composition, and durable recovery.
+- `src/core/review-ruling.ts`: review-request and ruling history shaping for story-lead resume/final-package state.
 - `src/core/story-final-package.ts`: story-lead final package assembly, log handoff, and cleanup handoff shaping.
 - `src/core/story-implementor.ts`: story implementation orchestration.
 - `src/core/story-verifier.ts`: story verification orchestration.

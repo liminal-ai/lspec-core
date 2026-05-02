@@ -23,14 +23,37 @@ describe("cleanup handoff", () => {
 					approvalSource: null,
 				},
 			],
+			shimMockFallbackItems: [
+				{
+					description: "Approved compatibility shim remains.",
+					reasoning: "This is accepted risk and belongs in cleanup.",
+					evidence: ["shim.md"],
+					approvalStatus: "approved",
+					approvalSource: "impl-lead",
+				},
+				{
+					description: "Fallback still needs caller ruling.",
+					reasoning: "This must not be misclassified as cleanup debt.",
+					evidence: ["fallback.md"],
+					approvalStatus: "needs-ruling",
+					approvalSource: null,
+				},
+			],
 			verification: {
 				finalVerifierOutcome: "pass",
 				findings: [],
 			},
 		});
 
-		expect(handoff.acceptedRiskItems).toHaveLength(1);
+		expect(handoff.acceptedRiskItems).toHaveLength(2);
 		expect(handoff.deferredItems).toHaveLength(1);
+		expect(handoff.deferredItems).not.toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					description: "Fallback still needs caller ruling.",
+				}),
+			]),
+		);
 		expect(handoff.cleanupRequired).toBe(true);
 	});
 });

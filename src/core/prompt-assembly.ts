@@ -55,6 +55,16 @@ export interface StoryVerifierPromptInput extends SharedPromptInput {
 	orchestratorContext?: string;
 }
 
+export interface StoryLeadPromptInput extends SharedPromptInput {
+	role: "story_lead";
+	storyId: string;
+	storyTitle: string;
+	storyPath: string;
+	storyRunId: string;
+	mode: "run" | "resume";
+	durableStateSummary: string;
+}
+
 export interface QuickFixPromptInput extends SharedPromptInput {
 	role: "quick_fixer";
 	followupRequest: string;
@@ -71,6 +81,7 @@ export interface EpicSynthesizerPromptInput extends SharedPromptInput {
 }
 
 export type PromptAssemblyInput =
+	| StoryLeadPromptInput
 	| StoryImplementorPromptInput
 	| StoryVerifierPromptInput
 	| QuickFixPromptInput
@@ -86,6 +97,8 @@ export interface PromptAssemblyResult {
 
 function basePromptIdForRole(role: PromptAssemblyInput["role"]): BasePromptId {
 	switch (role) {
+		case "story_lead":
+			return "story-lead";
 		case "story_implementor":
 			return "story-implementor";
 		case "story_verifier":
@@ -101,6 +114,13 @@ function basePromptIdForRole(role: PromptAssemblyInput["role"]): BasePromptId {
 
 function snippetIdsForInput(input: PromptAssemblyInput): SnippetId[] {
 	switch (input.role) {
+		case "story_lead":
+			return [
+				"reading-journey",
+				"story-lead-action-protocol",
+				"story-lead-acceptance-rubric",
+				"story-lead-ruling-boundaries",
+			];
 		case "story_implementor": {
 			const snippetIds: SnippetId[] = [
 				"reading-journey",
@@ -192,6 +212,16 @@ function buildReadingJourney(input: PromptAssemblyInput): string {
 		].join("\n");
 	}
 
+	if (input.role === "story_lead") {
+		return [
+			"Read the current story, the full tech-design set, and the test plan before you choose the next bounded action.",
+			common,
+			"Use the durable state summary to decide the smallest safe next step for this story run.",
+			"Read each file in 500-line chunks if large.",
+			"Reflect after each chunk before you move on.",
+		].join("\n");
+	}
+
 	if (input.role === "story_verifier") {
 		if (input.verifierMode === "followup") {
 			return [
@@ -239,6 +269,8 @@ function buildReadingJourney(input: PromptAssemblyInput): string {
 
 function resultContractName(input: PromptAssemblyInput): string {
 	switch (input.role) {
+		case "story_lead":
+			return "StoryLeadAction";
 		case "story_implementor":
 			return "StoryImplementorProviderPayload";
 		case "story_verifier":
@@ -252,8 +284,24 @@ function resultContractName(input: PromptAssemblyInput): string {
 	}
 }
 
+function storyLeadActionContractSchema(): string {
+	return [
+		'{"type":"run-story-implement","rationale":"..."}',
+		'{"type":"run-story-continue","continuationHandleRef":"storyImplementor","request":"...","rationale":"..."}',
+		'{"type":"run-story-self-review","continuationHandleRef":"storyImplementor","passes":1,"rationale":"..."}',
+		'{"type":"run-story-verify-initial","provider":"codex","orchestratorContext":"...","rationale":"..."}',
+		'{"type":"run-story-verify-followup","verifierContinuationHandleRef":"storyVerifier","responseArtifactRef":"/abs/path/to/artifact.json","rationale":"..."}',
+		'{"type":"run-quick-fix","request":"...","workingDirectory":"optional","rationale":"..."}',
+		'{"type":"request-ruling","request":{"id":"...","decisionType":"...","question":"...","defaultRecommendation":"...","evidence":["..."],"allowedResponses":["..."]},"rationale":"..."}',
+		'{"type":"accept-story","acceptance":{"acceptanceChecks":[{"name":"...","status":"pass","evidence":["..."],"reasoning":"..."}],"recommendedImplLeadAction":"accept"},"verification":{"finalVerifierOutcome":"pass","findings":[{"id":"...","status":"fixed","evidence":["..."]}]},"riskAndDeviationReview":{"shimMockFallbackDecisions":[]},"rationale":"..."}',
+		'{"type":"block-story","reason":"...","detail":"optional","verification":{"finalVerifierOutcome":"block","findings":[{"id":"...","status":"unresolved","evidence":["..."]}]},"rationale":"..."}',
+	].join("\n");
+}
+
 function resultContractSchema(input: PromptAssemblyInput): string {
 	switch (input.role) {
+		case "story_lead":
+			return storyLeadActionContractSchema();
 		case "story_implementor":
 			return [
 				"```json",
@@ -386,6 +434,8 @@ function resultContractSchema(input: PromptAssemblyInput): string {
 
 function routingGuidance(input: PromptAssemblyInput): string {
 	switch (input.role) {
+		case "story_lead":
+			return "Choose the smallest safe bounded action and keep unresolved authority-boundary decisions explicit.";
 		case "story_verifier":
 			return input.verifierMode === "followup"
 				? "Preserve stable finding ids, resolve prior blockers when the implementor evidence closes them, and raise needs-human-ruling instead of silently downgrading scope disputes."
@@ -403,10 +453,14 @@ function runtimeValues(input: PromptAssemblyInput): Record<string, string> {
 	const values: Record<string, string> = {
 		STORY_ID: input.storyId ?? "",
 		STORY_TITLE: input.storyTitle ?? "",
+		STORY_RUN_ID: input.role === "story_lead" ? input.storyRunId : "",
+		STORY_RUN_MODE: input.role === "story_lead" ? input.mode : "",
 		STORY_PATH: input.storyPath ?? "",
 		EPIC_PATH: input.epicPath ?? "",
 		TECH_DESIGN_PATH: input.techDesignPath ?? "",
 		TEST_PLAN_PATH: input.testPlanPath ?? "",
+		DURABLE_STATE_SUMMARY:
+			input.role === "story_lead" ? input.durableStateSummary : "",
 		STORY_GATE_COMMAND: input.gateCommands.story ?? "not provided",
 		EPIC_GATE_COMMAND: input.gateCommands.epic ?? "not provided",
 		RESULT_CONTRACT_NAME: resultContractName(input),

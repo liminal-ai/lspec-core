@@ -214,6 +214,20 @@ export const riskOrDeviationItemSchema = z
 	})
 	.strict();
 
+const cleanupAcceptedRiskItemSchema = riskOrDeviationItemSchema.refine(
+	(item) => item.approvalStatus === "approved",
+	{
+		message: "cleanup acceptedRiskItems must carry approvalStatus 'approved'",
+	},
+);
+
+const cleanupDeferredItemSchema = riskOrDeviationItemSchema.refine(
+	(item) => item.approvalStatus === "not-required",
+	{
+		message: "cleanup deferredItems must carry approvalStatus 'not-required'",
+	},
+);
+
 export const storyLeadSummarySchema = z
 	.object({
 		storyTitle: z.string().min(1),
@@ -281,6 +295,104 @@ export const storyLeadAcceptanceSummarySchema = z
 	})
 	.strict();
 
+export const storyLeadRiskAndDeviationReviewSchema = z
+	.object({
+		specDeviations: z.array(riskOrDeviationItemSchema).optional(),
+		assumedRisks: z.array(riskOrDeviationItemSchema).optional(),
+		scopeChanges: z.array(riskOrDeviationItemSchema).optional(),
+		shimMockFallbackDecisions: z.array(riskOrDeviationItemSchema).optional(),
+	})
+	.strict();
+
+export const storyLeadActionSchema = z.discriminatedUnion("type", [
+	z
+		.object({
+			type: z.literal("run-story-implement"),
+			rationale: z.string().min(1),
+		})
+		.strict(),
+	z
+		.object({
+			type: z.literal("run-story-continue"),
+			continuationHandleRef: z.string().min(1),
+			request: z.string().min(1),
+			rationale: z.string().min(1),
+		})
+		.strict(),
+	z
+		.object({
+			type: z.literal("run-story-self-review"),
+			continuationHandleRef: z.string().min(1),
+			passes: z.number().int().positive(),
+			rationale: z.string().min(1),
+		})
+		.strict(),
+	z
+		.object({
+			type: z.literal("run-story-verify-initial"),
+			provider: providerIdSchema.optional(),
+			orchestratorContext: z.string().min(1).optional(),
+			rationale: z.string().min(1),
+		})
+		.strict(),
+	z
+		.object({
+			type: z.literal("run-story-verify-followup"),
+			verifierContinuationHandleRef: z.string().min(1),
+			responseArtifactRef: z.string().min(1).optional(),
+			responseText: z.string().min(1).optional(),
+			orchestratorContext: z.string().min(1).optional(),
+			rationale: z.string().min(1),
+		})
+		.strict()
+		.superRefine((value, ctx) => {
+			if (!value.responseArtifactRef && !value.responseText) {
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					message:
+						"Verifier follow-up actions require responseArtifactRef or responseText.",
+					path: ["responseArtifactRef"],
+				});
+			}
+		}),
+	z
+		.object({
+			type: z.literal("run-quick-fix"),
+			request: z.string().min(1),
+			workingDirectory: z.string().min(1).optional(),
+			rationale: z.string().min(1),
+		})
+		.strict(),
+	z
+		.object({
+			type: z.literal("request-ruling"),
+			request: callerRulingRequestSchema,
+			verification: storyLeadVerificationSchema.optional(),
+			riskAndDeviationReview: storyLeadRiskAndDeviationReviewSchema.optional(),
+			rationale: z.string().min(1),
+		})
+		.strict(),
+	z
+		.object({
+			type: z.literal("accept-story"),
+			acceptance: storyLeadAcceptanceSummarySchema,
+			verification: storyLeadVerificationSchema.optional(),
+			riskAndDeviationReview: storyLeadRiskAndDeviationReviewSchema.optional(),
+			rationale: z.string().min(1),
+		})
+		.strict(),
+	z
+		.object({
+			type: z.literal("block-story"),
+			reason: z.string().min(1),
+			detail: z.string().min(1).optional(),
+			verification: storyLeadVerificationSchema.optional(),
+			riskAndDeviationReview: storyLeadRiskAndDeviationReviewSchema.optional(),
+			rationale: z.string().min(1),
+		})
+		.strict(),
+]);
+
 export const storyReceiptDraftSchema = z
 	.object({
 		storyId: z.string().min(1),
@@ -344,8 +456,8 @@ export const logHandoffSchema = z
 
 export const cleanupHandoffSchema = z
 	.object({
-		acceptedRiskItems: z.array(riskOrDeviationItemSchema),
-		deferredItems: z.array(riskOrDeviationItemSchema),
+		acceptedRiskItems: z.array(cleanupAcceptedRiskItemSchema),
+		deferredItems: z.array(cleanupDeferredItemSchema),
 		cleanupRequired: z.boolean(),
 	})
 	.strict();
@@ -538,7 +650,9 @@ export const storyOrchestrateResumeResultSchema = z.discriminatedUnion("case", [
 			finalPackagePath: z.string().min(1),
 			finalPackage: storyLeadFinalPackageSchema,
 			acceptedReviewRequestId: z.string().min(1).optional(),
+			acceptedReviewRequestArtifact: artifactRefSchema.optional(),
 			acceptedRulingRequestId: z.string().min(1).optional(),
+			acceptedRulingArtifact: artifactRefSchema.optional(),
 		})
 		.strict(),
 	z
@@ -551,6 +665,17 @@ export const storyOrchestrateResumeResultSchema = z.discriminatedUnion("case", [
 			eventHistoryPath: z.string().min(1),
 			latestEventSequence: z.number().int().nonnegative(),
 			storyLeadSession: storyLeadSessionRefSchema.optional(),
+			acceptedReviewRequestArtifact: artifactRefSchema.optional(),
+			acceptedRulingArtifact: artifactRefSchema.optional(),
+		})
+		.strict(),
+	z
+		.object({
+			case: z.literal("existing-accepted-attempt"),
+			storyId: z.string().min(1),
+			storyRunId: z.string().min(1),
+			finalPackagePath: z.string().min(1),
+			suggestedNext: z.enum(["status", "resume-with-review-request"]),
 		})
 		.strict(),
 	z
@@ -654,6 +779,10 @@ export type StoryLeadEvidence = z.infer<typeof storyLeadEvidenceSchema>;
 export type StoryLeadAcceptanceSummary = z.infer<
 	typeof storyLeadAcceptanceSummarySchema
 >;
+export type StoryLeadRiskAndDeviationReview = z.infer<
+	typeof storyLeadRiskAndDeviationReviewSchema
+>;
+export type StoryLeadAction = z.infer<typeof storyLeadActionSchema>;
 export type StoryReceiptDraft = z.infer<typeof storyReceiptDraftSchema>;
 export type CumulativeBaseline = z.infer<typeof cumulativeBaselineSchema>;
 export type CommitReadiness = z.infer<typeof commitReadinessSchema>;

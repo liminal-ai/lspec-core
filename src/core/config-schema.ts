@@ -123,11 +123,64 @@ function validateRoleEffort(
 	}
 }
 
+const implRunConfigCanonicalSchema = z
+	.object({
+		version: z.literal(1),
+		primary_harness: primaryHarnessSchema,
+		story_implementor: roleAssignmentSchema,
+		story_lead_provider: roleAssignmentSchema.optional(),
+		quick_fixer: roleAssignmentSchema,
+		story_verifier: roleAssignmentSchema,
+		self_review: z
+			.object({
+				passes: z
+					.number()
+					.int()
+					.min(MIN_SELF_REVIEW_PASSES)
+					.max(MAX_SELF_REVIEW_PASSES),
+			})
+			.strict(),
+		epic_verifiers: z.array(epicVerifierAssignmentSchema).min(1),
+		epic_synthesizer: roleAssignmentSchema,
+		caller_harness: callerHarnessConfigRecordSchema.optional(),
+		verification_gates: verificationGatesConfigSchema.optional(),
+		timeouts: runTimeoutsSchema.optional(),
+	})
+	.strict()
+	.superRefine((value, ctx) => {
+		if (value.story_lead_provider) {
+			validateRoleEffort(
+				value.story_lead_provider,
+				["story_lead_provider"],
+				ctx,
+			);
+		}
+		validateRoleEffort(value.story_implementor, ["story_implementor"], ctx);
+		validateRoleEffort(value.quick_fixer, ["quick_fixer"], ctx);
+		validateRoleEffort(value.story_verifier, ["story_verifier"], ctx);
+		validateRoleEffort(value.epic_synthesizer, ["epic_synthesizer"], ctx);
+
+		const seenLabels = new Set<string>();
+		for (const [index, verifier] of value.epic_verifiers.entries()) {
+			if (seenLabels.has(verifier.label)) {
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					message: "Duplicate epic verifier label",
+					path: ["epic_verifiers", index, "label"],
+				});
+			}
+			seenLabels.add(verifier.label);
+			validateRoleEffort(verifier, ["epic_verifiers", index], ctx);
+		}
+	});
+
 export const implRunConfigSchema = z
 	.object({
 		version: z.literal(1),
 		primary_harness: primaryHarnessSchema,
 		story_implementor: roleAssignmentSchema,
+		story_lead_provider: roleAssignmentSchema.optional(),
+		// Deprecated compatibility alias; prefer story_lead_provider.
 		story_lead: roleAssignmentSchema.optional(),
 		quick_fixer: roleAssignmentSchema,
 		story_verifier: roleAssignmentSchema,
@@ -148,27 +201,29 @@ export const implRunConfigSchema = z
 	})
 	.strict()
 	.superRefine((value, ctx) => {
-		if (value.story_lead) {
-			validateRoleEffort(value.story_lead, ["story_lead"], ctx);
+		if (
+			value.story_lead &&
+			value.story_lead_provider &&
+			JSON.stringify(value.story_lead) !==
+				JSON.stringify(value.story_lead_provider)
+		) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message:
+					"story_lead is a deprecated alias and must match story_lead_provider when both are present",
+				path: ["story_lead"],
+			});
 		}
-		validateRoleEffort(value.story_implementor, ["story_implementor"], ctx);
-		validateRoleEffort(value.quick_fixer, ["quick_fixer"], ctx);
-		validateRoleEffort(value.story_verifier, ["story_verifier"], ctx);
-		validateRoleEffort(value.epic_synthesizer, ["epic_synthesizer"], ctx);
-
-		const seenLabels = new Set<string>();
-		for (const [index, verifier] of value.epic_verifiers.entries()) {
-			if (seenLabels.has(verifier.label)) {
-				ctx.addIssue({
-					code: z.ZodIssueCode.custom,
-					message: "Duplicate epic verifier label",
-					path: ["epic_verifiers", index, "label"],
-				});
-			}
-			seenLabels.add(verifier.label);
-			validateRoleEffort(verifier, ["epic_verifiers", index], ctx);
-		}
-	});
+	})
+	.transform(({ story_lead, ...value }) => ({
+		...value,
+		...(value.story_lead_provider
+			? {}
+			: story_lead
+				? { story_lead_provider: story_lead }
+				: {}),
+	}))
+	.pipe(implRunConfigCanonicalSchema);
 
 export type ReasoningEffort = z.infer<typeof reasoningEffortSchema>;
 export type PrimaryHarness = z.infer<typeof primaryHarnessSchema>;

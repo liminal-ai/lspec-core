@@ -184,7 +184,7 @@ src/
 │   ├── log-handoff.ts                        # NEW: map final package into run-log update payload
 │   ├── cleanup-handoff.ts                    # NEW: derive defer/accepted-risk carry-forward
 │   ├── result-contracts.ts                   # MODIFIED: primitive compatibility + references to new contracts
-│   ├── config-schema.ts                      # MODIFIED: caller_harness + story_lead config
+│   ├── config-schema.ts                      # MODIFIED: caller_harness + story_lead_provider config
 │   ├── log-template.ts                       # MODIFIED: preserve headings, add caller/story-lead labels if needed
 │   ├── runtime-progress.ts                   # MODIFIED: expose state to heartbeat emitter
 │   └── artifact-writer.ts                    # MODIFIED: story-lead grouped paths

@@ -106,7 +106,12 @@ describe("story final package", () => {
 			},
 		});
 
-		expect(finalPackage.outcome).toBe("blocked");
+		expect(finalPackage.outcome).toBe("needs-ruling");
+		expect(finalPackage.rulingRequest).toEqual(
+			expect.objectContaining({
+				decisionType: "spec-deviation",
+			}),
+		);
 		expect(
 			finalPackage.acceptanceChecks.find(
 				(check) => check.name === "receipt-readiness",
@@ -117,7 +122,7 @@ describe("story final package", () => {
 				(check) => check.name === "commit-readiness",
 			)?.status,
 		).toBe("fail");
-		expect(finalPackage.recommendedImplLeadAction).toBe("reopen");
+		expect(finalPackage.recommendedImplLeadAction).toBe("ask-ruling");
 	});
 
 	test("TC-3.3a and TC-3.7c do not self-certify gate, baseline, or commit readiness when evidence is missing", () => {
@@ -207,5 +212,274 @@ describe("story final package", () => {
 				(check) => check.name === "final-verifier-result",
 			)?.status,
 		).toBe("unknown");
+	});
+
+	test("preserves provider-authored acceptance checks and recommended impl-lead action", () => {
+		const finalPackage = buildStoryLeadFinalPackage({
+			outcome: "accepted",
+			storyId: "00-foundation",
+			storyRunId: "00-foundation-story-run-006",
+			attempt: 6,
+			storyTitle: "Story 0: Foundation",
+			implementedScope: "Provider acceptance metadata flow.",
+			evidence: {
+				implementorArtifacts: [
+					{
+						kind: "implementor-result",
+						path: "/tmp/spec-pack/artifacts/00-foundation/001-implementor.json",
+					},
+				],
+				verifierArtifacts: [
+					{
+						kind: "verifier-result",
+						path: "/tmp/spec-pack/artifacts/00-foundation/002-verifier.json",
+					},
+				],
+			},
+			verification: {
+				finalVerifierOutcome: "pass",
+				findings: [],
+			},
+			gateRun: {
+				command: "npm run green-verify",
+				result: "pass",
+			},
+			baselineBeforeStory: 30,
+			baselineAfterStory: 33,
+			latestActualTotal: 33,
+			commitReadiness: {
+				state: "ready-for-impl-lead-commit",
+			},
+			acceptanceSummary: {
+				acceptanceChecks: [
+					{
+						name: "custom-provider-check",
+						status: "pass",
+						evidence: ["story-lead-action"],
+						reasoning:
+							"Story-lead supplied acceptance metadata that must survive packaging.",
+					},
+				],
+				recommendedImplLeadAction: "reject",
+			},
+		});
+
+		expect(finalPackage.acceptanceChecks).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ name: "custom-provider-check" }),
+			]),
+		);
+		expect(finalPackage.recommendedImplLeadAction).toBe("reject");
+	});
+
+	test("does not let a provider accept recommendation override failed built-in checks", () => {
+		const finalPackage = buildStoryLeadFinalPackage({
+			outcome: "accepted",
+			storyId: "00-foundation",
+			storyRunId: "00-foundation-story-run-007",
+			attempt: 7,
+			storyTitle: "Story 0: Foundation",
+			implementedScope: "Provider safety boundary flow.",
+			evidence: {
+				implementorArtifacts: [
+					{
+						kind: "implementor-result",
+						path: "/tmp/spec-pack/artifacts/00-foundation/001-implementor.json",
+					},
+				],
+				verifierArtifacts: [
+					{
+						kind: "verifier-result",
+						path: "/tmp/spec-pack/artifacts/00-foundation/002-verifier.json",
+					},
+				],
+			},
+			verification: {
+				finalVerifierOutcome: "pass",
+				findings: [],
+			},
+			gateRun: {
+				command: "npm run green-verify",
+				result: "fail",
+			},
+			baselineBeforeStory: 30,
+			baselineAfterStory: 33,
+			latestActualTotal: 33,
+			commitReadiness: {
+				state: "ready-for-impl-lead-commit",
+			},
+			acceptanceSummary: {
+				acceptanceChecks: [
+					{
+						name: "story-gate-result",
+						status: "pass",
+						evidence: ["provider-accept-story-payload"],
+						reasoning:
+							"Provider-authored duplicate check should be preserved, not override the built-in gate result.",
+					},
+				],
+				recommendedImplLeadAction: "accept",
+			},
+		});
+
+		const gateChecks = finalPackage.acceptanceChecks.filter(
+			(check) => check.name === "story-gate-result",
+		);
+
+		expect(finalPackage.outcome).toBe("blocked");
+		expect(gateChecks).toHaveLength(2);
+		expect(gateChecks.map((check) => check.status)).toEqual(["fail", "pass"]);
+		expect(finalPackage.recommendedImplLeadAction).toBe("reopen");
+	});
+
+	test("exports only approved accepted-risk items and true deferred items into cleanup handoff", () => {
+		const finalPackage = buildStoryLeadFinalPackage({
+			outcome: "accepted",
+			storyId: "00-foundation",
+			storyRunId: "00-foundation-story-run-008",
+			attempt: 8,
+			storyTitle: "Story 0: Foundation",
+			implementedScope: "Shim/mock cleanup handoff flow.",
+			evidence: {
+				implementorArtifacts: [
+					{
+						kind: "implementor-result",
+						path: "/tmp/spec-pack/artifacts/00-foundation/001-implementor.json",
+					},
+				],
+				verifierArtifacts: [
+					{
+						kind: "verifier-result",
+						path: "/tmp/spec-pack/artifacts/00-foundation/002-verifier.json",
+					},
+				],
+			},
+			verification: {
+				finalVerifierOutcome: "pass",
+				findings: [],
+			},
+			riskAndDeviationReview: {
+				scopeChanges: [
+					{
+						description: "Deferred cleanup item remains.",
+						reasoning: "Safe to defer until cleanup.",
+						evidence: ["cleanup.md"],
+						approvalStatus: "not-required",
+						approvalSource: null,
+					},
+					{
+						description: "Scope change still needs a ruling.",
+						reasoning: "This must stay on the ruling path.",
+						evidence: ["scope.md"],
+						approvalStatus: "needs-ruling",
+						approvalSource: null,
+					},
+				],
+				shimMockFallbackDecisions: [
+					{
+						description: "Approved compatibility shim remains.",
+						reasoning: "Impl-lead accepted the compatibility shim.",
+						evidence: ["shim.md"],
+						approvalStatus: "approved",
+						approvalSource: "impl-lead",
+					},
+				],
+			},
+			gateRun: {
+				command: "npm run green-verify",
+				result: "pass",
+			},
+			baselineBeforeStory: 30,
+			baselineAfterStory: 33,
+			latestActualTotal: 33,
+			commitReadiness: {
+				state: "ready-for-impl-lead-commit",
+			},
+		});
+
+		expect(finalPackage.cleanupHandoff.acceptedRiskItems).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					description: "Approved compatibility shim remains.",
+				}),
+			]),
+		);
+		expect(finalPackage.cleanupHandoff.deferredItems).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					description: "Deferred cleanup item remains.",
+				}),
+			]),
+		);
+		expect(finalPackage.cleanupHandoff.deferredItems).not.toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					description: "Scope change still needs a ruling.",
+				}),
+			]),
+		);
+		expect(finalPackage.cleanupHandoff.cleanupRequired).toBe(true);
+	});
+
+	test("synthesizes a ruling request for production shim/mock decisions that still need approval instead of downgrading them to plain blocked cleanup debt", () => {
+		const finalPackage = buildStoryLeadFinalPackage({
+			outcome: "accepted",
+			storyId: "00-foundation",
+			storyRunId: "00-foundation-story-run-009",
+			attempt: 9,
+			storyTitle: "Story 0: Foundation",
+			implementedScope: "Shim/mock ruling boundary flow.",
+			evidence: {
+				implementorArtifacts: [
+					{
+						kind: "implementor-result",
+						path: "/tmp/spec-pack/artifacts/00-foundation/001-implementor.json",
+					},
+				],
+				verifierArtifacts: [
+					{
+						kind: "verifier-result",
+						path: "/tmp/spec-pack/artifacts/00-foundation/002-verifier.json",
+					},
+				],
+			},
+			verification: {
+				finalVerifierOutcome: "pass",
+				findings: [],
+			},
+			riskAndDeviationReview: {
+				shimMockFallbackDecisions: [
+					{
+						description: "Production fallback still needs caller approval.",
+						reasoning:
+							"Story-lead cannot silently approve a production fallback.",
+						evidence: ["fallback.md"],
+						approvalStatus: "needs-ruling",
+						approvalSource: null,
+					},
+				],
+			},
+			gateRun: {
+				command: "npm run green-verify",
+				result: "pass",
+			},
+			baselineBeforeStory: 30,
+			baselineAfterStory: 33,
+			latestActualTotal: 33,
+			commitReadiness: {
+				state: "ready-for-impl-lead-commit",
+			},
+		});
+
+		expect(finalPackage.outcome).toBe("needs-ruling");
+		expect(finalPackage.rulingRequest).toEqual(
+			expect.objectContaining({
+				decisionType: "shim-mock-fallback",
+			}),
+		);
+		expect(finalPackage.cleanupHandoff.acceptedRiskItems).toEqual([]);
+		expect(finalPackage.cleanupHandoff.deferredItems).toEqual([]);
+		expect(finalPackage.cleanupHandoff.cleanupRequired).toBe(false);
+		expect(finalPackage.recommendedImplLeadAction).toBe("ask-ruling");
 	});
 });

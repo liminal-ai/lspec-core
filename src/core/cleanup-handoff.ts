@@ -33,11 +33,17 @@ function findingAsCleanupItem(input: {
 export function buildCleanupHandoff(input: {
 	acceptedRiskItems?: RiskOrDeviationItem[];
 	deferredItems?: RiskOrDeviationItem[];
+	shimMockFallbackItems?: RiskOrDeviationItem[];
 	verification: StoryLeadVerification;
 	replayBoundary?: ReplayBoundary | null;
 }): CleanupHandoff {
 	const acceptedRiskItems = [
-		...(input.acceptedRiskItems ?? []),
+		...(input.acceptedRiskItems ?? []).filter(
+			(item) => item.approvalStatus === "approved",
+		),
+		...(input.shimMockFallbackItems ?? []).filter(
+			(item) => item.approvalStatus === "approved",
+		),
 		...input.verification.findings
 			.filter((finding) => finding.status === "accepted-risk")
 			.map((finding) =>
@@ -50,7 +56,12 @@ export function buildCleanupHandoff(input: {
 			),
 	];
 	const deferredItems = [
-		...(input.deferredItems ?? []),
+		...(input.deferredItems ?? []).filter(
+			(item) => item.approvalStatus === "not-required",
+		),
+		...(input.shimMockFallbackItems ?? []).filter(
+			(item) => item.approvalStatus === "not-required",
+		),
 		...input.verification.findings
 			.filter((finding) => finding.status === "defer")
 			.map((finding) =>

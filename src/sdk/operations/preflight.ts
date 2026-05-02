@@ -154,12 +154,16 @@ export async function preflight(
 
 			if (
 				[
+					validatedConfig.story_lead_provider,
 					validatedConfig.story_implementor,
 					validatedConfig.quick_fixer,
 					validatedConfig.story_verifier,
 					...validatedConfig.epic_verifiers,
 					validatedConfig.epic_synthesizer,
-				].every((assignment) => assignment.secondary_harness === "none")
+				].every(
+					(assignment) =>
+						!assignment || assignment.secondary_harness === "none",
+				)
 			) {
 				notes.push(
 					"GPT-capable secondary harnesses are unavailable for this run; the orchestrator should record the Claude-only degraded mode.",

@@ -57,6 +57,25 @@ describe("prompt asset content contracts", () => {
 		}
 	});
 
+	test("story lead prompt assets define the role charter, durable-state summary, action protocol, acceptance rubric, and ruling boundaries", () => {
+		const assets = getEmbeddedPromptAssets();
+		const prompt = assets.base["story-lead"];
+
+		expect(prompt).toContain("Role Charter");
+		expect(prompt).toContain("Authority Boundary");
+		expect(prompt).toContain("Durable State Summary");
+		expect(prompt).toContain("{{DURABLE_STATE_SUMMARY}}");
+		expect(assets.snippets["story-lead-action-protocol"]).toContain(
+			"Valid action shapes",
+		);
+		expect(assets.snippets["story-lead-acceptance-rubric"]).toContain(
+			"Acceptance Rubric",
+		);
+		expect(assets.snippets["story-lead-ruling-boundaries"]).toContain(
+			"Ruling Boundaries",
+		);
+	});
+
 	test("TC-8.1c epic verifier prompt contains cross-story and production-path mock or shim audit expectations", () => {
 		const assets = getEmbeddedPromptAssets();
 		const prompt = assets.base["epic-verifier"];

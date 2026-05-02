@@ -4,12 +4,12 @@ import { describe, expect, test } from "vitest";
 
 import { discoverStoryRunState } from "../../../src/core/story-run-discovery";
 import { InvalidSpecPackError } from "../../../src/sdk/errors";
-import { createSpecPack } from "../../support/test-helpers";
 import {
 	createStoryOrchestrateSpecPack,
 	seedPrimitiveArtifact,
 	seedStoryRunAttempt,
 } from "../../support/story-orchestrate-fixtures";
+import { createSpecPack } from "../../support/test-helpers";
 
 describe("story-run discovery", () => {
 	test("TC-2.2a accepts a valid story id and classifies it as ready to start", async () => {
@@ -121,6 +121,47 @@ describe("story-run discovery", () => {
 			storyId,
 			status: "interrupted",
 			finalPackageOutcome: "interrupted",
+		});
+
+		const selection = await discoverStoryRunState({
+			specPackRoot,
+			storyId,
+		});
+
+		expect(selection).toEqual({
+			case: "resume-required",
+			storyRunId: attempt.storyRunId,
+			currentSnapshotPath: join(
+				specPackRoot,
+				"artifacts",
+				storyId,
+				"story-lead",
+				`${attempt.attemptKey}-current.json`,
+			),
+		});
+	});
+
+	test("treats an accepted snapshot without a final package as resumable instead of ambiguous", async () => {
+		const { specPackRoot, storyId } = await createStoryOrchestrateSpecPack(
+			"story-run-discovery-accepted-missing-package",
+		);
+		const attempt = await seedStoryRunAttempt({
+			specPackRoot,
+			storyId,
+			status: "accepted",
+			finalPackage: null,
+			latestArtifacts: [
+				{
+					kind: "final-package",
+					path: join(
+						specPackRoot,
+						"artifacts",
+						storyId,
+						"story-lead",
+						"001-final-package.json",
+					),
+				},
+			],
 		});
 
 		const selection = await discoverStoryRunState({

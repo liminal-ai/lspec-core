@@ -63,7 +63,7 @@ async function createStoryLeadSmokeFixture(
 	await writeRunConfig(
 		specPackRoot,
 		createRunConfig({
-			story_lead: {
+			story_lead_provider: {
 				secondary_harness: provider === "claude-code" ? "none" : provider,
 				model: provider === "claude-code" ? "sonnet" : "gpt-5.4",
 				reasoning_effort: "low",

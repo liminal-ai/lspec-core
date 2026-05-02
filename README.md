@@ -121,6 +121,8 @@ Implementation commands support the same envelope-oriented contract through the 
 
 Provider-backed commands emit caller-facing heartbeat summaries on `stderr` while work is still running. Those heartbeats are for the live caller harness that is monitoring the command, and they do not change the exact final JSON envelope on `stdout`.
 
+For `story-orchestrate`, explicit unknown run ids return `invalid-story-run-id` on `resume` and `status` instead of silently selecting another attempt. Resume results also surface durable persisted review-request or ruling artifact refs when those caller inputs are accepted.
+
 ### CLI-Delivered Skill
 
 `lbuild-impl` can deliver its orchestration skill directly through the CLI, so a coding agent can onboard without a separately installed skill bundle:

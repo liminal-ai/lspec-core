@@ -1,6 +1,7 @@
-import type { ContinuationHandle } from "./result-contracts.js";
 import { buildCleanupHandoff } from "./cleanup-handoff.js";
 import { buildLogHandoff } from "./log-handoff.js";
+import type { ContinuationHandle } from "./result-contracts.js";
+import { buildAuthorityBoundaryRulingRequest } from "./review-ruling.js";
 import type {
 	AcceptanceCheckItem,
 	ArtifactRef,
@@ -11,12 +12,13 @@ import type {
 	GateRunSummary,
 	ReplayBoundary,
 	RiskOrDeviationItem,
+	StoryLeadAcceptanceSummary,
 	StoryLeadFinalPackage,
 	StoryLeadVerification,
 } from "./story-orchestrate-contracts.js";
 import {
-	storyLeadFinalPackageSchema,
 	type StoryLeadOutcome,
+	storyLeadFinalPackageSchema,
 } from "./story-orchestrate-contracts.js";
 
 function defaultCommitReadiness(input: {
@@ -161,12 +163,100 @@ function acceptanceChecks(input: {
 	];
 }
 
+function mergeAcceptanceChecks(input: {
+	builtInChecks: AcceptanceCheckItem[];
+	providerChecks?: AcceptanceCheckItem[];
+}): AcceptanceCheckItem[] {
+	return [...input.builtInChecks, ...(input.providerChecks ?? [])];
+}
+
+function dedupeEvidence(items: RiskOrDeviationItem[]): string[] {
+	return [...new Set(items.flatMap((item) => item.evidence))];
+}
+
+function synthesizeRulingRequest(input: {
+	storyRunId: string;
+	riskAndDeviationReview: StoryLeadFinalPackage["riskAndDeviationReview"];
+}): CallerRulingRequest | null {
+	const shimMockFallbackItems =
+		input.riskAndDeviationReview.shimMockFallbackDecisions.filter(
+			(item) => item.approvalStatus === "needs-ruling",
+		);
+	if (shimMockFallbackItems.length > 0) {
+		return buildAuthorityBoundaryRulingRequest({
+			id: `${input.storyRunId}-ruling-shim-mock-fallback`,
+			decisionType: "shim-mock-fallback",
+			question:
+				"Should impl-lead approve the outstanding production shim/mock/fallback decision before story acceptance?",
+			defaultRecommendation:
+				"Pause for caller ruling instead of silently treating the production shim/mock/fallback decision as accepted or deferred cleanup debt.",
+			evidence: dedupeEvidence(shimMockFallbackItems),
+			allowedResponses: ["approve", "reject"],
+		});
+	}
+
+	const scopeChangeItems = input.riskAndDeviationReview.scopeChanges.filter(
+		(item) => item.approvalStatus === "needs-ruling",
+	);
+	if (scopeChangeItems.length > 0) {
+		return buildAuthorityBoundaryRulingRequest({
+			id: `${input.storyRunId}-ruling-scope-change`,
+			decisionType: "scope-change",
+			question:
+				"Should impl-lead approve the outstanding scope-change decision before story acceptance?",
+			defaultRecommendation:
+				"Pause for caller ruling instead of carrying an unresolved scope change into cleanup as if it were already deferred.",
+			evidence: dedupeEvidence(scopeChangeItems),
+			allowedResponses: ["approve", "reject"],
+		});
+	}
+
+	const specDeviationItems = input.riskAndDeviationReview.specDeviations.filter(
+		(item) => item.approvalStatus === "needs-ruling",
+	);
+	if (specDeviationItems.length > 0) {
+		return buildAuthorityBoundaryRulingRequest({
+			id: `${input.storyRunId}-ruling-spec-deviation`,
+			decisionType: "spec-deviation",
+			question:
+				"Should impl-lead approve the outstanding spec-deviation decision before story acceptance?",
+			defaultRecommendation:
+				"Pause for caller ruling until the spec-deviation decision is explicitly approved or rejected.",
+			evidence: dedupeEvidence(specDeviationItems),
+			allowedResponses: ["approve", "reject"],
+		});
+	}
+
+	const acceptedRiskItems = input.riskAndDeviationReview.assumedRisks.filter(
+		(item) => item.approvalStatus === "needs-ruling",
+	);
+	if (acceptedRiskItems.length > 0) {
+		return buildAuthorityBoundaryRulingRequest({
+			id: `${input.storyRunId}-ruling-accepted-risk`,
+			decisionType: "accepted-risk",
+			question:
+				"Should impl-lead approve the outstanding accepted-risk decision before story acceptance?",
+			defaultRecommendation:
+				"Pause for caller ruling until the accepted-risk decision is explicitly approved or rejected.",
+			evidence: dedupeEvidence(acceptedRiskItems),
+			allowedResponses: ["approve", "reject"],
+		});
+	}
+
+	return null;
+}
+
 function resolvedOutcome(input: {
 	requestedOutcome: StoryLeadOutcome;
 	acceptanceChecks: AcceptanceCheckItem[];
+	rulingRequest: CallerRulingRequest | null;
 }): StoryLeadOutcome {
 	if (input.requestedOutcome !== "accepted") {
 		return input.requestedOutcome;
+	}
+
+	if (input.rulingRequest) {
+		return "needs-ruling";
 	}
 
 	return input.acceptanceChecks.every((check) => check.status === "pass")
@@ -176,7 +266,16 @@ function resolvedOutcome(input: {
 
 function recommendedImplLeadAction(input: {
 	outcome: StoryLeadOutcome;
+	acceptanceSummary?: StoryLeadAcceptanceSummary;
 }): StoryLeadFinalPackage["recommendedImplLeadAction"] {
+	const providerAction = input.acceptanceSummary?.recommendedImplLeadAction;
+	if (
+		providerAction &&
+		(input.outcome === "accepted" || providerAction !== "accept")
+	) {
+		return providerAction;
+	}
+
 	switch (input.outcome) {
 		case "accepted":
 			return "accept";
@@ -247,6 +346,7 @@ export interface BuildStoryLeadFinalPackageInput {
 		scopeChanges?: RiskOrDeviationItem[];
 		shimMockFallbackDecisions?: RiskOrDeviationItem[];
 	};
+	acceptanceSummary?: StoryLeadAcceptanceSummary;
 	gateRun?: GateRunSummary;
 	callerInputHistory?: CallerInputHistory;
 	rulingRequest?: CallerRulingRequest | null;
@@ -286,24 +386,37 @@ export function buildStoryLeadFinalPackage(
 		callerInputArtifacts: input.evidence?.callerInputArtifacts ?? [],
 		gateRuns: [gateRun],
 	};
-	const checks = acceptanceChecks({
-		gateRun,
-		verification,
-		scopeChanges: riskAndDeviationReview.scopeChanges,
-		shimMockFallbackDecisions: riskAndDeviationReview.shimMockFallbackDecisions,
-		baselineBeforeStory: input.baselineBeforeStory ?? null,
-		baselineAfterStory: input.baselineAfterStory ?? null,
-		commitReadiness,
-		implementorEvidenceRefs: evidence.implementorArtifacts.map(
-			(artifact) => artifact.path,
-		),
-		verifierEvidenceRefs: evidence.verifierArtifacts.map(
-			(artifact) => artifact.path,
-		),
+	const checks = mergeAcceptanceChecks({
+		builtInChecks: acceptanceChecks({
+			gateRun,
+			verification,
+			scopeChanges: riskAndDeviationReview.scopeChanges,
+			shimMockFallbackDecisions:
+				riskAndDeviationReview.shimMockFallbackDecisions,
+			baselineBeforeStory: input.baselineBeforeStory ?? null,
+			baselineAfterStory: input.baselineAfterStory ?? null,
+			commitReadiness,
+			implementorEvidenceRefs: evidence.implementorArtifacts.map(
+				(artifact) => artifact.path,
+			),
+			verifierEvidenceRefs: evidence.verifierArtifacts.map(
+				(artifact) => artifact.path,
+			),
+		}),
+		providerChecks: input.acceptanceSummary?.acceptanceChecks,
 	});
+	const effectiveRulingRequest =
+		input.rulingRequest ??
+		(input.outcome === "accepted"
+			? synthesizeRulingRequest({
+					storyRunId: input.storyRunId,
+					riskAndDeviationReview,
+				})
+			: null);
 	const outcome = resolvedOutcome({
 		requestedOutcome: input.outcome,
 		acceptanceChecks: checks,
+		rulingRequest: effectiveRulingRequest,
 	});
 	const openRisks = openRiskSummaries({
 		assumedRisks: riskAndDeviationReview.assumedRisks,
@@ -315,13 +428,19 @@ export function buildStoryLeadFinalPackage(
 			(item) => item.approvalStatus === "approved",
 		),
 		deferredItems: riskAndDeviationReview.scopeChanges.filter(
-			(item) => item.approvalStatus === "needs-ruling",
+			(item) => item.approvalStatus === "not-required",
 		),
+		shimMockFallbackItems:
+			riskAndDeviationReview.shimMockFallbackDecisions.filter(
+				(item) =>
+					item.approvalStatus === "approved" ||
+					item.approvalStatus === "not-required",
+			),
 		verification,
 		replayBoundary: input.replayBoundary ?? null,
 	});
-	const effectiveRulingRequest =
-		outcome === "needs-ruling" ? (input.rulingRequest ?? null) : null;
+	const terminalRulingRequest =
+		outcome === "needs-ruling" ? effectiveRulingRequest : null;
 
 	return storyLeadFinalPackageSchema.parse({
 		outcome,
@@ -334,7 +453,7 @@ export function buildStoryLeadFinalPackage(
 			acceptanceRationale: acceptanceRationale({
 				outcome,
 				acceptanceChecks: checks,
-				rulingRequest: effectiveRulingRequest,
+				rulingRequest: terminalRulingRequest,
 			}),
 		},
 		evidence,
@@ -373,7 +492,10 @@ export function buildStoryLeadFinalPackage(
 			latestActualTotal: input.latestActualTotal ?? null,
 		}),
 		cleanupHandoff,
-		rulingRequest: effectiveRulingRequest,
-		recommendedImplLeadAction: recommendedImplLeadAction({ outcome }),
+		rulingRequest: terminalRulingRequest,
+		recommendedImplLeadAction: recommendedImplLeadAction({
+			outcome,
+			acceptanceSummary: input.acceptanceSummary,
+		}),
 	});
 }

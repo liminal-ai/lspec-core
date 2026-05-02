@@ -150,6 +150,11 @@ lbuild-impl story-orchestrate status --spec-pack-root <path> --story-id <story-i
 
 Use `spec-pack-root + story-id` as the stable recovery key when the story run id is missing. Resume only the smallest missing bounded step that is not already backed by a valid durable artifact.
 
+Story-orchestrate result notes:
+
+- `resume` and `status` return `invalid-story-run-id` when you supply an explicit story-run id that does not exist for that story. They do not silently fall back to another attempt.
+- `resume` returns the durable persisted caller-input artifact reference when it accepts a review request or ruling, so the caller can keep the exact on-disk path instead of only the original input payload.
+
 ### `quick-fix`
 
 Runs a narrow, bounded correction outside the story implementor flow. Story-agnostic; does not receive a reading journey.

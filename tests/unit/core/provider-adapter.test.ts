@@ -311,6 +311,160 @@ describe("provider availability checks", () => {
 		);
 	});
 
+	test("requests Codex readiness when story_lead_provider is the only GPT-backed role", async () => {
+		const { resolveProviderMatrix } = await import(
+			"../../../src/core/provider-checks"
+		);
+
+		const specPackRoot = await createSpecPack(
+			"provider-checks-story-lead-codex",
+		);
+		const providerBinDir = await createTempDir("provider-bin-story-lead-codex");
+		await writeProviderBinary({
+			dir: providerBinDir,
+			name: "claude",
+			version: "claude 1.0.0",
+		});
+		await writeProviderBinary({
+			dir: providerBinDir,
+			name: "codex",
+			version: "codex 2.0.0",
+		});
+
+		const providerMatrix = await resolveProviderMatrix({
+			specPackRoot,
+			config: {
+				version: 1,
+				primary_harness: "claude-code",
+				story_lead_provider: {
+					secondary_harness: "codex",
+					model: "gpt-5.4",
+					reasoning_effort: "high",
+				},
+				story_implementor: {
+					secondary_harness: "none",
+					model: "claude-sonnet",
+					reasoning_effort: "high",
+				},
+				quick_fixer: {
+					secondary_harness: "none",
+					model: "claude-sonnet",
+					reasoning_effort: "medium",
+				},
+				story_verifier: {
+					secondary_harness: "none",
+					model: "claude-sonnet",
+					reasoning_effort: "high",
+				},
+				self_review: {
+					passes: 2,
+				},
+				epic_verifiers: [
+					{
+						label: "epic-verifier-1",
+						secondary_harness: "none",
+						model: "claude-sonnet",
+						reasoning_effort: "high",
+					},
+				],
+				epic_synthesizer: {
+					secondary_harness: "none",
+					model: "claude-sonnet",
+					reasoning_effort: "high",
+				},
+			},
+			env: {
+				PATH: `${providerBinDir}:${process.env.PATH ?? ""}`,
+			},
+		});
+
+		expect(providerMatrix.secondary).toContainEqual(
+			expect.objectContaining({
+				harness: "codex",
+				available: true,
+				tier: "binary-present",
+			}),
+		);
+	});
+
+	test("requests Copilot readiness when story_lead_provider is the only GPT-backed role", async () => {
+		const { resolveProviderMatrix } = await import(
+			"../../../src/core/provider-checks"
+		);
+
+		const specPackRoot = await createSpecPack(
+			"provider-checks-story-lead-copilot",
+		);
+		const providerBinDir = await createTempDir(
+			"provider-bin-story-lead-copilot",
+		);
+		await writeProviderBinary({
+			dir: providerBinDir,
+			name: "claude",
+			version: "claude 1.0.0",
+		});
+		await writeProviderBinary({
+			dir: providerBinDir,
+			name: "copilot",
+			version: "copilot 3.0.0",
+		});
+
+		const providerMatrix = await resolveProviderMatrix({
+			specPackRoot,
+			config: {
+				version: 1,
+				primary_harness: "claude-code",
+				story_lead_provider: {
+					secondary_harness: "copilot",
+					model: "gpt-5.4",
+					reasoning_effort: "high",
+				},
+				story_implementor: {
+					secondary_harness: "none",
+					model: "claude-sonnet",
+					reasoning_effort: "high",
+				},
+				quick_fixer: {
+					secondary_harness: "none",
+					model: "claude-sonnet",
+					reasoning_effort: "medium",
+				},
+				story_verifier: {
+					secondary_harness: "none",
+					model: "claude-sonnet",
+					reasoning_effort: "high",
+				},
+				self_review: {
+					passes: 2,
+				},
+				epic_verifiers: [
+					{
+						label: "epic-verifier-1",
+						secondary_harness: "none",
+						model: "claude-sonnet",
+						reasoning_effort: "high",
+					},
+				],
+				epic_synthesizer: {
+					secondary_harness: "none",
+					model: "claude-sonnet",
+					reasoning_effort: "high",
+				},
+			},
+			env: {
+				PATH: `${providerBinDir}:${process.env.PATH ?? ""}`,
+			},
+		});
+
+		expect(providerMatrix.secondary).toContainEqual(
+			expect.objectContaining({
+				harness: "copilot",
+				available: true,
+				tier: "authenticated-known",
+			}),
+		);
+	});
+
 	test("runs provider availability checks from the repo root and redacts sensitive stderr details", async () => {
 		const { resolveProviderMatrix } = await import(
 			"../../../src/core/provider-checks"

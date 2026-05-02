@@ -279,13 +279,14 @@ function requestedSecondaryHarnesses(
 ): SecondaryHarness[] {
 	const harnesses = new Set<SecondaryHarness>();
 	for (const assignment of [
+		config.story_lead_provider,
 		config.story_implementor,
 		config.quick_fixer,
 		config.story_verifier,
 		...config.epic_verifiers,
 		config.epic_synthesizer,
 	]) {
-		if (assignment.secondary_harness !== "none") {
+		if (assignment && assignment.secondary_harness !== "none") {
 			harnesses.add(assignment.secondary_harness);
 		}
 	}

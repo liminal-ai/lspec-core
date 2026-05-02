@@ -117,6 +117,49 @@ describe("prompt assembly", () => {
 		);
 	});
 
+	test("assembles the story lead prompt from embedded assets, the bounded reading journey, and the durable state summary", async () => {
+		const fixture = await createPromptSpecPack("prompt-assembly-story-lead");
+
+		const assembled = await assemblePrompt({
+			role: "story_lead",
+			storyId: fixture.storyId,
+			storyTitle: fixture.storyTitle,
+			storyPath: fixture.storyPath,
+			techDesignPath: fixture.techDesignPath,
+			techDesignCompanionPaths: fixture.techDesignCompanionPaths,
+			testPlanPath: fixture.testPlanPath,
+			gateCommands: fixture.gateCommands,
+			storyRunId: "02-prompt-story-lead-001",
+			mode: "run",
+			durableStateSummary: [
+				"Story run id: 02-prompt-story-lead-001",
+				"Current phase: story-lead-awaiting-action",
+				"Available continuation handles:",
+				'- storyImplementor: {"provider":"codex","sessionId":"codex-story-implementor-001","storyId":"02-prompt-composition-and-public-inserts"}',
+				"Latest artifacts:",
+				`- implementor-result: ${fixture.specPackRoot}/artifacts/${fixture.storyId}/001-implementor.json`,
+			].join("\n"),
+		});
+
+		expect(assembled.basePromptId).toBe("story-lead");
+		expect(assembled.snippetIds).toEqual([
+			"reading-journey",
+			"story-lead-action-protocol",
+			"story-lead-acceptance-rubric",
+			"story-lead-ruling-boundaries",
+		]);
+		expect(assembled.prompt).toContain("# Story Lead Base Prompt");
+		expect(assembled.prompt).toContain("## Reading Journey");
+		expect(assembled.prompt).toContain("## Durable State Summary");
+		expect(assembled.prompt).toContain(
+			"Story run id: 02-prompt-story-lead-001",
+		);
+		expect(assembled.prompt).toContain("## Action Protocol");
+		expect(assembled.prompt).toContain('"type":"run-story-implement"');
+		expect(assembled.prompt).toContain("## Acceptance Rubric");
+		expect(assembled.prompt).toContain("## Ruling Boundaries");
+	});
+
 	test("assembles the story verifier follow-up prompt with prior findings, implementor response, and orchestrator context", async () => {
 		const fixture = await createPromptSpecPack(
 			"prompt-assembly-verifier-followup",

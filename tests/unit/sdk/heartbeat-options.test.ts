@@ -36,7 +36,7 @@ describe("heartbeat option precedence", () => {
 		const parsed = implRunConfigSchema.parse({
 			version: 1,
 			primary_harness: "claude-code",
-			story_lead: {
+			story_lead_provider: {
 				secondary_harness: "codex",
 				model: "gpt-5.4",
 				reasoning_effort: "high",

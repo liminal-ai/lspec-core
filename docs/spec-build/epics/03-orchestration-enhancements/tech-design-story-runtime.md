@@ -43,7 +43,7 @@ src/
 │   ├── log-handoff.ts                        # NEW: final-package -> run-log update payload
 │   ├── cleanup-handoff.ts                    # NEW: final-package -> cleanup payload
 │   ├── result-contracts.ts                   # MODIFIED: story-orchestrate exports and primitive compatibility
-│   ├── config-schema.ts                      # MODIFIED: caller_harness and story_lead config
+│   ├── config-schema.ts                      # MODIFIED: caller_harness and story_lead_provider config
 │   ├── log-template.ts                       # MODIFIED: preserve headings/semantics, add labels if needed
 │   ├── artifact-writer.ts                    # MODIFIED: story-lead grouped artifact helpers
 │   ├── runtime-progress.ts                   # MODIFIED: expose primitive status to heartbeat system
@@ -603,7 +603,7 @@ Atomicity rules:
 export const storyLeadAssignmentSchema = roleAssignmentSchema;
 ```
 
-The new top-level run-config key is `story_lead`, and it reuses the current role-assignment schema for compatibility. The inherited `secondary_harness` name is awkward for the primary story-lead role, but the design keeps it in v1 to avoid a larger config migration. In docs and code comments, spell out that `secondary_harness: "none"` means Claude Code.
+The canonical top-level run-config key is `story_lead_provider`, and it reuses the current role-assignment schema for compatibility. The deprecated `story_lead` alias may still parse for older packs. The inherited `secondary_harness` name is awkward for the primary story-lead role, but the design keeps it in v1 to avoid a larger config migration. In docs and code comments, spell out that `secondary_harness: "none"` means Claude Code.
 
 ### Story-Lead Runtime Interface
 
@@ -644,7 +644,7 @@ export type StoryLeadRuntimeResult =
     };
 ```
 
-`StoryLeadAssignment` reuses the current role-assignment pattern used elsewhere in `impl-run.config.json`: `secondary_harness: "none"` means Claude Code, while `codex` and `copilot` select those adapters explicitly. The new top-level run-config key is `story_lead`, and the design keeps the inherited field name in v1 to minimize config churn.
+`StoryLeadAssignment` reuses the current role-assignment pattern used elsewhere in `impl-run.config.json`: `secondary_harness: "none"` means Claude Code, while `codex` and `copilot` select those adapters explicitly. The canonical top-level run-config key is `story_lead_provider`, while deprecated `story_lead` input remains available as a compatibility alias.
 
 ### Story-Lead Prompt Contract
 

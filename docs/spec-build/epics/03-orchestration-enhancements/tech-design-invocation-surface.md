@@ -269,7 +269,7 @@ export interface AttachedProgressEvent {
 | Run config | `caller_harness.harness` | Default caller harness |
 | Run config | `caller_harness.primitive_heartbeat_cadence_minutes` | Default primitive heartbeat cadence |
 | Run config | `caller_harness.story_heartbeat_cadence_minutes` | Default story-orchestrate heartbeat cadence |
-| Run config | `story_lead` | Story-lead role assignment using the current role-assignment schema |
+| Run config | `story_lead_provider` | Canonical story-lead role assignment using the current role-assignment schema (`story_lead` remains a deprecated compatibility alias) |
 
 ```ts
 export const callerHarnessConfigRecordSchema = z
@@ -345,7 +345,9 @@ export type StoryOrchestrateResumeResult =
       finalPackagePath: string;
       finalPackage: StoryLeadFinalPackage;
       acceptedReviewRequestId?: string;
+      acceptedReviewRequestArtifact?: ArtifactRef;
       acceptedRulingRequestId?: string;
+      acceptedRulingArtifact?: ArtifactRef;
     }
   | {
       case: "interrupted";
@@ -356,9 +358,12 @@ export type StoryOrchestrateResumeResult =
       eventHistoryPath: string;
       latestEventSequence: number;
       storyLeadSession?: StoryLeadSessionRef;
+      acceptedReviewRequestArtifact?: ArtifactRef;
+      acceptedRulingArtifact?: ArtifactRef;
     }
   | { case: "invalid-review-request"; storyId: string; }
   | { case: "invalid-ruling"; storyId: string; }
+  | { case: "invalid-story-run-id"; storyId: string; storyRunId: string; }
   | { case: "ambiguous-story-run"; storyId: string; candidates: StoryRunCandidate[]; }
   | { case: "invalid-story-id"; storyId: string; };
 
@@ -375,10 +380,11 @@ export type StoryOrchestrateStatusResult =
       finalPackage?: StoryLeadFinalPackage;
     }
   | { case: "ambiguous-story-run"; storyId: string; candidates: StoryRunCandidate[]; }
-  | { case: "invalid-story-id"; storyId: string; };
+  | { case: "invalid-story-id"; storyId: string; }
+  | { case: "invalid-story-run-id"; storyId: string; storyRunId: string; };
 ```
 
-`run` and `resume` are long-running awaited operations. They emit attached progress and heartbeat events while active, then resolve to either a terminal runtime result (`completed` or `interrupted`) or an immediate selection result (`existing-accepted-attempt`, `resume-required`, `active-attempt-exists`, `ambiguous-story-run`, `invalid-story-id`). The CLI envelope wraps these unions.
+`run` and `resume` are long-running awaited operations. They emit attached progress and heartbeat events while active, then resolve to either a terminal runtime result (`completed` or `interrupted`) or an immediate selection result (`existing-accepted-attempt`, `resume-required`, `active-attempt-exists`, `ambiguous-story-run`, `invalid-story-run-id`, `invalid-story-id`). The CLI envelope wraps these unions.
 
 ### Envelope Mapping
 

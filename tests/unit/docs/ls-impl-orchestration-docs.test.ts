@@ -20,16 +20,21 @@ describe("ls-impl orchestration docs", () => {
 	});
 
 	test("TC-4.2a and TC-4.2b define caller versus provider harness terminology and keep heartbeat examples caller-oriented", async () => {
-		const [terminology, operatingModel] = await Promise.all([
-			readDoc("src/skills/ls-impl/onboarding/02-terminology.md"),
-			readDoc("src/skills/ls-impl/onboarding/03-operating-model.md"),
-		]);
+		const [terminology, operatingModel, providerResolution] = await Promise.all(
+			[
+				readDoc("src/skills/ls-impl/onboarding/02-terminology.md"),
+				readDoc("src/skills/ls-impl/onboarding/03-operating-model.md"),
+				readDoc("src/skills/ls-impl/operations/31-provider-resolution.md"),
+			],
+		);
 
 		expect(terminology).toContain("**Caller harness**");
 		expect(terminology).toContain("**Provider harness**");
+		expect(terminology).toContain("`story_lead_provider`");
 		expect(operatingModel).toContain(
 			"Those heartbeat reminders are written for the caller harness watching the command",
 		);
+		expect(providerResolution).toContain("`story_lead_provider`");
 	});
 
 	test("TC-4.3a and TC-4.3b document Codex heartbeat polling and scope Claude Code Monitor guidance", async () => {

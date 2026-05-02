@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest";
 
 import {
 	logHandoffSchema,
+	storyLeadActionSchema,
 	storyLeadFinalPackageSchema,
 	storyOrchestrateResumeResultSchema,
 	storyOrchestrateRunResultSchema,
@@ -139,12 +140,12 @@ function createFinalPackage() {
 			acceptedRiskItems: [],
 			deferredItems: [
 				{
-					description: "Resume semantics remain for a later story.",
-					reasoning: "Story 0 leaves resume flows out of scope.",
+					description: "Deferred cleanup follow-up remains for a later story.",
+					reasoning: "Story 0 leaves this cleanup follow-up out of scope.",
 					evidence: [
 						"docs/spec-build/epics/03-orchestration-enhancements/stories/00-foundation-and-contract-alignment.md",
 					],
-					approvalStatus: "needs-ruling" as const,
+					approvalStatus: "not-required" as const,
 					approvalSource: null,
 				},
 			],
@@ -164,11 +165,84 @@ function createFinalPackage() {
 }
 
 describe("story-orchestrate contracts", () => {
+	test("accepts terminal story-lead actions that carry verifier dispositions and shim/mock risk decisions", () => {
+		const action = storyLeadActionSchema.parse({
+			type: "accept-story",
+			rationale:
+				"Verifier findings are classified and shim/mock decisions are preserved for Flow 3 handoff.",
+			acceptance: {
+				acceptanceChecks: [
+					{
+						name: "finding-dispositions-classified",
+						status: "pass",
+						evidence: ["verifier-result"],
+						reasoning:
+							"Story-lead classified the verifier findings before terminal packaging.",
+					},
+				],
+				recommendedImplLeadAction: "accept",
+			},
+			verification: {
+				finalVerifierOutcome: "pass",
+				findings: [
+					{
+						id: "F-accepted-risk",
+						status: "accepted-risk",
+						evidence: ["risk-ruling.md"],
+					},
+				],
+			},
+			riskAndDeviationReview: {
+				shimMockFallbackDecisions: [
+					{
+						description: "Production shim remains in the implementation path.",
+						reasoning: "Verifier requires explicit approval.",
+						evidence: ["verifier-result"],
+						approvalStatus: "needs-ruling",
+						approvalSource: null,
+					},
+				],
+			},
+		});
+
+		expect(action.type).toBe("accept-story");
+		if (action.type !== "accept-story") {
+			throw new Error("Expected accept-story action.");
+		}
+		expect(action.verification?.findings[0]?.status).toBe("accepted-risk");
+		expect(
+			action.riskAndDeviationReview?.shimMockFallbackDecisions?.[0]
+				?.approvalStatus,
+		).toBe("needs-ruling");
+	});
+
 	test("accepts a story-lead final package with log and cleanup handoff scaffolding", () => {
 		const parsed = storyLeadFinalPackageSchema.parse(createFinalPackage());
 
 		expect(parsed.outcome).toBe("needs-ruling");
 		expect(parsed.cleanupHandoff.cleanupRequired).toBe(true);
+	});
+
+	test("rejects cleanup handoff entries that still carry needs-ruling approval states", () => {
+		expect(() =>
+			storyLeadFinalPackageSchema.parse({
+				...createFinalPackage(),
+				cleanupHandoff: {
+					acceptedRiskItems: [],
+					deferredItems: [
+						{
+							description:
+								"Ruling-only item should not be exported as cleanup debt.",
+							reasoning: "Needs-ruling items stay on the ruling path.",
+							evidence: ["scope.md"],
+							approvalStatus: "needs-ruling",
+							approvalSource: null,
+						},
+					],
+					cleanupRequired: true,
+				},
+			}),
+		).toThrow(/cleanup/i);
 	});
 
 	test("rejects committed log handoff entries that omit a commit sha", () => {
@@ -276,6 +350,47 @@ describe("story-orchestrate contracts", () => {
 				case: "invalid-story-run-id",
 				storyId: "00-foundation",
 				storyRunId: "00-foundation-story-run-999",
+			}),
+		).not.toThrow();
+	});
+
+	test("accepts resume result cases that surface persisted caller-input artifact references", () => {
+		expect(() =>
+			storyOrchestrateResumeResultSchema.parse({
+				case: "completed",
+				outcome: "blocked",
+				storyId: "00-foundation",
+				storyRunId: "00-foundation-story-run-002",
+				currentSnapshotPath:
+					"/tmp/spec-pack/artifacts/00-foundation/story-lead/002-current.json",
+				eventHistoryPath:
+					"/tmp/spec-pack/artifacts/00-foundation/story-lead/002-events.jsonl",
+				finalPackagePath:
+					"/tmp/spec-pack/artifacts/00-foundation/story-lead/002-final-package.json",
+				finalPackage: {
+					...createFinalPackage(),
+					outcome: "blocked",
+					storyRunId: "00-foundation-story-run-002",
+					attempt: 2,
+				},
+				acceptedReviewRequestId: "impl-lead",
+				acceptedReviewRequestArtifact: {
+					kind: "review-request",
+					path: "/tmp/spec-pack/artifacts/00-foundation/story-lead/002-review-request-001.json",
+				},
+			}),
+		).not.toThrow();
+	});
+
+	test("accepts the accepted-attempt resume no-op result shape", () => {
+		expect(() =>
+			storyOrchestrateResumeResultSchema.parse({
+				case: "existing-accepted-attempt",
+				storyId: "00-foundation",
+				storyRunId: "00-foundation-story-run-002",
+				finalPackagePath:
+					"/tmp/spec-pack/artifacts/00-foundation/story-lead/002-final-package.json",
+				suggestedNext: "resume-with-review-request",
 			}),
 		).not.toThrow();
 	});

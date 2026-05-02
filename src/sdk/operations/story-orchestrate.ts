@@ -1,11 +1,11 @@
+import { runStoryLead } from "../../core/story-lead.js";
 import {
 	storyOrchestrateResumeResultSchema,
 	storyOrchestrateRunResultSchema,
 	storyOrchestrateStatusResultSchema,
 } from "../../core/story-orchestrate-contracts.js";
-import { createStoryRunLedger } from "../../core/story-run-ledger.js";
 import { discoverStoryRunState } from "../../core/story-run-discovery.js";
-import { runStoryLead } from "../../core/story-lead.js";
+import { createStoryRunLedger } from "../../core/story-run-ledger.js";
 import {
 	type StoryOrchestrateResumeInput,
 	type StoryOrchestrateResumeResult,
@@ -29,6 +29,8 @@ function resultArtifacts(input: {
 	currentSnapshotPath?: string;
 	eventHistoryPath?: string;
 	finalPackagePath?: string;
+	acceptedReviewRequestArtifactPath?: string;
+	acceptedRulingArtifactPath?: string;
 }) {
 	return [
 		...(input.currentSnapshotPath
@@ -39,6 +41,22 @@ function resultArtifacts(input: {
 			: []),
 		...(input.finalPackagePath
 			? [{ kind: "story-run-final-package", path: input.finalPackagePath }]
+			: []),
+		...(input.acceptedReviewRequestArtifactPath
+			? [
+					{
+						kind: "review-request",
+						path: input.acceptedReviewRequestArtifactPath,
+					},
+				]
+			: []),
+		...(input.acceptedRulingArtifactPath
+			? [
+					{
+						kind: "ruling-response",
+						path: input.acceptedRulingArtifactPath,
+					},
+				]
 			: []),
 	];
 }
@@ -97,11 +115,21 @@ function resumeAdditionalArtifacts(result: StoryOrchestrateResumeResult) {
 				currentSnapshotPath: result.currentSnapshotPath,
 				eventHistoryPath: result.eventHistoryPath,
 				finalPackagePath: result.finalPackagePath,
+				acceptedReviewRequestArtifactPath:
+					result.acceptedReviewRequestArtifact?.path,
+				acceptedRulingArtifactPath: result.acceptedRulingArtifact?.path,
 			});
 		case "interrupted":
 			return resultArtifacts({
 				currentSnapshotPath: result.currentSnapshotPath,
 				eventHistoryPath: result.eventHistoryPath,
+				acceptedReviewRequestArtifactPath:
+					result.acceptedReviewRequestArtifact?.path,
+				acceptedRulingArtifactPath: result.acceptedRulingArtifact?.path,
+			});
+		case "existing-accepted-attempt":
+			return resultArtifacts({
+				finalPackagePath: result.finalPackagePath,
 			});
 		default:
 			return [];
@@ -300,6 +328,21 @@ export async function storyOrchestrateResume(
 				case "existing-accepted-attempt":
 				case "resume-required":
 				case "active-attempt-exists": {
+					if (
+						selection.case === "existing-accepted-attempt" &&
+						!parsedInput.reviewRequest &&
+						!parsedInput.ruling
+					) {
+						result = storyOrchestrateResumeResultSchema.parse({
+							case: "existing-accepted-attempt",
+							storyId: parsedInput.storyId,
+							storyRunId: selection.storyRunId,
+							finalPackagePath: selection.finalPackagePath,
+							suggestedNext: "resume-with-review-request",
+						});
+						break;
+					}
+
 					const attempt = await ledger.getAttemptByStoryRunId(
 						selection.storyRunId,
 					);
@@ -348,6 +391,20 @@ export async function storyOrchestrateResume(
 								"Story runtime completed without a final package.",
 							);
 						}
+						const acceptedReviewRequestArtifact =
+							runtime.acceptedReviewRequestArtifact ??
+							(parsedInput.reviewRequest
+								? runtime.finalPackage.evidence.callerInputArtifacts
+										.filter((artifact) => artifact.kind === "review-request")
+										.at(-1)
+								: undefined);
+						const acceptedRulingArtifact =
+							runtime.acceptedRulingArtifact ??
+							(parsedInput.ruling
+								? runtime.finalPackage.evidence.callerInputArtifacts
+										.filter((artifact) => artifact.kind === "ruling-response")
+										.at(-1)
+								: undefined);
 						result = storyOrchestrateResumeResultSchema.parse({
 							case: "completed",
 							outcome: runtime.finalPackage.outcome,
@@ -360,11 +417,17 @@ export async function storyOrchestrateResume(
 							...(parsedInput.reviewRequest
 								? {
 										acceptedReviewRequestId: parsedInput.reviewRequest.source,
+										...(acceptedReviewRequestArtifact
+											? { acceptedReviewRequestArtifact }
+											: {}),
 									}
 								: {}),
 							...(parsedInput.ruling
 								? {
 										acceptedRulingRequestId: parsedInput.ruling.rulingRequestId,
+										...(acceptedRulingArtifact
+											? { acceptedRulingArtifact }
+											: {}),
 									}
 								: {}),
 						});
@@ -377,6 +440,17 @@ export async function storyOrchestrateResume(
 							currentSnapshotPath: runtime.currentSnapshotPath,
 							eventHistoryPath: runtime.eventHistoryPath,
 							latestEventSequence: runtime.latestEventSequence,
+							...(runtime.acceptedReviewRequestArtifact
+								? {
+										acceptedReviewRequestArtifact:
+											runtime.acceptedReviewRequestArtifact,
+									}
+								: {}),
+							...(runtime.acceptedRulingArtifact
+								? {
+										acceptedRulingArtifact: runtime.acceptedRulingArtifact,
+									}
+								: {}),
 						});
 					}
 					break;
