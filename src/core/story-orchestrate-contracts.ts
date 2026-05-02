@@ -1,0 +1,604 @@
+import { z } from "zod";
+
+import { reasoningEffortSchema } from "./config-schema.js";
+import {
+	continuationHandleSchema,
+	providerIdSchema,
+} from "./result-contracts.js";
+
+export const storyLeadOutcomeSchema = z.enum([
+	"accepted",
+	"needs-ruling",
+	"blocked",
+	"failed",
+	"interrupted",
+]);
+
+export const storyRunStatusSchema = z.enum([
+	"running",
+	"accepted",
+	"needs-ruling",
+	"blocked",
+	"interrupted",
+	"failed",
+]);
+
+export const storyLeadSessionRefSchema = z
+	.object({
+		provider: providerIdSchema,
+		sessionId: z.string().min(1),
+		model: z.string().min(1),
+		reasoningEffort: reasoningEffortSchema,
+	})
+	.strict();
+
+export const artifactRefSchema = z
+	.object({
+		kind: z.string().min(1),
+		path: z.string().min(1),
+	})
+	.strict();
+
+export const storyRunCandidateSchema = z
+	.object({
+		storyRunId: z.string().min(1),
+		status: storyRunStatusSchema,
+		updatedAt: z.string().min(1),
+		currentSnapshotPath: z.string().min(1),
+		finalPackagePath: z.string().min(1).optional(),
+	})
+	.strict();
+
+export const currentChildOperationSchema = z
+	.object({
+		command: z.string().min(1),
+		artifactPath: z.string().min(1).optional(),
+		continuationHandleRef: z.string().min(1).optional(),
+	})
+	.strict();
+
+export const storyRunNextIntentSchema = z
+	.object({
+		actionType: z.string().min(1),
+		summary: z.string().min(1),
+		artifactRef: z.string().min(1).optional(),
+		continuationHandleRef: z.string().min(1).optional(),
+	})
+	.strict();
+
+export const storyRunCurrentSnapshotSchema = z
+	.object({
+		storyRunId: z.string().min(1),
+		storyId: z.string().min(1),
+		attempt: z.number().int().positive(),
+		status: storyRunStatusSchema,
+		currentSummary: z.string().min(1),
+		currentPhase: z.string().min(1),
+		currentChildOperation: currentChildOperationSchema.nullable(),
+		latestArtifacts: z.array(artifactRefSchema),
+		latestContinuationHandles: z.record(z.string(), continuationHandleSchema),
+		storyLeadSession: storyLeadSessionRefSchema.optional(),
+		latestEventSequence: z.number().int().nonnegative(),
+		nextIntent: storyRunNextIntentSchema.nullable(),
+		updatedAt: z.string().min(1),
+	})
+	.strict();
+
+export const storyRunEventSchema = z
+	.object({
+		storyRunId: z.string().min(1),
+		sequence: z.number().int().nonnegative(),
+		timestamp: z.string().min(1),
+		type: z.string().min(1),
+		summary: z.string().min(1),
+		artifact: z.string().min(1).optional(),
+		data: z.record(z.string(), z.unknown()).optional(),
+	})
+	.strict();
+
+export const implLeadReviewItemSchema = z
+	.object({
+		id: z.string().min(1),
+		severity: z.enum(["blocker", "major", "minor", "note"]),
+		concern: z.string().min(1),
+		requiredResponse: z.string().min(1),
+		evidence: z.array(z.string().min(1)).optional(),
+	})
+	.strict();
+
+export const implLeadReviewRequestSchema = z
+	.object({
+		source: z.string().min(1),
+		decision: z.enum(["reject", "reopen", "revise", "ask-ruling", "stop"]),
+		summary: z.string().min(1),
+		items: z.array(implLeadReviewItemSchema),
+		evidence: z.array(z.string().min(1)).optional(),
+	})
+	.strict();
+
+export const callerRulingRequestSchema = z
+	.object({
+		id: z.string().min(1),
+		decisionType: z.string().min(1),
+		question: z.string().min(1),
+		defaultRecommendation: z.string().min(1),
+		evidence: z.array(z.string().min(1)),
+		allowedResponses: z.array(z.string().min(1)).min(1),
+	})
+	.strict();
+
+export const callerRulingResponseSchema = z
+	.object({
+		rulingRequestId: z.string().min(1),
+		decision: z.string().min(1),
+		rationale: z.string().min(1),
+		source: z.string().min(1),
+	})
+	.strict();
+
+export const acceptanceCheckItemSchema = z
+	.object({
+		name: z.string().min(1),
+		status: z.enum(["pass", "fail", "unknown"]),
+		evidence: z.array(z.string().min(1)),
+		reasoning: z.string().min(1),
+	})
+	.strict();
+
+export const riskOrDeviationItemSchema = z
+	.object({
+		description: z.string().min(1),
+		reasoning: z.string().min(1),
+		evidence: z.array(z.string().min(1)),
+		approvalStatus: z.enum([
+			"not-required",
+			"approved",
+			"needs-ruling",
+			"rejected",
+		]),
+		approvalSource: z.string().min(1).nullable(),
+	})
+	.strict();
+
+export const storyLeadSummarySchema = z
+	.object({
+		storyTitle: z.string().min(1),
+		implementedScope: z.string().min(1),
+		acceptanceRationale: z.string().min(1),
+	})
+	.strict();
+
+export const gateRunSummarySchema = z
+	.object({
+		command: z.string().min(1),
+		result: z.enum(["pass", "fail", "not-run"]),
+	})
+	.strict();
+
+export const verificationFindingDispositionSchema = z
+	.object({
+		id: z.string().min(1),
+		status: z.enum(["fixed", "accepted-risk", "defer", "unresolved"]),
+		evidence: z.array(z.string().min(1)),
+	})
+	.strict();
+
+export const storyLeadVerificationSchema = z
+	.object({
+		finalVerifierOutcome: z.enum(["pass", "revise", "block", "not-run"]),
+		findings: z.array(verificationFindingDispositionSchema),
+	})
+	.strict();
+
+export const changedFileReviewSchema = z
+	.object({
+		path: z.string().min(1),
+		reason: z.string().min(1),
+	})
+	.strict();
+
+export const diffReviewSchema = z
+	.object({
+		changedFiles: z.array(changedFileReviewSchema),
+		storyScopedAssessment: z.string().min(1),
+	})
+	.strict();
+
+export const storyLeadEvidenceSchema = z
+	.object({
+		implementorArtifacts: z.array(artifactRefSchema),
+		selfReviewArtifacts: z.array(artifactRefSchema),
+		verifierArtifacts: z.array(artifactRefSchema),
+		quickFixArtifacts: z.array(artifactRefSchema),
+		gateRuns: z.array(gateRunSummarySchema),
+	})
+	.strict();
+
+export const storyLeadAcceptanceSummarySchema = z
+	.object({
+		acceptanceChecks: z.array(acceptanceCheckItemSchema),
+		recommendedImplLeadAction: z.enum([
+			"accept",
+			"reject",
+			"reopen",
+			"ask-ruling",
+		]),
+	})
+	.strict();
+
+export const storyReceiptDraftSchema = z
+	.object({
+		storyId: z.string().min(1),
+		storyTitle: z.string().min(1),
+		implementorEvidenceRefs: z.array(z.string().min(1)),
+		verifierEvidenceRefs: z.array(z.string().min(1)),
+		gateCommand: z.string().min(1),
+		gateResult: z.enum(["pass", "fail"]),
+		dispositions: z.array(verificationFindingDispositionSchema),
+		baselineBeforeStory: z.number().int().nullable(),
+		baselineAfterStory: z.number().int().nullable(),
+		openRisks: z.array(z.string().min(1)),
+	})
+	.strict();
+
+export const cumulativeBaselineSchema = z
+	.object({
+		baselineBeforeCurrentStory: z.number().int().nullable(),
+		expectedAfterCurrentStory: z.number().int().nullable(),
+		latestActualTotal: z.number().int().nullable(),
+	})
+	.strict();
+
+export const commitReadinessSchema = z
+	.object({
+		state: z.enum(["committed", "ready-for-impl-lead-commit", "not-ready"]),
+		commitSha: z.string().min(1).optional(),
+		reason: z.string().min(1).optional(),
+	})
+	.strict()
+	.superRefine((value, ctx) => {
+		if (value.state === "committed" && !value.commitSha) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: "Committed log handoff entries require a commitSha.",
+				path: ["commitSha"],
+			});
+		}
+
+		if (value.state === "not-ready" && !value.reason) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: "Not-ready commit states require a reason.",
+				path: ["reason"],
+			});
+		}
+	});
+
+export const logHandoffSchema = z
+	.object({
+		recommendedState: z.string().min(1),
+		recommendedCurrentStory: z.string().min(1).nullable(),
+		recommendedCurrentPhase: z.string().min(1).nullable(),
+		continuationHandles: z.record(z.string(), continuationHandleSchema),
+		storyReceiptDraft: storyReceiptDraftSchema,
+		cumulativeBaseline: cumulativeBaselineSchema,
+		commitReadiness: commitReadinessSchema,
+		openRisks: z.array(z.string().min(1)),
+	})
+	.strict();
+
+export const cleanupHandoffSchema = z
+	.object({
+		acceptedRiskItems: z.array(riskOrDeviationItemSchema),
+		deferredItems: z.array(riskOrDeviationItemSchema),
+		cleanupRequired: z.boolean(),
+	})
+	.strict();
+
+export const storyLeadFinalPackageSchema = z
+	.object({
+		outcome: storyLeadOutcomeSchema,
+		storyRunId: z.string().min(1),
+		storyId: z.string().min(1),
+		attempt: z.number().int().positive(),
+		summary: storyLeadSummarySchema,
+		evidence: storyLeadEvidenceSchema,
+		verification: storyLeadVerificationSchema,
+		riskAndDeviationReview: z
+			.object({
+				specDeviations: z.array(riskOrDeviationItemSchema),
+				assumedRisks: z.array(riskOrDeviationItemSchema),
+				scopeChanges: z.array(riskOrDeviationItemSchema),
+				shimMockFallbackDecisions: z.array(riskOrDeviationItemSchema),
+			})
+			.strict(),
+		diffReview: diffReviewSchema,
+		acceptanceChecks: z.array(acceptanceCheckItemSchema),
+		logHandoff: logHandoffSchema,
+		cleanupHandoff: cleanupHandoffSchema,
+		rulingRequest: callerRulingRequestSchema.nullable(),
+		recommendedImplLeadAction: z.enum([
+			"accept",
+			"reject",
+			"reopen",
+			"ask-ruling",
+		]),
+	})
+	.strict();
+
+export const storyRunAttemptSummarySchema = storyRunCandidateSchema;
+
+export const writeCurrentSnapshotInputSchema = z
+	.object({
+		storyId: z.string().min(1),
+		storyRunId: z.string().min(1),
+		snapshot: storyRunCurrentSnapshotSchema,
+	})
+	.strict();
+
+export const appendStoryRunEventInputSchema = z
+	.object({
+		storyId: z.string().min(1),
+		storyRunId: z.string().min(1),
+		event: storyRunEventSchema,
+	})
+	.strict();
+
+export const writeFinalPackageInputSchema = z
+	.object({
+		storyId: z.string().min(1),
+		storyRunId: z.string().min(1),
+		finalPackage: storyLeadFinalPackageSchema,
+	})
+	.strict();
+
+export const storyRunSelectionSchema = z.discriminatedUnion("case", [
+	z.object({ case: z.literal("start-new") }).strict(),
+	z
+		.object({
+			case: z.literal("start-from-primitive-artifacts"),
+			sourceArtifactPaths: z.array(z.string().min(1)),
+		})
+		.strict(),
+	z
+		.object({
+			case: z.literal("existing-accepted-attempt"),
+			storyRunId: z.string().min(1),
+			finalPackagePath: z.string().min(1),
+		})
+		.strict(),
+	z
+		.object({
+			case: z.literal("resume-required"),
+			storyRunId: z.string().min(1),
+			currentSnapshotPath: z.string().min(1),
+		})
+		.strict(),
+	z
+		.object({
+			case: z.literal("active-attempt-exists"),
+			storyRunId: z.string().min(1),
+			currentSnapshotPath: z.string().min(1),
+		})
+		.strict(),
+	z
+		.object({
+			case: z.literal("ambiguous-story-run"),
+			candidates: z.array(storyRunCandidateSchema),
+		})
+		.strict(),
+	z
+		.object({
+			case: z.literal("invalid-story-id"),
+			storyId: z.string().min(1),
+		})
+		.strict(),
+]);
+
+export const storyOrchestrateRunResultSchema = z.discriminatedUnion("case", [
+	z
+		.object({
+			case: z.literal("completed"),
+			outcome: storyLeadFinalPackageSchema.shape.outcome,
+			storyId: z.string().min(1),
+			storyRunId: z.string().min(1),
+			currentSnapshotPath: z.string().min(1),
+			eventHistoryPath: z.string().min(1),
+			finalPackagePath: z.string().min(1),
+			finalPackage: storyLeadFinalPackageSchema,
+			startedFromPrimitiveArtifacts: z.array(z.string().min(1)).optional(),
+		})
+		.strict(),
+	z
+		.object({
+			case: z.literal("interrupted"),
+			outcome: z.literal("interrupted"),
+			storyId: z.string().min(1),
+			storyRunId: z.string().min(1),
+			currentSnapshotPath: z.string().min(1),
+			eventHistoryPath: z.string().min(1),
+			latestEventSequence: z.number().int().nonnegative(),
+			storyLeadSession: storyLeadSessionRefSchema.optional(),
+		})
+		.strict(),
+	z
+		.object({
+			case: z.literal("existing-accepted-attempt"),
+			storyId: z.string().min(1),
+			storyRunId: z.string().min(1),
+			finalPackagePath: z.string().min(1),
+			suggestedNext: z.enum(["status", "resume"]),
+		})
+		.strict(),
+	z
+		.object({
+			case: z.literal("resume-required"),
+			storyId: z.string().min(1),
+			storyRunId: z.string().min(1),
+			currentSnapshotPath: z.string().min(1),
+			suggestedCommand: z.string().min(1),
+		})
+		.strict(),
+	z
+		.object({
+			case: z.literal("active-attempt-exists"),
+			storyId: z.string().min(1),
+			storyRunId: z.string().min(1),
+			currentSnapshotPath: z.string().min(1),
+		})
+		.strict(),
+	z
+		.object({
+			case: z.literal("ambiguous-story-run"),
+			storyId: z.string().min(1),
+			candidates: z.array(storyRunCandidateSchema),
+		})
+		.strict(),
+	z
+		.object({
+			case: z.literal("invalid-story-id"),
+			storyId: z.string().min(1),
+		})
+		.strict(),
+]);
+
+export const storyOrchestrateResumeResultSchema = z.discriminatedUnion("case", [
+	z
+		.object({
+			case: z.literal("completed"),
+			outcome: storyLeadFinalPackageSchema.shape.outcome,
+			storyId: z.string().min(1),
+			storyRunId: z.string().min(1),
+			currentSnapshotPath: z.string().min(1),
+			eventHistoryPath: z.string().min(1),
+			finalPackagePath: z.string().min(1),
+			finalPackage: storyLeadFinalPackageSchema,
+			acceptedReviewRequestId: z.string().min(1).optional(),
+			acceptedRulingRequestId: z.string().min(1).optional(),
+		})
+		.strict(),
+	z
+		.object({
+			case: z.literal("interrupted"),
+			outcome: z.literal("interrupted"),
+			storyId: z.string().min(1),
+			storyRunId: z.string().min(1),
+			currentSnapshotPath: z.string().min(1),
+			eventHistoryPath: z.string().min(1),
+			latestEventSequence: z.number().int().nonnegative(),
+			storyLeadSession: storyLeadSessionRefSchema.optional(),
+		})
+		.strict(),
+	z
+		.object({
+			case: z.literal("invalid-review-request"),
+			storyId: z.string().min(1),
+		})
+		.strict(),
+	z
+		.object({
+			case: z.literal("invalid-ruling"),
+			storyId: z.string().min(1),
+		})
+		.strict(),
+	z
+		.object({
+			case: z.literal("ambiguous-story-run"),
+			storyId: z.string().min(1),
+			candidates: z.array(storyRunCandidateSchema),
+		})
+		.strict(),
+	z
+		.object({
+			case: z.literal("invalid-story-id"),
+			storyId: z.string().min(1),
+		})
+		.strict(),
+]);
+
+export const storyOrchestrateStatusResultSchema = z.discriminatedUnion("case", [
+	z
+		.object({
+			case: z.literal("single-attempt"),
+			storyId: z.string().min(1),
+			storyRunId: z.string().min(1),
+			currentSnapshotPath: z.string().min(1),
+			currentSnapshot: storyRunCurrentSnapshotSchema,
+			currentStatus: storyRunStatusSchema,
+			latestEventSequence: z.number().int().nonnegative(),
+			finalPackagePath: z.string().min(1).optional(),
+			finalPackage: storyLeadFinalPackageSchema.optional(),
+		})
+		.strict(),
+	z
+		.object({
+			case: z.literal("ambiguous-story-run"),
+			storyId: z.string().min(1),
+			candidates: z.array(storyRunCandidateSchema),
+		})
+		.strict(),
+	z
+		.object({
+			case: z.literal("invalid-story-id"),
+			storyId: z.string().min(1),
+		})
+		.strict(),
+]);
+
+export type StoryLeadOutcome = z.infer<typeof storyLeadOutcomeSchema>;
+export type StoryRunStatus = z.infer<typeof storyRunStatusSchema>;
+export type StoryLeadSessionRef = z.infer<typeof storyLeadSessionRefSchema>;
+export type ArtifactRef = z.infer<typeof artifactRefSchema>;
+export type StoryRunCandidate = z.infer<typeof storyRunCandidateSchema>;
+export type CurrentChildOperation = z.infer<typeof currentChildOperationSchema>;
+export type StoryRunNextIntent = z.infer<typeof storyRunNextIntentSchema>;
+export type StoryRunCurrentSnapshot = z.infer<
+	typeof storyRunCurrentSnapshotSchema
+>;
+export type StoryRunEvent = z.infer<typeof storyRunEventSchema>;
+export type ImplLeadReviewItem = z.infer<typeof implLeadReviewItemSchema>;
+export type ImplLeadReviewRequest = z.infer<typeof implLeadReviewRequestSchema>;
+export type CallerRulingRequest = z.infer<typeof callerRulingRequestSchema>;
+export type CallerRulingResponse = z.infer<typeof callerRulingResponseSchema>;
+export type AcceptanceCheckItem = z.infer<typeof acceptanceCheckItemSchema>;
+export type RiskOrDeviationItem = z.infer<typeof riskOrDeviationItemSchema>;
+export type StoryLeadSummary = z.infer<typeof storyLeadSummarySchema>;
+export type GateRunSummary = z.infer<typeof gateRunSummarySchema>;
+export type VerificationFindingDisposition = z.infer<
+	typeof verificationFindingDispositionSchema
+>;
+export type StoryLeadVerification = z.infer<typeof storyLeadVerificationSchema>;
+export type ChangedFileReview = z.infer<typeof changedFileReviewSchema>;
+export type DiffReview = z.infer<typeof diffReviewSchema>;
+export type StoryLeadEvidence = z.infer<typeof storyLeadEvidenceSchema>;
+export type StoryLeadAcceptanceSummary = z.infer<
+	typeof storyLeadAcceptanceSummarySchema
+>;
+export type StoryReceiptDraft = z.infer<typeof storyReceiptDraftSchema>;
+export type CumulativeBaseline = z.infer<typeof cumulativeBaselineSchema>;
+export type CommitReadiness = z.infer<typeof commitReadinessSchema>;
+export type LogHandoff = z.infer<typeof logHandoffSchema>;
+export type CleanupHandoff = z.infer<typeof cleanupHandoffSchema>;
+export type StoryLeadFinalPackage = z.infer<typeof storyLeadFinalPackageSchema>;
+export type StoryRunAttemptSummary = z.infer<
+	typeof storyRunAttemptSummarySchema
+>;
+export type WriteCurrentSnapshotInput = z.infer<
+	typeof writeCurrentSnapshotInputSchema
+>;
+export type AppendStoryRunEventInput = z.infer<
+	typeof appendStoryRunEventInputSchema
+>;
+export type WriteFinalPackageInput = z.infer<
+	typeof writeFinalPackageInputSchema
+>;
+export type StoryRunSelection = z.infer<typeof storyRunSelectionSchema>;
+export type StoryOrchestrateRunResult = z.infer<
+	typeof storyOrchestrateRunResultSchema
+>;
+export type StoryOrchestrateResumeResult = z.infer<
+	typeof storyOrchestrateResumeResultSchema
+>;
+export type StoryOrchestrateStatusResult = z.infer<
+	typeof storyOrchestrateStatusResultSchema
+>;

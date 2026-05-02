@@ -197,6 +197,10 @@ export class RuntimeProgressTracker {
 		await this.writeChain;
 	}
 
+	getSnapshot(): RuntimeStatus {
+		return runtimeStatusSchema.parse(structuredClone(this.status));
+	}
+
 	recordEvent(input: {
 		phase?: string;
 		event: RuntimeProgressEventName;

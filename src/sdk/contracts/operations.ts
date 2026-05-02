@@ -20,6 +20,12 @@ import type {
 } from "node:fs/promises";
 
 import {
+	attachedProgressEventSchema,
+	callerHarnessSchema,
+	type AttachedProgressEvent as CoreAttachedProgressEvent,
+	type CallerHarness as CoreCallerHarness,
+} from "../../core/heartbeat.js";
+import {
 	epicCleanupResultSchema,
 	epicSynthesisResultSchema,
 	epicVerifierBatchResultSchema,
@@ -44,6 +50,8 @@ import type { CliResultEnvelope } from "./envelope.js";
 import type { ContinuationHandle } from "./continuation-handle.js";
 
 export {
+	attachedProgressEventSchema,
+	callerHarnessSchema,
 	epicCleanupResultSchema,
 	epicSynthesisResultSchema,
 	epicVerifierBatchResultSchema,
@@ -99,6 +107,10 @@ export interface OperationInputBase {
 }
 
 export interface ProviderOperationInputBase extends OperationInputBase {
+	callerHarness?: CallerHarness;
+	heartbeatCadenceMinutes?: number;
+	disableHeartbeats?: boolean;
+	progressListener?: (event: AttachedProgressEvent) => void;
 	streamOutputPaths?: ProviderStreamOutputPaths;
 	runtimeProgressPaths?: RuntimeProgressPaths;
 }
@@ -172,6 +184,10 @@ const runtimeProgressPathsSchema = z
 	})
 	.strict();
 
+const progressListenerSchema = z.custom<(event: AttachedProgressEvent) => void>(
+	(value) => typeof value === "function",
+);
+
 const envOverridesSchema = z.custom<Record<string, string | undefined>>(
 	(value) =>
 		typeof value === "object" && value !== null && !Array.isArray(value),
@@ -190,9 +206,23 @@ const operationInputBaseSchema = z
 	.strict();
 
 const providerOperationInputBaseSchema = operationInputBaseSchema.extend({
+	callerHarness: callerHarnessSchema.optional(),
+	heartbeatCadenceMinutes: z.number().int().positive().optional(),
+	disableHeartbeats: z.boolean().optional(),
+	progressListener: progressListenerSchema.optional(),
 	streamOutputPaths: providerStreamOutputPathsSchema.optional(),
 	runtimeProgressPaths: runtimeProgressPathsSchema.optional(),
 });
+
+export type CallerHarness = CoreCallerHarness;
+export type AttachedProgressEvent = CoreAttachedProgressEvent;
+
+export interface HeartbeatOptions {
+	callerHarness?: CallerHarness;
+	heartbeatCadenceMinutes?: number;
+	disableHeartbeats?: boolean;
+	progressListener?: (event: AttachedProgressEvent) => void;
+}
 
 export const inspectInputSchema = operationInputBaseSchema;
 export const preflightInputSchema = operationInputBaseSchema.extend({

@@ -15,6 +15,8 @@ import { InvalidInputError } from "../../sdk/errors/classes.js";
 import { mapStatusToExitCode, renderDefaultHumanSummary } from "../envelope.js";
 import { writeHuman, writeJson } from "../output.js";
 
+export { resolveCallerHeartbeatOptions } from "../../core/heartbeat.js";
+
 export interface ProviderArtifactOptions {
 	artifactPath: string;
 	runtimeProgressPaths: {

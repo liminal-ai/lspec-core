@@ -54,6 +54,13 @@ describe("result contracts", () => {
 		expect(parsed.outcome).toBe("ready");
 	});
 
+	test("maps story-orchestrate outcomes onto the existing CLI status taxonomy", () => {
+		expect(statusForOutcome("accepted")).toBe("ok");
+		expect(statusForOutcome("needs-ruling")).toBe("needs-user-decision");
+		expect(statusForOutcome("ambiguous-story-run")).toBe("needs-user-decision");
+		expect(statusForOutcome("invalid-story-id")).toBe("error");
+	});
+
 	test("rejects an inspect envelope whose status does not match its routing outcome", () => {
 		expect(() =>
 			cliResultEnvelopeSchema(inspectResultSchema).parse({

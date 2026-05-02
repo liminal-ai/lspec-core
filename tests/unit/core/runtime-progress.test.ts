@@ -48,6 +48,7 @@ describe("runtime progress artifacts", () => {
 			lifecycleCallback: (event) => tracker.handleProviderLifecycle(event),
 		});
 		expect(execution.exitCode).toBe(0);
+		expect(tracker.getSnapshot().phase).toBe("initial-implement");
 
 		await tracker.markCompleted("story-implement completed successfully.", {
 			outcome: "ready-for-verification",

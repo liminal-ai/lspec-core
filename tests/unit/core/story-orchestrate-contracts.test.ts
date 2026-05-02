@@ -1,0 +1,253 @@
+import { describe, expect, test } from "vitest";
+
+import {
+	logHandoffSchema,
+	storyLeadFinalPackageSchema,
+	storyOrchestrateRunResultSchema,
+	storyOrchestrateStatusResultSchema,
+} from "../../../src/core/story-orchestrate-contracts";
+
+function createFinalPackage() {
+	return {
+		outcome: "needs-ruling" as const,
+		storyRunId: "story-run-001",
+		storyId: "00-foundation",
+		attempt: 1,
+		summary: {
+			storyTitle: "Story 0: Foundation",
+			implementedScope: "Established contracts and validation scaffolding.",
+			acceptanceRationale:
+				"Runtime contracts are in place, but the caller still owes a ruling on one deviation.",
+		},
+		evidence: {
+			implementorArtifacts: [
+				{
+					kind: "implementor-result",
+					path: "/tmp/spec-pack/artifacts/00-foundation/001-implementor.json",
+				},
+			],
+			selfReviewArtifacts: [],
+			verifierArtifacts: [],
+			quickFixArtifacts: [],
+			gateRuns: [
+				{
+					command: "npm run green-verify",
+					result: "pass" as const,
+				},
+			],
+		},
+		verification: {
+			finalVerifierOutcome: "pass" as const,
+			findings: [
+				{
+					id: "F-001",
+					status: "accepted-risk" as const,
+					evidence: [
+						"/tmp/spec-pack/artifacts/00-foundation/001-implementor.json",
+					],
+				},
+			],
+		},
+		riskAndDeviationReview: {
+			specDeviations: [],
+			assumedRisks: [
+				{
+					description: "Resume semantics remain for a later story.",
+					reasoning:
+						"Story 0 only establishes the shared contracts and validation gate.",
+					evidence: [
+						"/tmp/spec-pack/artifacts/00-foundation/001-implementor.json",
+					],
+					approvalStatus: "needs-ruling" as const,
+					approvalSource: null,
+				},
+			],
+			scopeChanges: [],
+			shimMockFallbackDecisions: [],
+		},
+		diffReview: {
+			changedFiles: [
+				{
+					path: "src/core/story-orchestrate-contracts.ts",
+					reason: "Define the canonical story-orchestrate schemas.",
+				},
+			],
+			storyScopedAssessment:
+				"Changes stay inside foundation contracts and story-id validation scaffolding.",
+		},
+		acceptanceChecks: [
+			{
+				name: "Story contracts are schema-validated",
+				status: "pass" as const,
+				evidence: ["src/core/story-orchestrate-contracts.ts"],
+				reasoning:
+					"All public contract shapes parse through the canonical schemas.",
+			},
+		],
+		logHandoff: {
+			recommendedState: "NEEDS_RULING",
+			recommendedCurrentStory: "00-foundation",
+			recommendedCurrentPhase: "story-orchestrate",
+			continuationHandles: {
+				storyLead: {
+					provider: "codex" as const,
+					sessionId: "codex-session-123",
+					storyId: "00-foundation",
+				},
+			},
+			storyReceiptDraft: {
+				storyId: "00-foundation",
+				storyTitle: "Story 0: Foundation",
+				implementorEvidenceRefs: [
+					"/tmp/spec-pack/artifacts/00-foundation/001-implementor.json",
+				],
+				verifierEvidenceRefs: [],
+				gateCommand: "npm run green-verify",
+				gateResult: "pass" as const,
+				dispositions: [
+					{
+						id: "F-001",
+						status: "accepted-risk" as const,
+						evidence: [
+							"/tmp/spec-pack/artifacts/00-foundation/001-implementor.json",
+						],
+					},
+				],
+				baselineBeforeStory: 100,
+				baselineAfterStory: 104,
+				openRisks: ["Resume semantics still need a caller ruling."],
+			},
+			cumulativeBaseline: {
+				baselineBeforeCurrentStory: 100,
+				expectedAfterCurrentStory: 104,
+				latestActualTotal: 104,
+			},
+			commitReadiness: {
+				state: "not-ready" as const,
+				reason: "Awaiting caller ruling before impl-lead commit.",
+			},
+			openRisks: ["Resume semantics still need a caller ruling."],
+		},
+		cleanupHandoff: {
+			acceptedRiskItems: [],
+			deferredItems: [
+				{
+					description: "Resume semantics remain for a later story.",
+					reasoning: "Story 0 leaves resume flows out of scope.",
+					evidence: [
+						"docs/spec-build/epics/03-orchestration-enhancements/stories/00-foundation-and-contract-alignment.md",
+					],
+					approvalStatus: "needs-ruling" as const,
+					approvalSource: null,
+				},
+			],
+			cleanupRequired: true,
+		},
+		rulingRequest: {
+			id: "ruling-001",
+			decisionType: "scope-approval",
+			question:
+				"Should resume-specific attempt selection stay in a later story?",
+			defaultRecommendation: "Yes, keep it for the runtime stories.",
+			evidence: ["Story 0 scope excludes running story-lead attempts."],
+			allowedResponses: ["approve", "reject"],
+		},
+		recommendedImplLeadAction: "ask-ruling" as const,
+	};
+}
+
+describe("story-orchestrate contracts", () => {
+	test("accepts a story-lead final package with log and cleanup handoff scaffolding", () => {
+		const parsed = storyLeadFinalPackageSchema.parse(createFinalPackage());
+
+		expect(parsed.outcome).toBe("needs-ruling");
+		expect(parsed.cleanupHandoff.cleanupRequired).toBe(true);
+	});
+
+	test("rejects committed log handoff entries that omit a commit sha", () => {
+		expect(() =>
+			logHandoffSchema.parse({
+				...createFinalPackage().logHandoff,
+				commitReadiness: {
+					state: "committed",
+				},
+			}),
+		).toThrow(/commitSha/i);
+	});
+
+	test("accepts run and status result unions that embed the canonical final package and current snapshot", () => {
+		const finalPackage = createFinalPackage();
+		const runResult = storyOrchestrateRunResultSchema.parse({
+			case: "completed",
+			outcome: finalPackage.outcome,
+			storyId: finalPackage.storyId,
+			storyRunId: finalPackage.storyRunId,
+			currentSnapshotPath:
+				"/tmp/spec-pack/artifacts/00-foundation/story-orchestrate/current.json",
+			eventHistoryPath:
+				"/tmp/spec-pack/artifacts/00-foundation/story-orchestrate/events.jsonl",
+			finalPackagePath:
+				"/tmp/spec-pack/artifacts/00-foundation/story-orchestrate/final-package.json",
+			finalPackage,
+		});
+		const statusResult = storyOrchestrateStatusResultSchema.parse({
+			case: "single-attempt",
+			storyId: finalPackage.storyId,
+			storyRunId: finalPackage.storyRunId,
+			currentSnapshotPath:
+				"/tmp/spec-pack/artifacts/00-foundation/story-orchestrate/current.json",
+			currentSnapshot: {
+				storyRunId: finalPackage.storyRunId,
+				storyId: finalPackage.storyId,
+				attempt: 1,
+				status: "needs-ruling",
+				currentSummary: "Waiting for caller ruling.",
+				currentPhase: "awaiting-ruling",
+				currentChildOperation: null,
+				latestArtifacts: [
+					{
+						kind: "final-package",
+						path: "/tmp/spec-pack/artifacts/00-foundation/story-orchestrate/final-package.json",
+					},
+				],
+				latestContinuationHandles: {
+					storyLead: {
+						provider: "codex",
+						sessionId: "codex-session-123",
+						storyId: "00-foundation",
+					},
+				},
+				storyLeadSession: {
+					provider: "codex",
+					sessionId: "codex-session-123",
+					model: "gpt-5.4",
+					reasoningEffort: "high",
+				},
+				latestEventSequence: 3,
+				nextIntent: {
+					actionType: "await-ruling",
+					summary: "Pause for caller ruling.",
+				},
+				updatedAt: "2026-05-01T00:00:00.000Z",
+			},
+			currentStatus: "needs-ruling",
+			latestEventSequence: 3,
+			finalPackagePath:
+				"/tmp/spec-pack/artifacts/00-foundation/story-orchestrate/final-package.json",
+			finalPackage,
+		});
+
+		if (runResult.case !== "completed") {
+			throw new Error("Expected a completed run result in the contract test.");
+		}
+
+		if (statusResult.case !== "single-attempt") {
+			throw new Error(
+				"Expected a single-attempt status result in the contract test.",
+			);
+		}
+
+		expect(runResult.finalPackage.storyId).toBe("00-foundation");
+		expect(statusResult.currentSnapshot.status).toBe("needs-ruling");
+	});
+});

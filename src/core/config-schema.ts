@@ -1,6 +1,7 @@
 import { resolve } from "node:path";
 import { z } from "zod";
 
+import { callerHarnessSchema } from "./caller-guidance.js";
 import { readTextFile, writeTextFile } from "./fs-utils";
 import { InvalidRunConfigError } from "../sdk/errors/classes.js";
 
@@ -36,6 +37,14 @@ export const roleAssignmentSchema = z
 export const epicVerifierAssignmentSchema = roleAssignmentSchema
 	.extend({
 		label: z.string().min(1),
+	})
+	.strict();
+
+export const callerHarnessConfigRecordSchema = z
+	.object({
+		harness: callerHarnessSchema,
+		primitive_heartbeat_cadence_minutes: z.number().int().positive().optional(),
+		story_heartbeat_cadence_minutes: z.number().int().positive().optional(),
 	})
 	.strict();
 
@@ -120,6 +129,7 @@ export const implRunConfigSchema = z
 		version: z.literal(1),
 		primary_harness: primaryHarnessSchema,
 		story_implementor: roleAssignmentSchema,
+		story_lead: roleAssignmentSchema.optional(),
 		quick_fixer: roleAssignmentSchema,
 		story_verifier: roleAssignmentSchema,
 		self_review: z
@@ -133,11 +143,15 @@ export const implRunConfigSchema = z
 			.strict(),
 		epic_verifiers: z.array(epicVerifierAssignmentSchema).min(1),
 		epic_synthesizer: roleAssignmentSchema,
+		caller_harness: callerHarnessConfigRecordSchema.optional(),
 		verification_gates: verificationGatesConfigSchema.optional(),
 		timeouts: runTimeoutsSchema.optional(),
 	})
 	.strict()
 	.superRefine((value, ctx) => {
+		if (value.story_lead) {
+			validateRoleEffort(value.story_lead, ["story_lead"], ctx);
+		}
 		validateRoleEffort(value.story_implementor, ["story_implementor"], ctx);
 		validateRoleEffort(value.quick_fixer, ["quick_fixer"], ctx);
 		validateRoleEffort(value.story_verifier, ["story_verifier"], ctx);
@@ -163,6 +177,9 @@ export type SecondaryHarness = z.infer<typeof secondaryHarnessSchema>;
 export type RoleAssignment = z.infer<typeof roleAssignmentSchema>;
 export type EpicVerifierAssignment = z.infer<
 	typeof epicVerifierAssignmentSchema
+>;
+export type CallerHarnessConfigRecord = z.infer<
+	typeof callerHarnessConfigRecordSchema
 >;
 export type VerificationGatesConfig = z.infer<
 	typeof verificationGatesConfigSchema

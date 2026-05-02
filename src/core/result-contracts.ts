@@ -601,14 +601,27 @@ export function statusForOutcome(outcome: string): CliStatus {
 		case "needs-fixes":
 		case "needs-more-routing":
 		case "needs-more-verification":
+		case "accepted":
+		case "single-attempt":
 			return "ok";
 		case "block":
 			return "blocked";
 		case "needs-user-decision":
 		case "needs-human-ruling":
+		case "needs-ruling":
+		case "interrupted":
+		case "existing-accepted-attempt":
+		case "resume-required":
+		case "active-attempt-exists":
+		case "ambiguous-story-run":
 			return "needs-user-decision";
 		case "blocked":
 			return "blocked";
+		case "failed":
+		case "invalid-story-id":
+		case "invalid-review-request":
+		case "invalid-ruling":
+			return "error";
 		default:
 			return "error";
 	}
