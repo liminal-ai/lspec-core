@@ -32,6 +32,7 @@ npm-debug.log*
 
 # Liminal Spec per-run orchestration state (not versioned)
 docs/spec-build/epics/*/artifacts/
+docs/spec-build/epics/*/.logs/
 docs/spec-build/epics/*/team-impl-log.md
 # impl-run.config.json IS versioned (it's the canonical orchestration setup for the epic)
 
