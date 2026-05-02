@@ -93,14 +93,30 @@ function buildFinalPackage(input: {
 			acceptanceRationale: "Fixture acceptance rationale.",
 		},
 		evidence: {
-			implementorArtifacts: [],
+			implementorArtifacts: [
+				{
+					kind: "implementor-result",
+					path: `/tmp/spec-pack/artifacts/${input.storyId}/001-implementor.json`,
+				},
+			],
 			selfReviewArtifacts: [],
-			verifierArtifacts: [],
+			verifierArtifacts: [
+				{
+					kind: "verifier-result",
+					path: `/tmp/spec-pack/artifacts/${input.storyId}/002-verifier.json`,
+				},
+			],
 			quickFixArtifacts: [],
-			gateRuns: [],
+			callerInputArtifacts: [],
+			gateRuns: [
+				{
+					command: "npm run green-verify",
+					result: "pass",
+				},
+			],
 		},
 		verification: {
-			finalVerifierOutcome: "not-run",
+			finalVerifierOutcome: "pass",
 			findings: [],
 		},
 		riskAndDeviationReview: {
@@ -114,6 +130,11 @@ function buildFinalPackage(input: {
 			storyScopedAssessment: "Fixture assessment.",
 		},
 		acceptanceChecks: [],
+		callerInputHistory: {
+			reviewRequests: [],
+			rulings: [],
+		},
+		replayBoundary: null,
 		logHandoff: {
 			recommendedState: "BETWEEN_STORIES",
 			recommendedCurrentStory: input.storyId,
@@ -122,23 +143,26 @@ function buildFinalPackage(input: {
 			storyReceiptDraft: {
 				storyId: input.storyId,
 				storyTitle: "Story 0: Foundation",
-				implementorEvidenceRefs: [],
-				verifierEvidenceRefs: [],
+				implementorEvidenceRefs: [
+					`/tmp/spec-pack/artifacts/${input.storyId}/001-implementor.json`,
+				],
+				verifierEvidenceRefs: [
+					`/tmp/spec-pack/artifacts/${input.storyId}/002-verifier.json`,
+				],
 				gateCommand: "npm run green-verify",
 				gateResult: "pass",
 				dispositions: [],
-				baselineBeforeStory: null,
-				baselineAfterStory: null,
+				baselineBeforeStory: 10,
+				baselineAfterStory: 12,
 				openRisks: [],
 			},
 			cumulativeBaseline: {
-				baselineBeforeCurrentStory: null,
-				expectedAfterCurrentStory: null,
-				latestActualTotal: null,
+				baselineBeforeCurrentStory: 10,
+				expectedAfterCurrentStory: 12,
+				latestActualTotal: 12,
 			},
 			commitReadiness: {
-				state: "not-ready",
-				reason: "Fixture run.",
+				state: "ready-for-impl-lead-commit",
 			},
 			openRisks: [],
 		},
@@ -194,7 +218,12 @@ export async function seedStoryRunAttempt(input: {
 		latestArtifacts: input.latestArtifacts ?? [],
 		latestContinuationHandles: {},
 		latestEventSequence: input.latestEventSequence ?? 1,
+		callerInputHistory: {
+			reviewRequests: [],
+			rulings: [],
+		},
 		nextIntent: null,
+		replayBoundary: null,
 		updatedAt: input.updatedAt ?? "2026-05-01T00:00:00.000Z",
 	};
 	await ledger.writeCurrentSnapshot({

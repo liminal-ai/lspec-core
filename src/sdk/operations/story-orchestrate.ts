@@ -307,6 +307,24 @@ export async function storyOrchestrateResume(
 							`Unable to resolve story-run ${selection.storyRunId} for resume.`,
 						);
 					}
+					if (parsedInput.ruling) {
+						const outstandingRulingRequest =
+							attempt.finalPackage?.rulingRequest;
+						const hasMatchingOutstandingRequest =
+							outstandingRulingRequest?.id ===
+								parsedInput.ruling.rulingRequestId &&
+							outstandingRulingRequest.allowedResponses.includes(
+								parsedInput.ruling.decision,
+							);
+
+						if (!hasMatchingOutstandingRequest) {
+							result = storyOrchestrateResumeResultSchema.parse({
+								case: "invalid-ruling",
+								storyId: parsedInput.storyId,
+							});
+							break;
+						}
+					}
 
 					const runtime = await runStoryLead({
 						specPackRoot: parsedInput.specPackRoot,
@@ -315,6 +333,8 @@ export async function storyOrchestrateResume(
 						ledger,
 						mode: "resume",
 						existingAttempt: attempt,
+						reviewRequest: parsedInput.reviewRequest,
+						ruling: parsedInput.ruling,
 						callerHarness: parsedInput.callerHarness,
 						heartbeatCadenceMinutes: parsedInput.heartbeatCadenceMinutes,
 						disableHeartbeats: parsedInput.disableHeartbeats,

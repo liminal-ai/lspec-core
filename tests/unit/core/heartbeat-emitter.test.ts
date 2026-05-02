@@ -250,7 +250,12 @@ describe("heartbeat emitter", () => {
 				],
 				latestContinuationHandles: {},
 				latestEventSequence: 1,
+				callerInputHistory: {
+					reviewRequests: [],
+					rulings: [],
+				},
 				nextIntent: null,
+				replayBoundary: null,
 				updatedAt: "2026-05-01T12:00:30.000Z",
 			}),
 			writeAttachedOutput: (event) => events.push(event),

@@ -29,7 +29,12 @@ describe("story-run ledger", () => {
 				latestArtifacts: [],
 				latestContinuationHandles: {},
 				latestEventSequence: 0,
+				callerInputHistory: {
+					reviewRequests: [],
+					rulings: [],
+				},
 				nextIntent: null,
+				replayBoundary: null,
 				updatedAt: "2026-05-01T00:00:00.000Z",
 			},
 		});
@@ -73,6 +78,7 @@ describe("story-run ledger", () => {
 					selfReviewArtifacts: [],
 					verifierArtifacts: [],
 					quickFixArtifacts: [],
+					callerInputArtifacts: [],
 					gateRuns: [],
 				},
 				verification: {
@@ -90,6 +96,11 @@ describe("story-run ledger", () => {
 					storyScopedAssessment: "Ledger-only fixture.",
 				},
 				acceptanceChecks: [],
+				callerInputHistory: {
+					reviewRequests: [],
+					rulings: [],
+				},
+				replayBoundary: null,
 				logHandoff: {
 					recommendedState: "BETWEEN_STORIES",
 					recommendedCurrentStory: storyId,
@@ -179,10 +190,15 @@ describe("story-run ledger", () => {
 				latestArtifacts: [],
 				latestContinuationHandles: {},
 				latestEventSequence: 1,
+				callerInputHistory: {
+					reviewRequests: [],
+					rulings: [],
+				},
 				nextIntent: {
 					actionType: "resume-story-run",
 					summary: "Replay from the last durable checkpoint.",
 				},
+				replayBoundary: null,
 				updatedAt: "2026-05-01T01:00:00.000Z",
 			},
 		});

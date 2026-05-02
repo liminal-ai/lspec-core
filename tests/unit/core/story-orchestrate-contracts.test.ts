@@ -30,6 +30,7 @@ function createFinalPackage() {
 			selfReviewArtifacts: [],
 			verifierArtifacts: [],
 			quickFixArtifacts: [],
+			callerInputArtifacts: [],
 			gateRuns: [
 				{
 					command: "npm run green-verify",
@@ -85,6 +86,11 @@ function createFinalPackage() {
 					"All public contract shapes parse through the canonical schemas.",
 			},
 		],
+		callerInputHistory: {
+			reviewRequests: [],
+			rulings: [],
+		},
+		replayBoundary: null,
 		logHandoff: {
 			recommendedState: "NEEDS_RULING",
 			recommendedCurrentStory: "00-foundation",
@@ -225,10 +231,15 @@ describe("story-orchestrate contracts", () => {
 					reasoningEffort: "high",
 				},
 				latestEventSequence: 3,
+				callerInputHistory: {
+					reviewRequests: [],
+					rulings: [],
+				},
 				nextIntent: {
 					actionType: "await-ruling",
 					summary: "Pause for caller ruling.",
 				},
+				replayBoundary: null,
 				updatedAt: "2026-05-01T00:00:00.000Z",
 			},
 			currentStatus: "needs-ruling",

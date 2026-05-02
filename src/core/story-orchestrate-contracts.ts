@@ -66,6 +66,58 @@ export const storyRunNextIntentSchema = z
 	})
 	.strict();
 
+export const callerInputHistorySchema = z
+	.object({
+		reviewRequests: z.array(
+			z
+				.object({
+					source: z.string().min(1),
+					decision: z.enum([
+						"reject",
+						"reopen",
+						"revise",
+						"ask-ruling",
+						"stop",
+					]),
+					summary: z.string().min(1),
+					items: z.array(
+						z
+							.object({
+								id: z.string().min(1),
+								severity: z.enum(["blocker", "major", "minor", "note"]),
+								concern: z.string().min(1),
+								requiredResponse: z.string().min(1),
+								evidence: z.array(z.string().min(1)).optional(),
+							})
+							.strict(),
+					),
+					evidence: z.array(z.string().min(1)).optional(),
+				})
+				.strict(),
+		),
+		rulings: z.array(
+			z
+				.object({
+					rulingRequestId: z.string().min(1),
+					decision: z.string().min(1),
+					rationale: z.string().min(1),
+					source: z.string().min(1),
+				})
+				.strict(),
+		),
+	})
+	.strict();
+
+export const replayBoundarySchema = z
+	.object({
+		smallestSafeStep: z.string().min(1),
+		reasoning: z.string().min(1),
+		validArtifactPaths: z.array(z.string().min(1)),
+		requiresFreshStoryLeadSession: z.boolean(),
+		requiresFreshChildProviderSession: z.boolean(),
+	})
+	.strict();
+
 export const storyRunCurrentSnapshotSchema = z
 	.object({
 		storyRunId: z.string().min(1),
@@ -79,7 +131,9 @@ export const storyRunCurrentSnapshotSchema = z
 		latestContinuationHandles: z.record(z.string(), continuationHandleSchema),
 		storyLeadSession: storyLeadSessionRefSchema.optional(),
 		latestEventSequence: z.number().int().nonnegative(),
+		callerInputHistory: callerInputHistorySchema,
 		nextIntent: storyRunNextIntentSchema.nullable(),
+		replayBoundary: replayBoundarySchema.nullable(),
 		updatedAt: z.string().min(1),
 	})
 	.strict();
@@ -210,6 +264,7 @@ export const storyLeadEvidenceSchema = z
 		selfReviewArtifacts: z.array(artifactRefSchema),
 		verifierArtifacts: z.array(artifactRefSchema),
 		quickFixArtifacts: z.array(artifactRefSchema),
+		callerInputArtifacts: z.array(artifactRefSchema),
 		gateRuns: z.array(gateRunSummarySchema),
 	})
 	.strict();
@@ -314,6 +369,8 @@ export const storyLeadFinalPackageSchema = z
 			.strict(),
 		diffReview: diffReviewSchema,
 		acceptanceChecks: z.array(acceptanceCheckItemSchema),
+		callerInputHistory: callerInputHistorySchema,
+		replayBoundary: replayBoundarySchema.nullable(),
 		logHandoff: logHandoffSchema,
 		cleanupHandoff: cleanupHandoffSchema,
 		rulingRequest: callerRulingRequestSchema.nullable(),
@@ -573,6 +630,8 @@ export type ArtifactRef = z.infer<typeof artifactRefSchema>;
 export type StoryRunCandidate = z.infer<typeof storyRunCandidateSchema>;
 export type CurrentChildOperation = z.infer<typeof currentChildOperationSchema>;
 export type StoryRunNextIntent = z.infer<typeof storyRunNextIntentSchema>;
+export type CallerInputHistory = z.infer<typeof callerInputHistorySchema>;
+export type ReplayBoundary = z.infer<typeof replayBoundarySchema>;
 export type StoryRunCurrentSnapshot = z.infer<
 	typeof storyRunCurrentSnapshotSchema
 >;
