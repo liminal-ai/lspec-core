@@ -1,0 +1,14 @@
+{
+	"stories": [
+		{
+			"id": "00-foundation",
+			"title": "Story 0: Foundation",
+			"path": "stories/00-foundation.md"
+		},
+		{
+			"id": "01-next",
+			"title": "Story 1: Next",
+			"path": "stories/01-next.md"
+		}
+	]
+}

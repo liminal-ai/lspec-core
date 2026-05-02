@@ -59,6 +59,7 @@ describe("result contracts", () => {
 		expect(statusForOutcome("needs-ruling")).toBe("needs-user-decision");
 		expect(statusForOutcome("ambiguous-story-run")).toBe("needs-user-decision");
 		expect(statusForOutcome("invalid-story-id")).toBe("error");
+		expect(statusForOutcome("invalid-story-run-id")).toBe("error");
 	});
 
 	test("rejects an inspect envelope whose status does not match its routing outcome", () => {

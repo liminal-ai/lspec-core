@@ -16,6 +16,9 @@ export {
 	type SkillLoad,
 	storyContinue,
 	storyImplement,
+	storyOrchestrateResume,
+	storyOrchestrateRun,
+	storyOrchestrateStatus,
 	storySelfReview,
 	storyVerify,
 } from "./operations/index.js";

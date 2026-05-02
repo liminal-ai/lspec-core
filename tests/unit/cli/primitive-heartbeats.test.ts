@@ -153,4 +153,52 @@ describe("primitive command heartbeats", () => {
 			}),
 		);
 	});
+
+	test("suppresses heartbeat output when --no-heartbeat is supplied", async () => {
+		const run = await runQuickFix({
+			scope: "primitive-heartbeat-no-heartbeat",
+			delayMs: 90,
+			heartbeatIntervalMs: 25,
+			json: true,
+			args: ["--no-heartbeat"],
+		});
+
+		expect(run.exitCode).toBe(0);
+		expect(run.stderr).not.toContain("[heartbeat]");
+		expect(parseJsonOutput(run.stdout)).toEqual(
+			expect.objectContaining({
+				command: "quick-fix",
+				outcome: "ready-for-verification",
+			}),
+		);
+	});
+
+	test("uses caller-harness-specific Claude Code Monitor guidance", async () => {
+		const run = await runQuickFix({
+			scope: "primitive-heartbeat-claude-guidance",
+			delayMs: 90,
+			heartbeatIntervalMs: 25,
+			json: true,
+			args: ["--caller-harness", "claude-code"],
+		});
+
+		expect(run.exitCode).toBe(0);
+		expect(run.stderr).toContain("[heartbeat] quick-fix");
+		expect(run.stderr).toContain("Monitor");
+		expect(run.stderr).toContain("attached command until it exits");
+	});
+
+	test("accepts a primitive heartbeat cadence override flag", async () => {
+		const run = await runQuickFix({
+			scope: "primitive-heartbeat-cadence-override",
+			delayMs: 90,
+			heartbeatIntervalMs: 25,
+			json: true,
+			args: ["--heartbeat-cadence-minutes", "1"],
+		});
+
+		expect(run.exitCode).toBe(0);
+		expect(run.stderr).toContain("[heartbeat] quick-fix");
+		expect(run.stderr).toContain("after 1 minute");
+	});
 });

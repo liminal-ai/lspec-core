@@ -41,6 +41,27 @@ export const providerHeartbeatArgs = {
 	},
 } as const;
 
+export const storyOrchestrateSharedArgs = {
+	"spec-pack-root": {
+		type: "string",
+		description: "Absolute or relative path to the spec-pack root",
+		required: true,
+	},
+	"story-id": {
+		type: "string",
+		description: "The stable story id to orchestrate",
+		required: true,
+	},
+	config: {
+		type: "string",
+		description: "Explicit run-config file relative to the spec-pack root",
+	},
+	json: {
+		type: "boolean",
+		description: "Emit the structured JSON envelope on stdout",
+	},
+} as const;
+
 export interface ProviderArtifactOptions {
 	artifactPath: string;
 	runtimeProgressPaths: {

@@ -1,0 +1,16 @@
+[
+	{
+		"fileName": "001-implementor.json",
+		"payload": {
+			"command": "story-implement",
+			"outcome": "ready-for-verification"
+		}
+	},
+	{
+		"fileName": "002-verifier.json",
+		"payload": {
+			"command": "story-verify",
+			"outcome": "pass"
+		}
+	}
+]

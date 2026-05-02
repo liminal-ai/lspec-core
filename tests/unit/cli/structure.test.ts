@@ -5,7 +5,11 @@ import { expect, test } from "vitest";
 
 const ROOT = resolve(import.meta.dirname, "../../..");
 const COMMANDS_DIR = join(ROOT, "src/cli/commands");
-const COMMAND_HELPERS = new Set(["shared.ts", "skill.ts"]);
+const COMMAND_HELPERS = new Set([
+	"shared.ts",
+	"skill.ts",
+	"story-orchestrate.ts",
+]);
 const IMPORT_SPECIFIER_PATTERN =
 	/import(?:\s+type)?[\s\S]*?\sfrom\s+["']([^"']+)["'];/g;
 const ALLOWED_COMMAND_IMPORTS = new Set([
@@ -15,6 +19,7 @@ const ALLOWED_COMMAND_IMPORTS = new Set([
 	"../../sdk/index.js",
 	"../../sdk/operations/index.js",
 	"./shared.js",
+	"./story-orchestrate-run.js",
 ]);
 
 async function listCommandModules(): Promise<string[]> {

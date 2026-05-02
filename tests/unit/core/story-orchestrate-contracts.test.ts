@@ -3,6 +3,7 @@ import { describe, expect, test } from "vitest";
 import {
 	logHandoffSchema,
 	storyLeadFinalPackageSchema,
+	storyOrchestrateResumeResultSchema,
 	storyOrchestrateRunResultSchema,
 	storyOrchestrateStatusResultSchema,
 } from "../../../src/core/story-orchestrate-contracts";
@@ -249,5 +250,22 @@ describe("story-orchestrate contracts", () => {
 
 		expect(runResult.finalPackage.storyId).toBe("00-foundation");
 		expect(statusResult.currentSnapshot.status).toBe("needs-ruling");
+	});
+
+	test("accepts invalid explicit storyRunId result cases for resume and status", () => {
+		expect(() =>
+			storyOrchestrateStatusResultSchema.parse({
+				case: "invalid-story-run-id",
+				storyId: "00-foundation",
+				storyRunId: "00-foundation-story-run-999",
+			}),
+		).not.toThrow();
+		expect(() =>
+			storyOrchestrateResumeResultSchema.parse({
+				case: "invalid-story-run-id",
+				storyId: "00-foundation",
+				storyRunId: "00-foundation-story-run-999",
+			}),
+		).not.toThrow();
 	});
 });

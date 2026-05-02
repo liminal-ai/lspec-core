@@ -12,6 +12,7 @@ import quickFixCommand from "../cli/commands/quick-fix";
 import skillCommand from "../cli/commands/skill";
 import storyContinueCommand from "../cli/commands/story-continue";
 import storyImplementCommand from "../cli/commands/story-implement";
+import storyOrchestrateCommand from "../cli/commands/story-orchestrate";
 import storySelfReviewCommand from "../cli/commands/story-self-review";
 import storyVerifyCommand from "../cli/commands/story-verify";
 import { packageVersion } from "../package-metadata";
@@ -34,6 +35,7 @@ BASIC PROCESS
   1. inspect      Read the pack without changing it.
   2. preflight    Check config, git state, gates, and provider readiness.
   3. implement    Run story-implement for one story.
+  3a. orchestrate Use story-orchestrate for durable story-level run/recovery.
   4. continue     Use story-continue when an envelope returns a continuation handle.
   5. verify       Run story-self-review and story-verify.
   6. fix          Use quick-fix for bounded follow-up fixes.
@@ -61,6 +63,7 @@ COMMANDS
   preflight           Validate config, gates, git state, and provider readiness.
 
   story-implement     Start implementation for one story.
+  story-orchestrate   Run, resume, or inspect one durable story-lead attempt.
   story-continue      Continue a retained story implementation session.
   story-self-review   Review retained story session's work.
   story-verify        Start or continue story verification.
@@ -130,6 +133,7 @@ const main = defineCommand({
 		"quick-fix": quickFixCommand,
 		skill: skillCommand,
 		"story-implement": storyImplementCommand,
+		"story-orchestrate": storyOrchestrateCommand,
 		"story-continue": storyContinueCommand,
 		"story-self-review": storySelfReviewCommand,
 		"story-verify": storyVerifyCommand,

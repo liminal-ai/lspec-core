@@ -393,6 +393,13 @@ export const storyRunSelectionSchema = z.discriminatedUnion("case", [
 			storyId: z.string().min(1),
 		})
 		.strict(),
+	z
+		.object({
+			case: z.literal("invalid-story-run-id"),
+			storyId: z.string().min(1),
+			storyRunId: z.string().min(1),
+		})
+		.strict(),
 ]);
 
 export const storyOrchestrateRunResultSchema = z.discriminatedUnion("case", [
@@ -503,6 +510,13 @@ export const storyOrchestrateResumeResultSchema = z.discriminatedUnion("case", [
 		.strict(),
 	z
 		.object({
+			case: z.literal("invalid-story-run-id"),
+			storyId: z.string().min(1),
+			storyRunId: z.string().min(1),
+		})
+		.strict(),
+	z
+		.object({
 			case: z.literal("ambiguous-story-run"),
 			storyId: z.string().min(1),
 			candidates: z.array(storyRunCandidateSchema),
@@ -541,6 +555,13 @@ export const storyOrchestrateStatusResultSchema = z.discriminatedUnion("case", [
 		.object({
 			case: z.literal("invalid-story-id"),
 			storyId: z.string().min(1),
+		})
+		.strict(),
+	z
+		.object({
+			case: z.literal("invalid-story-run-id"),
+			storyId: z.string().min(1),
+			storyRunId: z.string().min(1),
 		})
 		.strict(),
 ]);

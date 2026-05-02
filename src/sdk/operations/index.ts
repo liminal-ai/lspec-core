@@ -14,5 +14,10 @@ export {
 } from "./skill.js";
 export { storyContinue } from "./story-continue.js";
 export { storyImplement } from "./story-implement.js";
+export {
+	storyOrchestrateResume,
+	storyOrchestrateRun,
+	storyOrchestrateStatus,
+} from "./story-orchestrate.js";
 export { storySelfReview } from "./story-self-review.js";
 export { storyVerify } from "./story-verify.js";

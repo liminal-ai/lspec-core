@@ -9,6 +9,10 @@ import {
 	resolveCallerHarnessConfig,
 } from "./caller-guidance.js";
 import { type RuntimeStatus, runtimeStatusSchema } from "./runtime-progress.js";
+import {
+	type StoryRunCurrentSnapshot,
+	storyRunCurrentSnapshotSchema,
+} from "./story-orchestrate-contracts.js";
 
 export type { CallerHarness, CallerHarnessConfigRecord };
 export { callerHarnessSchema };
@@ -222,6 +226,48 @@ function buildPrimitiveHeartbeatEvent(input: {
 	});
 }
 
+function buildStoryHeartbeatEvent(input: {
+	command: string;
+	callerHarness: CallerHarness;
+	cadenceMinutes: number;
+	snapshot: StoryRunCurrentSnapshot;
+	currentSnapshotPath: string;
+	startedAt: number;
+	now: number;
+}): AttachedProgressEvent {
+	const nextPollRecommendation = {
+		afterMinutes: input.cadenceMinutes,
+		action: renderCallerGuidance({
+			callerHarness: input.callerHarness,
+			command: input.command,
+			cadenceMinutes: input.cadenceMinutes,
+		}),
+	} as const;
+	const elapsedTime = formatDuration(input.now - input.startedAt);
+	const summary = [
+		`${input.command} heartbeat after ${elapsedTime}.`,
+		`Story id: ${input.snapshot.storyId}.`,
+		`Story run: ${input.snapshot.storyRunId}.`,
+		`Phase: ${input.snapshot.currentPhase}.`,
+		`Current snapshot: ${input.currentSnapshotPath}.`,
+		`Next: ${nextPollRecommendation.action}`,
+	].join(" ");
+
+	return attachedProgressEventSchema.parse({
+		type: "heartbeat",
+		command: input.command,
+		phase: input.snapshot.currentPhase,
+		summary,
+		callerHarness: input.callerHarness,
+		storyId: input.snapshot.storyId,
+		storyRunId: input.snapshot.storyRunId,
+		elapsedTime,
+		lastOutputAt: input.snapshot.updatedAt,
+		statusArtifact: input.currentSnapshotPath,
+		nextPollRecommendation,
+	});
+}
+
 export function createHeartbeatEmitter(input: {
 	command: string;
 	callerHarness: CallerHarness;
@@ -303,4 +349,55 @@ export function createPrimitiveHeartbeatEmitter(input: {
 		readSnapshot: input.readSnapshot,
 		writeAttachedOutput: input.progressListener,
 	});
+}
+
+export function createStoryHeartbeatEmitter(input: {
+	command: string;
+	callerHarness: CallerHarness;
+	cadenceMinutes: number;
+	currentSnapshotPath: string;
+	startedAt: number;
+	readSnapshot: () => StoryRunCurrentSnapshot;
+	writeAttachedOutput: (event: AttachedProgressEvent) => void;
+}): HeartbeatEmitter {
+	let timer: ReturnType<typeof setInterval> | undefined;
+
+	return {
+		start() {
+			if (timer) {
+				return;
+			}
+
+			timer = setInterval(() => {
+				const snapshot = storyRunCurrentSnapshotSchema.parse(
+					input.readSnapshot(),
+				);
+				if (snapshot.status !== "running") {
+					return;
+				}
+
+				input.writeAttachedOutput(
+					buildStoryHeartbeatEvent({
+						command: input.command,
+						callerHarness: input.callerHarness,
+						cadenceMinutes: input.cadenceMinutes,
+						snapshot,
+						currentSnapshotPath: input.currentSnapshotPath,
+						startedAt: input.startedAt,
+						now: Date.now(),
+					}),
+				);
+			}, resolveHeartbeatCadenceMs(input.cadenceMinutes));
+
+			timer.unref?.();
+		},
+		stop() {
+			if (!timer) {
+				return;
+			}
+
+			clearInterval(timer);
+			timer = undefined;
+		},
+	};
 }

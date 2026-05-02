@@ -5,14 +5,38 @@ import {
 	type StoryRunSelection,
 	storyRunSelectionSchema,
 } from "./story-orchestrate-contracts.js";
+import { createStoryRunLedger } from "./story-run-ledger.js";
+import { readdirDirents } from "./runtime-deps.js";
 import { resolveStoryOrder } from "./story-order.js";
+
+async function listPrimitiveArtifacts(
+	specPackRoot: string,
+	storyId: string,
+): Promise<string[]> {
+	const storyArtifactDir = join(resolve(specPackRoot), "artifacts", storyId);
+	if (!(await pathExists(storyArtifactDir))) {
+		return [];
+	}
+
+	const entries = await readdirDirents(storyArtifactDir);
+	return entries
+		.filter(
+			(entry) =>
+				entry.isFile() &&
+				entry.name.endsWith(".json") &&
+				!entry.name.includes("story-orchestrate") &&
+				!entry.name.endsWith("-current.json") &&
+				!entry.name.endsWith("-final-package.json"),
+		)
+		.map((entry) => join(storyArtifactDir, entry.name))
+		.sort((left, right) => left.localeCompare(right));
+}
 
 export async function discoverStoryRunState(input: {
 	specPackRoot: string;
 	storyId: string;
 	storyRunId?: string;
 }): Promise<StoryRunSelection> {
-	void input.storyRunId;
 	const resolvedRoot = resolve(input.specPackRoot);
 	const storiesDir = join(resolvedRoot, "stories");
 
@@ -33,8 +57,102 @@ export async function discoverStoryRunState(input: {
 			storyId: input.storyId,
 		});
 	}
+	const ledger = createStoryRunLedger({
+		specPackRoot: resolvedRoot,
+		storyId: input.storyId,
+	});
+	const attempts = await ledger.listAttempts();
+	const explicitAttempt = input.storyRunId
+		? (attempts.find((attempt) => attempt.storyRunId === input.storyRunId) ??
+			null)
+		: null;
+	if (input.storyRunId && explicitAttempt === null) {
+		return storyRunSelectionSchema.parse({
+			case: "invalid-story-run-id",
+			storyId: input.storyId,
+			storyRunId: input.storyRunId,
+		});
+	}
+	const candidatePool = explicitAttempt ? [explicitAttempt] : attempts;
+
+	if (candidatePool.length === 0) {
+		const primitiveArtifacts = await listPrimitiveArtifacts(
+			resolvedRoot,
+			input.storyId,
+		);
+		if (primitiveArtifacts.length > 0) {
+			return storyRunSelectionSchema.parse({
+				case: "start-from-primitive-artifacts",
+				sourceArtifactPaths: primitiveArtifacts,
+			});
+		}
+
+		return storyRunSelectionSchema.parse({
+			case: "start-new",
+		});
+	}
+
+	const acceptedAttempts = candidatePool.filter(
+		(attempt) =>
+			attempt.currentSnapshot.status === "accepted" && attempt.finalPackage,
+	);
+	const activeAttempts = candidatePool.filter(
+		(attempt) => attempt.currentSnapshot.status === "running",
+	);
+	const resumableAttempts = candidatePool.filter(
+		(attempt) =>
+			attempt.currentSnapshot.status !== "accepted" &&
+			attempt.currentSnapshot.status !== "running",
+	);
+
+	if (
+		acceptedAttempts.length === 1 &&
+		activeAttempts.length === 0 &&
+		resumableAttempts.length === 0
+	) {
+		const [acceptedAttempt] = acceptedAttempts;
+		return storyRunSelectionSchema.parse({
+			case: "existing-accepted-attempt",
+			storyRunId: acceptedAttempt.storyRunId,
+			finalPackagePath: acceptedAttempt.finalPackagePath,
+		});
+	}
+
+	if (activeAttempts.length === 1 && resumableAttempts.length === 0) {
+		const [activeAttempt] = activeAttempts;
+		return storyRunSelectionSchema.parse({
+			case: "active-attempt-exists",
+			storyRunId: activeAttempt.storyRunId,
+			currentSnapshotPath: activeAttempt.currentSnapshotPath,
+		});
+	}
+
+	if (resumableAttempts.length === 1 && activeAttempts.length === 0) {
+		const [resumableAttempt] = resumableAttempts;
+		return storyRunSelectionSchema.parse({
+			case: "resume-required",
+			storyRunId: resumableAttempt.storyRunId,
+			currentSnapshotPath: resumableAttempt.currentSnapshotPath,
+		});
+	}
 
 	return storyRunSelectionSchema.parse({
-		case: "start-new",
+		case: "ambiguous-story-run",
+		candidates: candidatePool
+			.sort(
+				(left, right) =>
+					right.currentSnapshot.updatedAt.localeCompare(
+						left.currentSnapshot.updatedAt,
+					) || left.storyRunId.localeCompare(right.storyRunId),
+			)
+			.map((attempt) => ({
+				storyRunId: attempt.storyRunId,
+				status: attempt.currentSnapshot.status,
+				updatedAt: attempt.currentSnapshot.updatedAt,
+				currentSnapshotPath: attempt.currentSnapshotPath,
+				...(attempt.finalPackage
+					? { finalPackagePath: attempt.finalPackagePath }
+					: {}),
+			})),
 	});
 }

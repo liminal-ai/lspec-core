@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import {
 	createHeartbeatEmitter,
+	createStoryHeartbeatEmitter,
 	type AttachedProgressEvent,
 } from "../../../src/core/heartbeat";
 import type { RuntimeStatus } from "../../../src/core/runtime-progress";
@@ -123,5 +124,160 @@ describe("heartbeat emitter", () => {
 				action: expect.stringContaining("status artifact"),
 			}),
 		);
+	});
+
+	test("does not emit when the runtime snapshot is no longer running", async () => {
+		const events: AttachedProgressEvent[] = [];
+		const emitter = createHeartbeatEmitter({
+			command: "quick-fix",
+			callerHarness: "generic",
+			cadenceMinutes: 5,
+			readSnapshot: () =>
+				runtimeSnapshot({
+					status: "completed",
+					phase: "finalizing",
+					lastEvent: "completed",
+					lastEventSummary: "quick-fix completed.",
+				}),
+			writeAttachedOutput: (event) => events.push(event),
+		});
+
+		emitter.start();
+		await vi.advanceTimersByTimeAsync(1000);
+		emitter.stop();
+
+		expect(events).toHaveLength(0);
+	});
+
+	test("stop cancels future cadence ticks", async () => {
+		const events: AttachedProgressEvent[] = [];
+		const emitter = createHeartbeatEmitter({
+			command: "quick-fix",
+			callerHarness: "generic",
+			cadenceMinutes: 5,
+			readSnapshot: () => runtimeSnapshot(),
+			writeAttachedOutput: (event) => events.push(event),
+		});
+
+		emitter.start();
+		await vi.advanceTimersByTimeAsync(1000);
+		emitter.stop();
+		await vi.advanceTimersByTimeAsync(3000);
+
+		expect(events).toHaveLength(1);
+	});
+
+	test("heartbeat summaries include the latest progress phrase and status artifact", async () => {
+		const events: AttachedProgressEvent[] = [];
+		const emitter = createHeartbeatEmitter({
+			command: "story-implement",
+			callerHarness: "codex",
+			cadenceMinutes: 5,
+			readSnapshot: () =>
+				runtimeSnapshot({
+					command: "story-implement",
+					phase: "initial-implement",
+					lastOutputAt: null,
+					lastEventSummary: "Initial implementor pass started.",
+				}),
+			writeAttachedOutput: (event) => events.push(event),
+		});
+
+		emitter.start();
+		await vi.advanceTimersByTimeAsync(1000);
+		emitter.stop();
+
+		expect(events[0]).toEqual(
+			expect.objectContaining({
+				type: "heartbeat",
+				command: "story-implement",
+				phase: "initial-implement",
+				statusArtifact: "/tmp/spec-pack/artifacts/quick-fix/status.json",
+			}),
+		);
+		expect(events[0]?.summary).toContain("Initial implementor pass started.");
+		expect(events[0]?.summary).toContain(
+			"Status artifact: /tmp/spec-pack/artifacts/quick-fix/status.json.",
+		);
+	});
+
+	test("reports no-output-yet silence when the provider has not produced output", async () => {
+		const events: AttachedProgressEvent[] = [];
+		const emitter = createHeartbeatEmitter({
+			command: "epic-synthesize",
+			callerHarness: "claude-code",
+			cadenceMinutes: 5,
+			readSnapshot: () =>
+				runtimeSnapshot({
+					command: "epic-synthesize",
+					phase: "epic-synthesis",
+					lastOutputAt: null,
+					lastEventSummary: "epic-synthesize started.",
+				}),
+			writeAttachedOutput: (event) => events.push(event),
+		});
+
+		emitter.start();
+		await vi.advanceTimersByTimeAsync(1000);
+		emitter.stop();
+
+		expect(events[0]?.summary).toContain("No provider output yet");
+		expect(events[0]?.summary).toContain("Monitor");
+	});
+
+	test("TC-2.7a emits story-level heartbeats with the story id, run id, phase, and current snapshot reference", async () => {
+		const events: AttachedProgressEvent[] = [];
+		const emitter = createStoryHeartbeatEmitter({
+			command: "story-orchestrate run",
+			callerHarness: "codex",
+			cadenceMinutes: 10,
+			currentSnapshotPath:
+				"/tmp/spec-pack/artifacts/00-foundation/story-lead/001-current.json",
+			startedAt: Date.parse("2026-05-01T12:00:00.000Z"),
+			readSnapshot: () => ({
+				storyRunId: "00-foundation-story-run-001",
+				storyId: "00-foundation",
+				attempt: 1,
+				status: "running",
+				currentSummary: "Story run is active.",
+				currentPhase: "story-orchestrate-run",
+				currentChildOperation: null,
+				latestArtifacts: [
+					{
+						kind: "current-snapshot",
+						path: "/tmp/spec-pack/artifacts/00-foundation/story-lead/001-current.json",
+					},
+				],
+				latestContinuationHandles: {},
+				latestEventSequence: 1,
+				nextIntent: null,
+				updatedAt: "2026-05-01T12:00:30.000Z",
+			}),
+			writeAttachedOutput: (event) => events.push(event),
+		});
+
+		emitter.start();
+		await vi.advanceTimersByTimeAsync(1000);
+		emitter.stop();
+
+		expect(events).toHaveLength(1);
+		expect(events[0]).toEqual(
+			expect.objectContaining({
+				type: "heartbeat",
+				command: "story-orchestrate run",
+				storyId: "00-foundation",
+				storyRunId: "00-foundation-story-run-001",
+				phase: "story-orchestrate-run",
+				statusArtifact:
+					"/tmp/spec-pack/artifacts/00-foundation/story-lead/001-current.json",
+				nextPollRecommendation: expect.objectContaining({
+					afterMinutes: 10,
+				}),
+			}),
+		);
+		expect(events[0]?.summary).toContain(
+			"Story run: 00-foundation-story-run-001.",
+		);
+		expect(events[0]?.summary).toContain("Current snapshot:");
 	});
 });

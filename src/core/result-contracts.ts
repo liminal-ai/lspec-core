@@ -619,6 +619,7 @@ export function statusForOutcome(outcome: string): CliStatus {
 			return "blocked";
 		case "failed":
 		case "invalid-story-id":
+		case "invalid-story-run-id":
 		case "invalid-review-request":
 		case "invalid-ruling":
 			return "error";

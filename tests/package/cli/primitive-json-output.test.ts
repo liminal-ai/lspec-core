@@ -12,7 +12,7 @@ import {
 	writeTextFile,
 } from "../../support/test-helpers";
 
-async function runLongJsonPrimitive() {
+async function runLongJsonPrimitive(extraArgs: string[] = []) {
 	const specPackRoot = await createSpecPack("package-primitive-json-output", {
 		companionMode: "four-file",
 	});
@@ -60,6 +60,7 @@ async function runLongJsonPrimitive() {
 			"--request-text",
 			"Apply the bounded quick fix.",
 			"--json",
+			...extraArgs,
 		],
 		{
 			env: {
@@ -98,6 +99,34 @@ describe("primitive JSON output with heartbeats", () => {
 				result: expect.objectContaining({
 					rawProviderOutputPreview: "Applied the bounded quick fix.",
 				}),
+			}),
+		);
+	});
+
+	test("keeps JSON stdout exact when heartbeat output is disabled with --no-heartbeat", async () => {
+		const run = await runLongJsonPrimitive(["--no-heartbeat"]);
+
+		expect(run.exitCode).toBe(0);
+		expect(run.stderr).not.toContain("[heartbeat]");
+		expect(run.stdout.trim().split("\n")).toHaveLength(1);
+		expect(JSON.parse(run.stdout)).toEqual(
+			expect.objectContaining({
+				command: "quick-fix",
+				outcome: "ready-for-verification",
+			}),
+		);
+	});
+
+	test("keeps JSON stdout exact when a caller harness override changes heartbeat wording", async () => {
+		const run = await runLongJsonPrimitive(["--caller-harness", "claude-code"]);
+
+		expect(run.exitCode).toBe(0);
+		expect(run.stderr).toContain("Monitor");
+		expect(run.stdout).not.toContain("Monitor");
+		expect(JSON.parse(run.stdout)).toEqual(
+			expect.objectContaining({
+				command: "quick-fix",
+				status: "ok",
 			}),
 		);
 	});
