@@ -139,6 +139,7 @@ export async function storyOrchestrateRun(input: StoryOrchestrateRunInput) {
 						specPackRoot: parsedInput.specPackRoot,
 						storyId: parsedInput.storyId,
 						configPath: parsedInput.configPath,
+						env: parsedInput.env,
 						ledger,
 						mode: "run",
 						startedFromPrimitiveArtifacts:
@@ -330,6 +331,7 @@ export async function storyOrchestrateResume(
 						specPackRoot: parsedInput.specPackRoot,
 						storyId: parsedInput.storyId,
 						configPath: parsedInput.configPath,
+						env: parsedInput.env,
 						ledger,
 						mode: "resume",
 						existingAttempt: attempt,

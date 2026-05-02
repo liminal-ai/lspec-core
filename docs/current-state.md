@@ -1,6 +1,6 @@
 # Current State: lbuild-impl
 
-Generated: 2026-05-01
+Generated: 2026-05-02
 
 This is a Config A compact current-state baseline. The repository is small enough that one functional baseline, one technical baseline, one code map, and one drift ledger are more useful than a large reconstructed architecture packet.
 
@@ -26,6 +26,7 @@ Current operations:
 
 - `inspect`
 - `preflight`
+- `story-orchestrate`
 - `story-implement`
 - `story-continue`
 - `story-self-review`
@@ -40,9 +41,11 @@ Each operation returns or prints a versioned result envelope. Envelopes carry th
 
 The `skill` command is the exception to the envelope contract: it is a model-facing markdown delivery surface for the `ls-impl` orchestration skill. The root load prints authored skill onboarding plus an auto-generated directory, and chunk loads return bounded markdown sections with carry-forward guidance.
 
+`story-orchestrate` adds a durable story-lead surface on top of the primitive operations. It can start, resume, and inspect one story-owned attempt, while impl-lead remains responsible for outer acceptance, log updates, story commits, and cleanup carry-forward.
+
 The implementation runtime writes durable artifacts under the spec pack. `inspect` is intentionally read-only. Mutating operations reserve artifact paths, write through atomic helpers, and preserve continuation/progress information where the operation supports it.
 
-Provider-backed operations support Claude Code, Codex, and Copilot through provider adapters. Real-provider tests are gated by `LSPEC_INTEGRATION=1` and the required provider credentials.
+Provider-backed operations support Claude Code, Codex, and Copilot through provider adapters. Primitive commands and `story-orchestrate` emit caller-facing heartbeat summaries on `stderr` while work is active, without changing the exact final JSON envelope on `stdout`. Real-provider tests are gated by `LSPEC_INTEGRATION=1` and the required provider credentials.
 
 ## Release Baseline
 

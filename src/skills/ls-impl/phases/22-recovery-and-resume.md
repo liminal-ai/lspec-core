@@ -10,6 +10,8 @@ Recovery starts from durable files on disk, not from reconstructed conversation 
 
 Missing prior chat or tool-call context is a normal recovery case, not a blocker. Trust the files.
 
+For `story-orchestrate`, the stable recovery anchor is `spec-pack-root + story-id`. If you lose the story run id, use that pair to find the prior story-lead attempts before asking for more context.
+
 ## State-based routing
 
 Read `State` from the log and route accordingly:
@@ -51,8 +53,10 @@ Read `State` from the log and route accordingly:
 
 - A step is **completed** only if its durable result artifact exists on disk. An in-flight step with no artifact is incomplete.
 - Replay from the last completed checkpoint forward — do not re-run completed work.
+- Trust valid persisted artifacts and replay only the smallest missing bounded step.
 - If the replay boundary is unclear (artifacts exist but the log was not updated, or vice versa), pause for user ruling.
 - Continuation handles (provider + session-id) in the log may become stale; if `story-continue` fails, fall back to a fresh `story-implement`.
+- Large retained sessions can become harder to resume cleanly after repeated gate output, review loops, or context-window pressure. When the durable artifacts are trustworthy, prefer fresh rehydration from disk over repeatedly resuming an overgrown provider session.
 
 ## Ownership during recovery
 

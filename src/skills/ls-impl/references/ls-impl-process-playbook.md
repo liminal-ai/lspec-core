@@ -33,6 +33,7 @@ This is the main process reference after setup. Use it to decide which bounded C
 
 - When a provider-backed operation is still running, keep the live command open and check the runtime artifacts on disk rather than waiting blind.
 - Heartbeat lines on `stderr` are monitoring prompts, not routing results. They preserve exact JSON stdout and repeat the command name, elapsed time, status artifact, latest progress, silence duration, and next polling action.
+- Heartbeat wording is for the caller harness that is watching the command, not necessarily for the provider harness doing the child work.
 - In Codex, keep the original exec session open. Poll that same running session with empty input on the heartbeat cadence, then inspect the referenced status artifact if you need more detail. Do not final while the command is still running.
 - In Claude Code, use Monitor when it is available. If Monitor is not available, keep following the attached command output and status artifact directly. Do not assume Monitor exists in Codex.
 - Poll artifacts in this order:
@@ -74,6 +75,7 @@ Before accepting a story, record:
 
 - Prepare the next story from the committed codebase, the ordered story list, `team-impl-log.md`, and the recorded artifacts on disk.
 - Do not rely on ad hoc memory or prior chat context to decide what happens next.
+- If `story-orchestrate` was used, treat its final package as story-lead output for one story only. Impl-lead still decides whether to accept, reject, reopen, or request a ruling at the run level.
 - Compare the current total test count to the prior accepted baseline before accepting the story.
 - If the current total is lower than the prior accepted baseline, treat it as a regression and block acceptance until resolved.
 - If the current total meets or exceeds the prior accepted baseline, record the new baseline and continue the acceptance decision.
@@ -102,6 +104,7 @@ Before accepting a story, record:
 - Do not launch epic verification until the cleanup artifact exists on disk.
 - Review the categorized cleanup batch with the human before dispatching `epic-cleanup`.
 - Do not treat cleanup review as a CLI-owned decision.
+- Carry accepted-risk and deferred story items into the cleanup batch before epic verification starts.
 - Verify the cleanup result before launching `epic-verify`.
 - Epic verification starts from the cleaned state rather than from outstanding tracked cleanup items.
 - For every multi-story epic, run `epic-verify` before final closeout.
@@ -125,6 +128,8 @@ If execution is interrupted, restart from the files on disk: `team-impl-log.md`,
 - Use the recorded artifact paths to reopen the latest implementor and verifier evidence instead of reconstructing state from memory.
 - Use completed artifacts already on disk as evidence and route only the missing or invalidated work.
 - Replay from the last completed checkpoint when the durable inputs on disk make that replay safe.
+- When replay is needed, trust valid persisted artifacts and resume only the smallest missing bounded step.
+- If retained provider sessions have accumulated too much context or gate output, prefer fresh rehydration from the durable files instead of repeatedly resuming the same session.
 - If the replay boundary is unclear, pause for human ruling instead of guessing from memory.
 - Do not ask for the prior conversation to be restored before resuming the run.
 - Resume from the durable files on disk even when the orchestration session has been compacted or restarted.

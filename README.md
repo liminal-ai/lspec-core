@@ -107,6 +107,7 @@ Example envelope shape:
 | `inspect` | Read-only spec-pack inspection and summary |
 | `preflight` | Readiness checks before running implementation work |
 | `story-implement` | Run implementation for one story |
+| `story-orchestrate` | Run, resume, or inspect one durable story-lead attempt |
 | `story-continue` | Continue a resumable story operation |
 | `story-self-review` | Run story self-review passes |
 | `story-verify` | Verify story completion against the spec |
@@ -117,6 +118,8 @@ Example envelope shape:
 | `skill` | Read CLI-delivered skill onboarding and reference docs in bounded markdown chunks |
 
 Implementation commands support the same envelope-oriented contract through the CLI and SDK. The `skill` command is intentionally model-facing markdown instead of an operation envelope.
+
+Provider-backed commands emit caller-facing heartbeat summaries on `stderr` while work is still running. Those heartbeats are for the live caller harness that is monitoring the command, and they do not change the exact final JSON envelope on `stdout`.
 
 ### CLI-Delivered Skill
 

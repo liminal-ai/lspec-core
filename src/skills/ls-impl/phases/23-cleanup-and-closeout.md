@@ -18,6 +18,8 @@ Stage 5 runs once, after all stories are accepted. You compile deferred items in
 
 Walk the story receipts in `team-impl-log.md` and extract every item with a `defer` or `accepted-risk` disposition. Write them into a cleanup artifact (a markdown file under `artifacts/cleanup/`). Include all items, even small ones — do not filter on severity.
 
+If a story used `story-orchestrate`, fold in the `cleanupHandoff` and any accepted-risk/deferred items from the story-lead final package before epic verification begins.
+
 ## 2. Review with the user
 
 Present the categorized cleanup batch to the user. Do not dispatch without review. The user decides which items to fix, accept, or defer permanently.

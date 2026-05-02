@@ -16,6 +16,9 @@ import {
 
 export async function createStoryOrchestrateSpecPack(
 	scope: string,
+	options: {
+		includeStoryLead?: boolean;
+	} = {},
 ): Promise<{ specPackRoot: string; storyId: string }> {
 	const specPackRoot = await createSpecPack(scope, {
 		companionMode: "four-file",
@@ -43,11 +46,15 @@ export async function createStoryOrchestrateSpecPack(
 				harness: "codex",
 				story_heartbeat_cadence_minutes: 10,
 			},
-			story_lead: {
-				secondary_harness: "codex",
-				model: "gpt-5.4",
-				reasoning_effort: "high",
-			},
+			...(options.includeStoryLead
+				? {
+						story_lead: {
+							secondary_harness: "codex" as const,
+							model: "gpt-5.4",
+							reasoning_effort: "high" as const,
+						},
+					}
+				: {}),
 		}),
 	);
 

@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Adds configurable `story_lead` provider composition for `story-orchestrate`, including Codex and Claude-backed smoke coverage before a default provider is locked in.
+- Refreshes the CLI-delivered `ls-impl` skill so caller-harness versus provider-harness language, story-id recovery, commit obligations, and cleanup handoff guidance match the shipped orchestration surface.
+- Updates README and current-state docs to describe `story-orchestrate`, caller-facing heartbeats, and story-lead runtime boundaries.
+
 ## 0.3.0 - 2026-05-01
 
 - Adds CLI-delivered `ls-impl` skill onboarding through `lbuild-impl skill ls-impl`, with bounded markdown chunk reads and an auto-generated skill directory.

@@ -24,10 +24,13 @@ The result selects which defaults table applies below. Record a degraded-diversi
 
 Each role gets a `secondary_harness`, `model`, and `reasoning_effort`. The epic verifier rows (`epic_verifier_1`, `epic_verifier_2`) correspond to entries in the `epic_verifiers` array with labels `epic-verifier-1` and `epic-verifier-2`; all other rows are top-level config keys.
 
+`secondary_harness: "none"` means the role runs on the built-in Claude-backed provider path. That is a provider choice, not a statement about which caller harness is reading the CLI output.
+
 ### Codex available
 
 | Role | secondary_harness | model | reasoning_effort |
 |------|---|---|---|
+| `story_lead` | `codex` | `gpt-5.4` | `high` |
 | `story_implementor` | `codex` | `gpt-5.4` | `high` |
 | `quick_fixer` | `codex` | `gpt-5.4` | `high` |
 | `story_verifier` | `codex` | `gpt-5.4` | `xhigh` |
@@ -41,6 +44,7 @@ Copilot is valid for both fresh-session and retained-session roles in v1.
 
 | Role | secondary_harness | model | reasoning_effort |
 |------|---|---|---|
+| `story_lead` | `copilot` | `gpt-5.4` | `high` |
 | `story_implementor` | `copilot` | `gpt-5.4` | `high` |
 | `quick_fixer` | `copilot` | `gpt-5.4` | `high` |
 | `story_verifier` | `copilot` | `gpt-5.4` | `xhigh` |
@@ -54,6 +58,7 @@ All roles fall back to the primary harness. Record the degraded-diversity condit
 
 | Role | secondary_harness | model | reasoning_effort |
 |------|---|---|---|
+| `story_lead` | `none` | `claude-sonnet` | `high` |
 | `story_implementor` | `none` | `claude-sonnet` | `high` |
 | `quick_fixer` | `none` | `claude-sonnet` | `high` |
 | `story_verifier` | `none` | `claude-sonnet` | `xhigh` |
@@ -75,6 +80,7 @@ Defaults to 3. Do not change unless the user asks.
 {
   "version": 1,
   "primary_harness": "claude-code",
+  "story_lead": { "secondary_harness": "...", "model": "...", "reasoning_effort": "..." },
   "story_implementor": { "secondary_harness": "...", "model": "...", "reasoning_effort": "..." },
   "quick_fixer": { "secondary_harness": "...", "model": "...", "reasoning_effort": "..." },
   "story_verifier": { "secondary_harness": "...", "model": "...", "reasoning_effort": "..." },
@@ -97,7 +103,7 @@ Defaults to 3. Do not change unless the user asks.
 }
 ```
 
-Write this file at the spec-pack root with the appropriate table's values filled in. `preflight` will validate the contents.
+Write this file at the spec-pack root with the appropriate table's values filled in. `preflight` will validate the contents. Keep `story_lead` explicit when you want `story-orchestrate` to launch a provider-backed story-lead, because the package has not committed to a hidden default provider yet.
 
 ## Where defaults are recorded
 

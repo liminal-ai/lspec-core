@@ -1,6 +1,6 @@
 # CLI Operations
 
-The lbuild-impl CLI performs one bounded operation per call and returns a structured result envelope. See `operations/33-artifact-contracts.md` for the envelope shape. This file documents each of the ten public operations and the routing matrix that maps outcomes to your next action.
+The lbuild-impl CLI performs one bounded operation per call and returns a structured result envelope. See `operations/33-artifact-contracts.md` for the envelope shape. This file documents the public operations, the `story-orchestrate` command group, and the routing matrix that maps outcomes to your next action.
 
 For fresh provider-backed operations, the model emits a strict provider payload first. The CLI validates that payload, adds identity and envelope fields, then persists the final result envelope under `artifacts/`.
 
@@ -14,6 +14,7 @@ Use `lbuild-impl ...` as the portable invocation form.
 - `story-continue` — continue a retained implementor session with bounded follow-up work
 - `story-self-review` — run explicit same-session self-review passes against the retained implementor session
 - `story-verify` — start or continue the retained verifier session for one story
+- `story-orchestrate` — run, resume, or inspect one durable story-lead attempt for one story
 - `quick-fix` — run a narrow, bounded correction
 - `epic-cleanup` — apply cleanup-only corrections before epic verification
 - `epic-verify` — run fresh epic-level verification
@@ -125,6 +126,30 @@ Initial mode starts a fresh verifier session and returns a continuation handle. 
 
 Outcomes: `pass`, `revise`, `block`, `needs-human-ruling`.
 
+### `story-orchestrate`
+
+Runs the composed story-lead surface for one story. Story-lead owns the internal loop for one story only and returns a final package, but impl-lead remains the caller harness that reviews, accepts, rejects, or reopens the result.
+
+Run:
+
+```bash
+lbuild-impl story-orchestrate run --spec-pack-root <path> --story-id <story-id> [--config <path>] --json
+```
+
+Resume or reopen:
+
+```bash
+lbuild-impl story-orchestrate resume --spec-pack-root <path> --story-id <story-id> [--story-run-id <id>] [--review-request-file <path>] [--ruling-file <path>] [--config <path>] --json
+```
+
+Status:
+
+```bash
+lbuild-impl story-orchestrate status --spec-pack-root <path> --story-id <story-id> [--story-run-id <id>] [--config <path>] --json
+```
+
+Use `spec-pack-root + story-id` as the stable recovery key when the story run id is missing. Resume only the smallest missing bounded step that is not already backed by a valid durable artifact.
+
 ### `quick-fix`
 
 Runs a narrow, bounded correction outside the story implementor flow. Story-agnostic; does not receive a reading journey.
@@ -176,11 +201,13 @@ Outcomes: `ready-for-closeout`, `needs-fixes`, `needs-more-verification`, `block
   - `progress/<artifact-base>.progress.jsonl` for append-only lifecycle events
   - `streams/<artifact-base>.stdout.log` and `.stderr.log` for raw provider output
 - Provider-backed primitive commands also emit fixed-cadence heartbeat summaries on `stderr` while they are still active. Those heartbeats never change the final JSON stdout contract.
+- `story-orchestrate` uses the same caller-facing heartbeat model on `stderr` while the story-lead attempt is active.
 - Poll in this order when a long-running operation is still active:
   - read `status.json`
   - compare `updatedAt` and `lastOutputAt`
   - tail the stream logs when you need more detail
 - In Codex, keep the original exec session open and poll with empty input on the heartbeat cadence. In Claude Code, use Monitor when available or keep following the attached command output directly.
+- These heartbeat instructions are for the caller harness that is reading output, not necessarily the provider harness that is doing the child work.
 - The runtime progress surface is CLI-owned and provider-agnostic. The same polling model works whether the secondary harness is Codex, Claude Code, or Copilot.
 - Treat these timing bands as reporting guidance only:
   - `healthy` — output or lifecycle update within 5 minutes

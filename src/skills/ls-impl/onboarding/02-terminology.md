@@ -18,7 +18,13 @@ These are the primitives and process terms used throughout this skill. Read once
 
 ## Roles
 
-**Orchestrator** — You. Read the pack, decide routing, launch CLI operations, run gates, record state, accept work.
+**Impl-lead** — You. The outer live orchestrator/caller harness that reads CLI output, decides routing, launches bounded operations, runs gates, updates `team-impl-log.md`, and accepts or reopens story work.
+
+**Caller harness** — The host that is reading attached output from `lbuild-impl`. It may be Codex, Claude Code, or another live orchestrator. Heartbeat wording is addressed to this caller harness.
+
+**Provider harness** — The agent runtime that `lbuild-impl` launches for child work. It may differ from the caller harness. A Codex caller can launch Claude Code as a provider, and a Claude Code caller can launch Codex as a provider.
+
+**Story-lead** — The story-level provider-backed loop launched by `story-orchestrate`. It owns one story internally, returns one final package for that story run, and never accepts the story on behalf of impl-lead.
 
 **Implementor** — Role the CLI dispatches for story implementation. Retained per story (same session across follow-up fixes within a story).
 
@@ -38,9 +44,11 @@ These are the primitives and process terms used throughout this skill. Read once
 
 **Provider** — The underlying CLI the lbuild-impl CLI invokes to run a role's prompt: Codex, Copilot, or Claude Code.
 
-**Primary harness** — Claude Code. Always available; you run inside it.
+**Primary harness** — The built-in Claude-backed provider path used when a role's `secondary_harness` is `none`. This is a provider choice inside `impl-run.config.json`, not the same thing as the caller harness reading output.
 
 **Secondary harness** — Optional provider the CLI invokes for GPT-backed roles: `codex`, `copilot`, or `none` (meaning "use the primary harness"). Configured per role in `impl-run.config.json`.
+
+**Story-lead config** — Optional `story_lead` role assignment in `impl-run.config.json`. When present, it selects the provider/model used by `story-orchestrate`. Keep the choice explicit until a dedicated default is chosen.
 
 **Role defaults** — Default harness + model + reasoning-effort per role, resolved deterministically at initialization based on which secondary harnesses are available.
 

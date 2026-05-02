@@ -1,6 +1,6 @@
 ---
 name: ls-impl
-description: Orchestrate implementation inside Claude Code with progressive-disclosure docs, a durable team-impl log, and the lbuild-impl runtime.
+description: Orchestrate implementation as a live caller harness with progressive-disclosure docs, a durable team-impl log, and the lbuild-impl runtime.
 ---
 
 # Liminal Spec: ls-impl

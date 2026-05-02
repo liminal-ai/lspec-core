@@ -1,6 +1,8 @@
 import { setTimeout as sleep } from "node:timers/promises";
 import { join } from "node:path";
 
+import { z } from "zod";
+
 import { writeAtomic } from "../infra/fs-atomic.js";
 import {
 	buildAuthorityBoundaryRulingRequest,
@@ -9,9 +11,11 @@ import {
 	createCallerInputHistory,
 } from "./review-ruling.js";
 import {
-	type CallerHarnessConfigRecord,
+	type ImplRunConfig,
+	type RoleAssignment,
 	loadRunConfig,
 	resolveRunConfigPath,
+	resolveRunTimeouts,
 } from "./config-schema.js";
 import {
 	type AttachedProgressEvent,
@@ -20,6 +24,11 @@ import {
 	resolveCallerHeartbeatOptions,
 } from "./heartbeat.js";
 import { pathExists, readTextFile } from "./fs-utils.js";
+import { resolveProviderCwd } from "./git-repo.js";
+import {
+	createProviderAdapter,
+	type ProviderName,
+} from "./provider-adapters/index.js";
 import { resolveStoryOrder } from "./story-order.js";
 import { buildStoryLeadFinalPackage } from "./story-final-package.js";
 import type {
@@ -48,6 +57,7 @@ export interface StoryLeadRuntimeInput {
 	specPackRoot: string;
 	storyId: string;
 	configPath?: string;
+	env?: Record<string, string | undefined>;
 	ledger: StoryRunLedger;
 	mode: "run" | "resume";
 	startedFromPrimitiveArtifacts?: string[];
@@ -72,10 +82,16 @@ export interface StoryLeadRuntimeResult {
 	startedFromPrimitiveArtifacts?: string[];
 }
 
-async function loadCallerHarnessConfigIfPresent(input: {
+const storyLeadBootstrapResultSchema = z
+	.object({
+		summary: z.string().min(1),
+	})
+	.strict();
+
+async function loadRunConfigIfPresent(input: {
 	specPackRoot: string;
 	configPath?: string;
-}): Promise<CallerHarnessConfigRecord | undefined> {
+}): Promise<ImplRunConfig | undefined> {
 	const resolvedPath = resolveRunConfigPath(
 		input.specPackRoot,
 		input.configPath,
@@ -85,7 +101,7 @@ async function loadCallerHarnessConfigIfPresent(input: {
 	}
 
 	const config = await loadRunConfig(input);
-	return config.caller_harness;
+	return config;
 }
 
 async function resolveStoryTitle(
@@ -125,6 +141,57 @@ function readFailureMode():
 	}
 
 	return null;
+}
+
+function providerForHarness(
+	harness: RoleAssignment["secondary_harness"],
+): ProviderName {
+	if (harness === "none") {
+		return "claude-code";
+	}
+
+	return harness;
+}
+
+function resolveStoryLeadAssignment(
+	config?: ImplRunConfig,
+): RoleAssignment | undefined {
+	return config?.story_lead;
+}
+
+function buildStoryLeadBootstrapPrompt(input: {
+	storyId: string;
+	storyTitle: string;
+	storyRunId: string;
+	mode: "run" | "resume";
+	reviewRequest?: ImplLeadReviewRequest;
+	ruling?: CallerRulingResponse;
+}): string {
+	const resumeContext =
+		input.mode === "resume"
+			? [
+					"Resume context:",
+					input.reviewRequest
+						? `- Impl-lead review request: ${input.reviewRequest.summary}`
+						: "- No new impl-lead review request was provided.",
+					input.ruling
+						? `- Caller ruling: ${input.ruling.rulingRequestId} -> ${input.ruling.decision}`
+						: "- No new caller ruling was provided.",
+				].join("\n")
+			: "Resume context:\n- This is a fresh run with no prior caller input.";
+
+	return [
+		"You are the story-lead bootstrap handshake for lbuild-impl.",
+		"Confirm that you can take ownership of this one story and continue using the configured provider session when asked to resume.",
+		"Return exactly one JSON object with no markdown fences, prose, or extra keys.",
+		'Use this exact schema: {"summary":"string"}',
+		"",
+		`Story id: ${input.storyId}`,
+		`Story title: ${input.storyTitle}`,
+		`Story run id: ${input.storyRunId}`,
+		`Mode: ${input.mode}`,
+		resumeContext,
+	].join("\n");
 }
 
 function artifactKindForCommand(
@@ -409,10 +476,13 @@ export async function runStoryLead(
 	const storyId = input.storyId;
 	const storyTitle = await resolveStoryTitle(input.specPackRoot, storyId);
 	const startedAtMs = Date.now();
-	const callerHarnessConfig = await loadCallerHarnessConfigIfPresent({
+	const loadedConfig = await loadRunConfigIfPresent({
 		specPackRoot: input.specPackRoot,
 		configPath: input.configPath,
 	});
+	const callerHarnessConfig = loadedConfig?.caller_harness;
+	const storyLeadAssignment = resolveStoryLeadAssignment(loadedConfig);
+	const timeouts = loadedConfig ? resolveRunTimeouts(loadedConfig) : undefined;
 	const resolvedHeartbeat = resolveCallerHeartbeatOptions({
 		callerHarness: input.callerHarness,
 		heartbeatCadenceMinutes: input.heartbeatCadenceMinutes,
@@ -425,6 +495,7 @@ export async function runStoryLead(
 		resolvedHeartbeat?.callerHarness ??
 		callerHarnessConfig?.harness ??
 		"generic";
+	const providerCwd = await resolveProviderCwd(input.specPackRoot);
 	const priorAttempt = input.existingAttempt;
 	const priorSnapshot = reopeningAcceptedAttempt
 		? undefined
@@ -667,6 +738,113 @@ export async function runStoryLead(
 			},
 			currentChildOperation: currentSnapshot.currentChildOperation,
 			storyLeadSession: currentSnapshot.storyLeadSession,
+			latestContinuationHandles: currentSnapshot.latestContinuationHandles,
+			replayBoundary: null,
+		});
+		await input.ledger.writeCurrentSnapshot({
+			storyId,
+			storyRunId: attemptPaths.storyRunId,
+			snapshot: currentSnapshot,
+		});
+	}
+
+	if (storyLeadAssignment) {
+		const provider = providerForHarness(storyLeadAssignment.secondary_harness);
+		const resumeSessionId =
+			currentSnapshot.storyLeadSession?.provider === provider
+				? currentSnapshot.storyLeadSession.sessionId
+				: undefined;
+		const adapter = createProviderAdapter(provider, {
+			env: input.env,
+		});
+		const providerExecution = await adapter.execute({
+			prompt: buildStoryLeadBootstrapPrompt({
+				storyId,
+				storyTitle,
+				storyRunId: attemptPaths.storyRunId,
+				mode: input.mode,
+				reviewRequest: input.reviewRequest,
+				ruling: input.ruling,
+			}),
+			cwd: providerCwd,
+			model: storyLeadAssignment.model,
+			reasoningEffort: storyLeadAssignment.reasoning_effort,
+			...(resumeSessionId ? { resumeSessionId } : {}),
+			timeoutMs: timeouts?.story_implementor_ms ?? 7_200_000,
+			startupTimeoutMs: timeouts?.provider_startup_timeout_ms ?? 300_000,
+			silenceTimeoutMs:
+				timeouts?.story_implementor_silence_timeout_ms ?? 600_000,
+			resultSchema: storyLeadBootstrapResultSchema,
+		});
+		const providerFailureDetail = [
+			providerExecution.errorCode,
+			providerExecution.parseError,
+			providerExecution.stderr,
+		]
+			.filter(
+				(value): value is string =>
+					typeof value === "string" && value.trim().length > 0,
+			)
+			.join("; ");
+
+		if (
+			providerExecution.exitCode !== 0 ||
+			providerExecution.parseError ||
+			!providerExecution.parsedResult
+		) {
+			throw new Error(
+				`Story-lead provider ${provider} failed to start for ${attemptPaths.storyRunId}.${providerFailureDetail ? ` ${providerFailureDetail}` : ""}`,
+			);
+		}
+
+		const storyLeadSessionId =
+			providerExecution.sessionId ?? resumeSessionId ?? undefined;
+		const storyLeadSession = storyLeadSessionId
+			? {
+					provider,
+					sessionId: storyLeadSessionId,
+					model: storyLeadAssignment.model,
+					reasoningEffort: storyLeadAssignment.reasoning_effort,
+				}
+			: undefined;
+		const providerEvent = buildEvent({
+			storyRunId: attemptPaths.storyRunId,
+			sequence: currentSnapshot.latestEventSequence + 1,
+			type:
+				input.mode === "resume"
+					? "story-lead-provider-resumed"
+					: "story-lead-provider-started",
+			summary: providerExecution.parsedResult.summary,
+			data: {
+				provider,
+				model: storyLeadAssignment.model,
+				reasoningEffort: storyLeadAssignment.reasoning_effort,
+				...(storyLeadSessionId ? { sessionId: storyLeadSessionId } : {}),
+			},
+		});
+		await input.ledger.appendEvent({
+			storyId,
+			storyRunId: attemptPaths.storyRunId,
+			event: providerEvent,
+		});
+		currentSnapshot = buildSnapshot({
+			...currentSnapshot,
+			attemptPaths,
+			status: "running",
+			currentSummary: providerExecution.parsedResult.summary,
+			currentPhase: "story-lead-active",
+			latestArtifacts: currentSnapshot.latestArtifacts,
+			latestEventSequence: providerEvent.sequence,
+			callerInputHistory,
+			nextIntent: {
+				actionType:
+					input.mode === "resume"
+						? "continue-story-lead-session"
+						: "launch-story-lead-session",
+				summary: providerExecution.parsedResult.summary,
+			},
+			currentChildOperation: currentSnapshot.currentChildOperation,
+			storyLeadSession,
 			latestContinuationHandles: currentSnapshot.latestContinuationHandles,
 			replayBoundary: null,
 		});

@@ -2,6 +2,8 @@
 
 Stage 3 runs once per story in order. For each story you launch implementation, run explicit self-review, review verification, route any follow-up, run the final story gate yourself, record a receipt, and advance. Repeat until every story is accepted.
 
+If you use `story-orchestrate`, treat it as a story-lead helper for one story rather than as outer acceptance authority. Story-lead can own the internal story loop and hand back a final package, but impl-lead still reviews that package, finishes the receipt, makes the story commit, and decides whether the story is actually accepted.
+
 Update `State` and `Current Phase` in `team-impl-log.md` as you move through the steps. Recovery uses these values to resume from the right place.
 
 | Step | State | Current Phase |
@@ -23,6 +25,7 @@ When you background any provider-backed CLI call in this phase, keep following i
 - In Codex, keep the same exec session open, poll again with empty input, and do not final while the command is still active.
 - In Claude Code, Monitor may be used when available; do not assume that Monitor exists in Codex.
 - Heartbeats are summaries on `stderr`, not replacements for the final JSON envelope on `stdout`.
+- The caller harness receives the heartbeat. The provider harness may be different.
 
 ## 1. Launch implementation
 
@@ -94,12 +97,15 @@ Write a pre-acceptance receipt into `team-impl-log.md` with:
 - story id and title
 - implementor result artifact path
 - verifier result artifact paths
+- any `story-orchestrate` final package, `logHandoff`, and story receipt draft paths when story-lead was used
 - story gate command run and its result
 - disposition (`fixed`, `accepted-risk`, or `defer`) for every unresolved finding
 - open risks remaining after acceptance
 - cumulative baseline before and after this story
 
 Once the receipt is complete and every finding has a disposition, commit the story's changes. The commit is part of acceptance: until it lands, the story remains in `accept` phase and recovery will expect the commit before advancing.
+
+If story-lead carried `accepted-risk` or `defer` items, preserve them in the receipt and carry them forward into the cleanup batch before epic verification.
 
 ## Advance
 

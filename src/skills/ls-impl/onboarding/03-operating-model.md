@@ -1,6 +1,6 @@
 # Operating Model
 
-You own the decisions. The CLI executes bounded operations for you and hands back structured results. Every move between calls is yours.
+You own the decisions. The CLI executes bounded operations for you and hands back structured results. Every move between calls is yours, whether the live caller harness is Codex, Claude Code, or another host.
 
 ## What you own
 
@@ -8,6 +8,7 @@ You own the decisions. The CLI executes bounded operations for you and hands bac
 - Choosing which bounded CLI operation to run at each moment.
 - Routing follow-up work after an implementor or verifier returns.
 - Story progression and epic progression.
+- Reviewing, accepting, rejecting, or reopening story-lead output when `story-orchestrate` is in play.
 - Running the final story gate and the final epic gate yourself.
 - Story acceptance and epic acceptance decisions.
 - Recovery strategy after interruption — what to replay, what to trust, when to pause.
@@ -17,6 +18,7 @@ You own the decisions. The CLI executes bounded operations for you and hands bac
 
 - One bounded operation per call.
 - Structured result envelopes on stdout and persisted under `artifacts/`.
+- When `story-orchestrate` is used, one provider-backed story-lead loop for one story that returns a final package and durable story-run state.
 - No autonomous progression between stages.
 
 ## What must never be delegated
@@ -37,6 +39,14 @@ That is why the runtime progress surface exists. When you background a provider-
 
 Primitive provider-backed commands now emit heartbeat reminders on `stderr` while they are still running. Treat those reminders as prompts to keep monitoring the same live command instead of as final results.
 
+Those heartbeat reminders are written for the caller harness watching the command, not for the provider harness doing the implementation work behind the scenes.
+
 - In Codex, keep the original exec session open, poll it again with empty input, and do not final while the command still reports itself as running.
 - In Claude Code, use Monitor when it is available; otherwise keep following the attached command output directly.
 - The heartbeat cadence is fixed and summary-based. Do not expect one message for every provider stdout/stderr event.
+
+## Story-lead boundary
+
+- `story-orchestrate` launches one story-lead for one story at a time.
+- Story-lead owns the internal loop for that story and returns one final package plus durable story-run artifacts.
+- Impl-lead stays outside that loop. You review the final package, decide whether to accept, reject, reopen, or pause for ruling, and keep run-level authority.

@@ -1,6 +1,6 @@
 # Current State Code Map
 
-Generated: 2026-04-30
+Generated: 2026-05-02
 
 Use this as a guided read of the current implementation.
 
@@ -19,6 +19,10 @@ Use this as a guided read of the current implementation.
 - `src/cli/output.ts`: text/JSON output behavior.
 - `src/cli/envelope.ts`: CLI envelope presentation helpers.
 
+Story-orchestrate surface:
+
+- `src/cli/commands/story-orchestrate*.ts`: `run`, `resume`, and `status` wrappers.
+
 ## SDK Surface
 
 - `src/sdk/index.ts`: public SDK exports.
@@ -34,6 +38,11 @@ Use this as a guided read of the current implementation.
 - `src/core/artifact-writer.ts`: artifact allocation and persistence.
 - `src/core/runtime-progress.ts`: progress/status persistence.
 - `src/core/command-errors.ts`: error classification for CLI and SDK callers.
+- `src/core/heartbeat.ts`: primitive and story-level caller heartbeat emission.
+- `src/core/story-run-discovery.ts`: durable story-run selection by story id / story run id.
+- `src/core/story-run-ledger.ts`: current snapshot, event history, and final-package persistence for story-lead attempts.
+- `src/core/story-lead.ts`: story-lead runtime surface, provider composition, and durable recovery.
+- `src/core/story-final-package.ts`: story-lead final package assembly, log handoff, and cleanup handoff shaping.
 - `src/core/story-implementor.ts`: story implementation orchestration.
 - `src/core/story-verifier.ts`: story verification orchestration.
 - `src/core/quick-fix.ts`: bounded fix orchestration.
@@ -86,4 +95,3 @@ Important release tests:
 - `scripts/check-release-evidence.ts`: release evidence gate.
 - `scripts/check-release-version-sync.ts`: package/changelog/version gate.
 - `scripts/pack-and-install-smoke.ts`: local npm pack and install smoke.
-
