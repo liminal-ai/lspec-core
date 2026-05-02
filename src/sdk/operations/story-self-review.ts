@@ -4,16 +4,16 @@ import {
 	nextGroupedArtifactPaths,
 } from "../../core/artifact-writer.js";
 import {
+	loadRunConfig,
 	MAX_SELF_REVIEW_PASSES,
 	MIN_SELF_REVIEW_PASSES,
-	loadRunConfig,
 } from "../../core/config-schema.js";
 import { storySelfReviewResultSchema } from "../../core/result-contracts.js";
 import { runStorySelfReview } from "../../core/story-implementor.js";
 import {
-	storySelfReviewInputSchema,
 	type StorySelfReviewInput,
 	type StorySelfReviewResult,
+	storySelfReviewInputSchema,
 } from "../contracts/operations.js";
 import {
 	buildUnexpectedEnvelope,
@@ -144,6 +144,10 @@ export async function storySelfReview(
 				runtimeProgressPaths:
 					parsedInput.runtimeProgressPaths ??
 					buildRuntimeProgressPaths(artifactPath),
+				callerHarness: parsedInput.callerHarness,
+				heartbeatCadenceMinutes: parsedInput.heartbeatCadenceMinutes,
+				disableHeartbeats: parsedInput.disableHeartbeats,
+				progressListener: parsedInput.progressListener,
 			});
 			const passArtifacts =
 				outcome.result?.passArtifacts ?? outcome.passArtifacts ?? [];

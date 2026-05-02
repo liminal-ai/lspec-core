@@ -4,33 +4,41 @@ import { join, resolve } from "node:path";
 import { z } from "zod";
 
 import {
+	type CallerHarnessConfigRecord,
 	loadRunConfig,
 	resolveConfiguredVerificationGates,
 	resolveRunTimeouts,
 } from "./config-schema";
-import { resolveVerificationGates } from "./gate-discovery";
 import { pathExists, readTextFile } from "./fs-utils";
+import { resolveVerificationGates } from "./gate-discovery";
 import { resolveProviderCwd } from "./git-repo";
+import {
+	type AttachedProgressEvent,
+	type CallerHarness,
+	createPrimitiveHeartbeatEmitter,
+	type HeartbeatEmitter,
+	type HeartbeatOptions,
+} from "./heartbeat";
 import { assemblePrompt, PromptInsertError } from "./prompt-assembly";
+import type { ProviderStreamOutputPaths } from "./provider-adapters";
 import {
 	createProviderAdapter,
 	type ProviderLifecycleEvent,
 	type ProviderName,
 } from "./provider-adapters";
-import type { ProviderStreamOutputPaths } from "./provider-adapters";
 import {
-	RuntimeProgressTracker,
-	type RuntimeProgressPaths,
-} from "./runtime-progress";
-import {
-	providerIdSchema,
-	priorFindingStatusSchema,
-	verifierFindingSchema,
-	storyVerifierResultSchema,
 	type CliError,
+	priorFindingStatusSchema,
+	providerIdSchema,
 	type StoryVerifierResult,
+	storyVerifierResultSchema,
+	verifierFindingSchema,
 } from "./result-contracts";
 import { readdirDirents } from "./runtime-deps";
+import {
+	type RuntimeProgressPaths,
+	RuntimeProgressTracker,
+} from "./runtime-progress";
 import { inspectSpecPack } from "./spec-pack";
 
 const storyVerifierResultBaseSchema = z
@@ -86,6 +94,7 @@ interface PreparedStoryContext {
 	timeoutMs: number;
 	startupTimeoutMs: number;
 	silenceTimeoutMs: number;
+	callerHarnessConfig?: CallerHarnessConfigRecord;
 }
 
 interface WorkflowFailure {
@@ -252,7 +261,32 @@ async function prepareStoryVerifyContext(input: {
 		startupTimeoutMs: resolveRunTimeouts(config).provider_startup_timeout_ms,
 		silenceTimeoutMs:
 			resolveRunTimeouts(config).story_verifier_silence_timeout_ms,
+		callerHarnessConfig: config.caller_harness,
 	};
+}
+
+function startPrimitiveHeartbeat(input: {
+	command: string;
+	context: Pick<PreparedStoryContext, "callerHarnessConfig">;
+	heartbeatOptions: HeartbeatOptions;
+	progressTracker?: RuntimeProgressTracker;
+}): HeartbeatEmitter | null {
+	if (!input.progressTracker) {
+		return null;
+	}
+	const progressTracker = input.progressTracker;
+
+	const heartbeat = createPrimitiveHeartbeatEmitter({
+		command: input.command,
+		config: input.context.callerHarnessConfig,
+		callerHarness: input.heartbeatOptions.callerHarness,
+		heartbeatCadenceMinutes: input.heartbeatOptions.heartbeatCadenceMinutes,
+		disableHeartbeats: input.heartbeatOptions.disableHeartbeats,
+		progressListener: input.heartbeatOptions.progressListener,
+		readSnapshot: () => progressTracker.getSnapshot(),
+	});
+	heartbeat?.start();
+	return heartbeat;
 }
 
 function executionFailureError(input: {
@@ -510,6 +544,10 @@ export async function runStoryVerify(input: {
 	artifactPath?: string;
 	streamOutputPaths?: ProviderStreamOutputPaths;
 	runtimeProgressPaths?: RuntimeProgressPaths;
+	callerHarness?: CallerHarness;
+	heartbeatCadenceMinutes?: number;
+	disableHeartbeats?: boolean;
+	progressListener?: (event: AttachedProgressEvent) => void;
 }): Promise<StoryVerifyWorkflowResult> {
 	const mode =
 		typeof input.provider === "string" || typeof input.sessionId === "string"
@@ -583,6 +621,12 @@ export async function runStoryVerify(input: {
 				verifiersPlanned: 1,
 			})
 		: undefined;
+	const heartbeat = startPrimitiveHeartbeat({
+		command: "story-verify",
+		context,
+		heartbeatOptions: input,
+		progressTracker,
+	});
 
 	try {
 		const prompt = await assemblePrompt({
@@ -717,5 +761,7 @@ export async function runStoryVerify(input: {
 		}
 
 		throw error;
+	} finally {
+		heartbeat?.stop();
 	}
 }

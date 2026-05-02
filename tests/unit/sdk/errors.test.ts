@@ -2,7 +2,7 @@ import { join } from "node:path";
 
 import { describe, expect, test } from "vitest";
 
-import { preflight, inspect } from "../../../src/sdk";
+import { inspect, preflight } from "../../../src/sdk";
 import { InvalidInputError } from "../../../src/sdk/errors";
 import { createSpecPack, writeTextFile } from "../../support/test-helpers";
 

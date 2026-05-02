@@ -5,19 +5,27 @@ import { z } from "zod";
 
 import { writeJsonArtifact } from "./artifact-writer";
 import {
+	type CallerHarnessConfigRecord,
 	loadRunConfig,
 	resolveConfiguredVerificationGates,
 	resolveRunTimeouts,
 } from "./config-schema";
 import { resolveVerificationGates } from "./gate-discovery";
 import { resolveProviderCwd } from "./git-repo";
+import {
+	type AttachedProgressEvent,
+	type CallerHarness,
+	createPrimitiveHeartbeatEmitter,
+	type HeartbeatEmitter,
+	type HeartbeatOptions,
+} from "./heartbeat";
 import { assemblePrompt, PromptInsertError } from "./prompt-assembly";
+import type { ProviderStreamOutputPaths } from "./provider-adapters";
 import {
 	createProviderAdapter,
 	type ProviderLifecycleEvent,
 	type ProviderName,
 } from "./provider-adapters";
-import type { ProviderStreamOutputPaths } from "./provider-adapters";
 import type {
 	CliError,
 	ImplementorResult,
@@ -25,8 +33,8 @@ import type {
 } from "./result-contracts";
 import { implementorResultSchema, providerIdSchema } from "./result-contracts";
 import {
-	RuntimeProgressTracker,
 	type RuntimeProgressPaths,
+	RuntimeProgressTracker,
 } from "./runtime-progress";
 import { inspectSpecPack } from "./spec-pack";
 
@@ -107,6 +115,7 @@ interface PreparedStoryContext {
 	timeoutMs: number;
 	startupTimeoutMs: number;
 	silenceTimeoutMs: number;
+	callerHarnessConfig?: CallerHarnessConfigRecord;
 }
 
 interface WorkflowFailure {
@@ -275,7 +284,32 @@ async function prepareStoryContext(input: {
 		startupTimeoutMs: resolveRunTimeouts(config).provider_startup_timeout_ms,
 		silenceTimeoutMs:
 			resolveRunTimeouts(config).story_implementor_silence_timeout_ms,
+		callerHarnessConfig: config.caller_harness,
 	};
+}
+
+function startPrimitiveHeartbeat(input: {
+	command: string;
+	context: Pick<PreparedStoryContext, "callerHarnessConfig">;
+	heartbeatOptions: HeartbeatOptions;
+	progressTracker?: RuntimeProgressTracker;
+}): HeartbeatEmitter | null {
+	if (!input.progressTracker) {
+		return null;
+	}
+	const progressTracker = input.progressTracker;
+
+	const heartbeat = createPrimitiveHeartbeatEmitter({
+		command: input.command,
+		config: input.context.callerHarnessConfig,
+		callerHarness: input.heartbeatOptions.callerHarness,
+		heartbeatCadenceMinutes: input.heartbeatOptions.heartbeatCadenceMinutes,
+		disableHeartbeats: input.heartbeatOptions.disableHeartbeats,
+		progressListener: input.heartbeatOptions.progressListener,
+		readSnapshot: () => progressTracker.getSnapshot(),
+	});
+	heartbeat?.start();
+	return heartbeat;
 }
 
 function executionFailureError(input: {
@@ -817,6 +851,10 @@ export async function runStoryImplement(input: {
 	artifactPath?: string;
 	streamOutputPaths?: ProviderStreamOutputPaths;
 	runtimeProgressPaths?: RuntimeProgressPaths;
+	callerHarness?: CallerHarness;
+	heartbeatCadenceMinutes?: number;
+	disableHeartbeats?: boolean;
+	progressListener?: (event: AttachedProgressEvent) => void;
 }): Promise<StoryWorkflowResult> {
 	const context = await prepareStoryContext(input);
 	if ("errors" in context) {
@@ -847,6 +885,12 @@ export async function runStoryImplement(input: {
 				selfReviewPassesPlanned: 0,
 			})
 		: undefined;
+	const heartbeat = startPrimitiveHeartbeat({
+		command: "story-implement",
+		context,
+		heartbeatOptions: input,
+		progressTracker,
+	});
 
 	try {
 		const initial = await runImplementorPass({
@@ -917,6 +961,8 @@ export async function runStoryImplement(input: {
 		}
 
 		throw error;
+	} finally {
+		heartbeat?.stop();
 	}
 }
 
@@ -931,6 +977,10 @@ export async function runStoryContinue(input: {
 	artifactPath?: string;
 	streamOutputPaths?: ProviderStreamOutputPaths;
 	runtimeProgressPaths?: RuntimeProgressPaths;
+	callerHarness?: CallerHarness;
+	heartbeatCadenceMinutes?: number;
+	disableHeartbeats?: boolean;
+	progressListener?: (event: AttachedProgressEvent) => void;
 }): Promise<StoryWorkflowResult> {
 	const continuationError = await validateContinuationHandle({
 		specPackRoot: input.specPackRoot,
@@ -994,6 +1044,12 @@ export async function runStoryContinue(input: {
 				selfReviewPassesPlanned: 0,
 			})
 		: undefined;
+	const heartbeat = startPrimitiveHeartbeat({
+		command: "story-continue",
+		context,
+		heartbeatOptions: input,
+		progressTracker,
+	});
 
 	try {
 		const initial = await runImplementorPass({
@@ -1066,6 +1122,8 @@ export async function runStoryContinue(input: {
 		}
 
 		throw error;
+	} finally {
+		heartbeat?.stop();
 	}
 }
 
@@ -1081,6 +1139,10 @@ export async function runStorySelfReview(input: {
 	artifactPath?: string;
 	streamOutputPaths?: ProviderStreamOutputPaths;
 	runtimeProgressPaths?: RuntimeProgressPaths;
+	callerHarness?: CallerHarness;
+	heartbeatCadenceMinutes?: number;
+	disableHeartbeats?: boolean;
+	progressListener?: (event: AttachedProgressEvent) => void;
 }): Promise<StorySelfReviewWorkflowResult> {
 	const continuationError = await validateContinuationHandle({
 		specPackRoot: input.specPackRoot,
@@ -1144,6 +1206,12 @@ export async function runStorySelfReview(input: {
 				selfReviewPassesPlanned: input.passes,
 			})
 		: undefined;
+	const heartbeat = startPrimitiveHeartbeat({
+		command: "story-self-review",
+		context,
+		heartbeatOptions: input,
+		progressTracker,
+	});
 
 	try {
 		const selfReview = await runSelfReviewPasses({
@@ -1224,5 +1292,7 @@ export async function runStorySelfReview(input: {
 		}
 
 		throw error;
+	} finally {
+		heartbeat?.stop();
 	}
 }

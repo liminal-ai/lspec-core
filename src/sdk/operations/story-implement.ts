@@ -1,9 +1,9 @@
-import { runStoryImplement } from "../../core/story-implementor.js";
 import { implementorResultSchema } from "../../core/result-contracts.js";
+import { runStoryImplement } from "../../core/story-implementor.js";
 import {
-	storyImplementInputSchema,
 	type StoryImplementInput,
 	type StoryImplementResult,
+	storyImplementInputSchema,
 } from "../contracts/operations.js";
 import {
 	buildUnexpectedEnvelope,
@@ -37,6 +37,10 @@ export async function storyImplement(
 				artifactPath,
 				streamOutputPaths: parsedInput.streamOutputPaths,
 				runtimeProgressPaths: parsedInput.runtimeProgressPaths,
+				callerHarness: parsedInput.callerHarness,
+				heartbeatCadenceMinutes: parsedInput.heartbeatCadenceMinutes,
+				disableHeartbeats: parsedInput.disableHeartbeats,
+				progressListener: parsedInput.progressListener,
 			});
 			return await finalizeEnvelope({
 				command: "story-implement",

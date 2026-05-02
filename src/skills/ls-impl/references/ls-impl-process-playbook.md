@@ -31,8 +31,11 @@ This is the main process reference after setup. Use it to decide which bounded C
 
 ## Polling Long-Running Work
 
-- When a provider-backed operation is still running, check the runtime artifacts on disk rather than waiting blind.
-- Poll in this order:
+- When a provider-backed operation is still running, keep the live command open and check the runtime artifacts on disk rather than waiting blind.
+- Heartbeat lines on `stderr` are monitoring prompts, not routing results. They preserve exact JSON stdout and repeat the command name, elapsed time, status artifact, latest progress, silence duration, and next polling action.
+- In Codex, keep the original exec session open. Poll that same running session with empty input on the heartbeat cadence, then inspect the referenced status artifact if you need more detail. Do not final while the command is still running.
+- In Claude Code, use Monitor when it is available. If Monitor is not available, keep following the attached command output and status artifact directly. Do not assume Monitor exists in Codex.
+- Poll artifacts in this order:
   - read `status.json`
   - compare `updatedAt` and `lastOutputAt`
   - tail the stream logs if you need more detail

@@ -1,9 +1,9 @@
 import {
 	appendProviderOutputDiagnostics,
-	parseProviderPayload,
-	runProviderCommand,
 	type ProviderAdapter,
 	type ProviderExecutionRequest,
+	parseProviderPayload,
+	runProviderCommand,
 } from "./shared";
 
 interface CopilotAdapterOptions {

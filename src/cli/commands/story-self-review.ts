@@ -9,8 +9,10 @@ import {
 	createCommandErrorEnvelope,
 	emitCommandEnvelope,
 	emitPersistedCommandEnvelope,
+	providerHeartbeatArgs,
 	rejectUnknownCommandArgs,
 	resolveCommandArtifactPath,
+	resolvePrimitiveHeartbeatCliOptions,
 } from "./shared.js";
 
 function parsePasses(value: unknown): number {
@@ -74,6 +76,7 @@ export default defineCommand({
 			type: "string",
 			description: "Explicit run-config file relative to the spec-pack root",
 		},
+		...providerHeartbeatArgs,
 		json: {
 			type: "boolean",
 			description: "Emit the structured JSON envelope on stdout",
@@ -96,6 +99,7 @@ export default defineCommand({
 				passes: parsePasses(args.passes),
 				passArtifactPaths: [],
 				configPath: args.config,
+				...resolvePrimitiveHeartbeatCliOptions(args),
 			});
 			emitCommandEnvelope({
 				envelope,

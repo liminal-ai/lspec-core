@@ -1,3 +1,5 @@
+export { ConfigLoadError } from "../../core/config-schema.js";
+export { PromptInsertError } from "../../core/prompt-assembly.js";
 export { ImplCliError } from "./base.js";
 export {
 	AtomicWriteError,
@@ -14,5 +16,3 @@ export {
 	ProviderUnavailableError,
 	VerificationGateUnresolvedError,
 } from "./classes.js";
-export { ConfigLoadError } from "../../core/config-schema.js";
-export { PromptInsertError } from "../../core/prompt-assembly.js";

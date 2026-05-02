@@ -18,7 +18,11 @@ Update `State` and `Current Phase` in `team-impl-log.md` as you move through the
 
 Before any work, confirm which story is active from the ordered story list in `team-impl-log.md`. At the start of a new story, confirm `Current Story` matches the story file you're about to implement.
 
-When you background any provider-backed CLI call in this phase, start polling its runtime progress on a 5-minute cadence instead of waiting only on the background job notification. This avoids the failure mode where the orchestrator waits indefinitely on a hung task even though `status.json`, `updatedAt`, `lastOutputAt`, or the stream logs already show that something is wrong. Use `references/ls-impl-process-playbook.md` for the polling procedure.
+When you background any provider-backed CLI call in this phase, keep following its runtime progress on the heartbeat cadence instead of waiting only on the background job notification. This avoids the failure mode where the orchestrator waits indefinitely on a hung task even though `status.json`, `updatedAt`, `lastOutputAt`, or the stream logs already show that something is wrong. Use `references/ls-impl-process-playbook.md` for the polling procedure.
+
+- In Codex, keep the same exec session open, poll again with empty input, and do not final while the command is still active.
+- In Claude Code, Monitor may be used when available; do not assume that Monitor exists in Codex.
+- Heartbeats are summaries on `stderr`, not replacements for the final JSON envelope on `stdout`.
 
 ## 1. Launch implementation
 

@@ -1,5 +1,5 @@
-import { describe, expect, test } from "vitest";
 import { join } from "node:path";
+import { describe, expect, test } from "vitest";
 
 import { createSpecPack, writeTextFile } from "../../support/test-helpers";
 

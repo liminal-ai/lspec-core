@@ -10,9 +10,9 @@ import { resolveProviderMatrix } from "../../core/provider-checks.js";
 import { preflightResultSchema } from "../../core/result-contracts.js";
 import { inspectSpecPack } from "../../core/spec-pack.js";
 import {
-	preflightInputSchema,
 	type PreflightInput,
 	type PreflightResult,
+	preflightInputSchema,
 } from "../contracts/operations.js";
 import {
 	buildUnexpectedEnvelope,

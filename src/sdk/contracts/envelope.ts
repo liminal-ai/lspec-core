@@ -1,11 +1,11 @@
 import {
+	type CliArtifactRef as CoreCliArtifactRef,
+	type CliError as CoreCliError,
+	type CliStatus as CoreCliStatus,
 	cliArtifactRefSchema,
 	cliErrorSchema,
 	cliResultEnvelopeSchema,
 	cliStatusSchema,
-	type CliArtifactRef as CoreCliArtifactRef,
-	type CliError as CoreCliError,
-	type CliStatus as CoreCliStatus,
 } from "../../core/result-contracts.js";
 
 export {

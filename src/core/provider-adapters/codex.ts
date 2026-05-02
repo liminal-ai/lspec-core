@@ -2,7 +2,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import type { z } from "zod";
-
+import { mkdtemp, readFile, rm, writeFile } from "../runtime-deps";
 import {
 	buildStrictCodexOutputSchema,
 	extractCodexStructuredOutputError,
@@ -10,12 +10,11 @@ import {
 } from "./codex-output-schema";
 import {
 	appendProviderOutputDiagnostics,
-	parseProviderPayload,
-	runProviderCommand,
 	type ProviderAdapter,
 	type ProviderExecutionRequest,
+	parseProviderPayload,
+	runProviderCommand,
 } from "./shared";
-import { mkdtemp, readFile, rm, writeFile } from "../runtime-deps";
 
 interface CodexAdapterOptions {
 	env?: Record<string, string | undefined>;

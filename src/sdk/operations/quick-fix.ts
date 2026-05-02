@@ -1,9 +1,9 @@
 import { runQuickFix } from "../../core/quick-fix.js";
 import { quickFixResultSchema } from "../../core/result-contracts.js";
 import {
-	quickFixInputSchema,
 	type QuickFixInput,
 	type QuickFixResult,
+	quickFixInputSchema,
 } from "../contracts/operations.js";
 import {
 	buildUnexpectedEnvelope,
@@ -34,6 +34,10 @@ export async function quickFix(input: QuickFixInput): Promise<QuickFixResult> {
 				artifactPath,
 				streamOutputPaths: parsedInput.streamOutputPaths,
 				runtimeProgressPaths: parsedInput.runtimeProgressPaths,
+				callerHarness: parsedInput.callerHarness,
+				heartbeatCadenceMinutes: parsedInput.heartbeatCadenceMinutes,
+				disableHeartbeats: parsedInput.disableHeartbeats,
+				progressListener: parsedInput.progressListener,
 			});
 			return await finalizeEnvelope({
 				command: "quick-fix",

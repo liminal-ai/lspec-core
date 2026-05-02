@@ -1,9 +1,9 @@
 import { runEpicSynthesize } from "../../core/epic-synthesizer.js";
 import { epicSynthesisResultSchema } from "../../core/result-contracts.js";
 import {
-	epicSynthesizeInputSchema,
-	type EpicSynthesizeInput,
 	type EpicSynthesisResult,
+	type EpicSynthesizeInput,
+	epicSynthesizeInputSchema,
 } from "../contracts/operations.js";
 import {
 	buildUnexpectedEnvelope,
@@ -53,6 +53,10 @@ export async function epicSynthesize(
 				artifactPath,
 				streamOutputPaths: parsedInput.streamOutputPaths,
 				runtimeProgressPaths: parsedInput.runtimeProgressPaths,
+				callerHarness: parsedInput.callerHarness,
+				heartbeatCadenceMinutes: parsedInput.heartbeatCadenceMinutes,
+				disableHeartbeats: parsedInput.disableHeartbeats,
+				progressListener: parsedInput.progressListener,
 			});
 			return await finalizeEnvelope({
 				command: "epic-synthesize",

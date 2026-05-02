@@ -1,9 +1,9 @@
-import { runStoryVerify } from "../../core/story-verifier.js";
 import { storyVerifierResultSchema } from "../../core/result-contracts.js";
+import { runStoryVerify } from "../../core/story-verifier.js";
 import {
-	storyVerifyInputSchema,
 	type StoryVerifyInput,
 	type StoryVerifyResult,
+	storyVerifyInputSchema,
 } from "../contracts/operations.js";
 import {
 	buildUnexpectedEnvelope,
@@ -41,6 +41,10 @@ export async function storyVerify(
 				artifactPath,
 				streamOutputPaths: parsedInput.streamOutputPaths,
 				runtimeProgressPaths: parsedInput.runtimeProgressPaths,
+				callerHarness: parsedInput.callerHarness,
+				heartbeatCadenceMinutes: parsedInput.heartbeatCadenceMinutes,
+				disableHeartbeats: parsedInput.disableHeartbeats,
+				progressListener: parsedInput.progressListener,
 			});
 			return await finalizeEnvelope({
 				command: "story-verify",

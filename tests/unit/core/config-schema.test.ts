@@ -1,5 +1,5 @@
-import { describe, expect, test } from "vitest";
 import { join } from "node:path";
+import { describe, expect, test } from "vitest";
 
 import { resolveRunConfigPath } from "../../../src/core/config-schema";
 import { createSpecPack, writeTextFile } from "../../support/test-helpers";

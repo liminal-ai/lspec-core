@@ -1,9 +1,9 @@
 import { runEpicCleanup } from "../../core/epic-cleanup.js";
 import { epicCleanupResultSchema } from "../../core/result-contracts.js";
 import {
-	epicCleanupInputSchema,
 	type EpicCleanupInput,
 	type EpicCleanupResult,
+	epicCleanupInputSchema,
 } from "../contracts/operations.js";
 import {
 	buildUnexpectedEnvelope,
@@ -37,6 +37,10 @@ export async function epicCleanup(
 				artifactPath,
 				streamOutputPaths: parsedInput.streamOutputPaths,
 				runtimeProgressPaths: parsedInput.runtimeProgressPaths,
+				callerHarness: parsedInput.callerHarness,
+				heartbeatCadenceMinutes: parsedInput.heartbeatCadenceMinutes,
+				disableHeartbeats: parsedInput.disableHeartbeats,
+				progressListener: parsedInput.progressListener,
 			});
 			return await finalizeEnvelope({
 				command: "epic-cleanup",

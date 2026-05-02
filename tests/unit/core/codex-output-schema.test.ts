@@ -1,9 +1,8 @@
 import { expect, test } from "vitest";
-
-import { buildStrictCodexOutputSchema } from "../../../src/core/provider-adapters/codex-output-schema";
 import { epicCleanupProviderPayloadSchema } from "../../../src/core/epic-cleanup";
 import { epicSynthesisProviderPayloadSchema } from "../../../src/core/epic-synthesizer";
 import { epicVerifierProviderPayloadSchema } from "../../../src/core/epic-verifier";
+import { buildStrictCodexOutputSchema } from "../../../src/core/provider-adapters/codex-output-schema";
 import { storyImplementorProviderPayloadSchema } from "../../../src/core/story-implementor";
 import { storyVerifierProviderPayloadSchema } from "../../../src/core/story-verifier";
 

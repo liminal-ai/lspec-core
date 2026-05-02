@@ -1,5 +1,5 @@
-import { randomUUID } from "node:crypto";
 import { spawn } from "node:child_process";
+import { randomUUID } from "node:crypto";
 import { chmod, mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
@@ -310,6 +310,7 @@ export interface FakeProviderResponse {
 	stderr?: string;
 	exitCode?: number;
 	lastMessage?: string;
+	delayMs?: number;
 }
 
 export async function writeFakeProviderExecutable(params: {
@@ -340,6 +341,7 @@ export async function writeFakeProviderExecutable(params: {
 		[
 			"#!/usr/bin/env node",
 			'import { appendFileSync, existsSync, readFileSync, writeFileSync } from "node:fs";',
+			'import { setTimeout as sleep } from "node:timers/promises";',
 			'import { basename } from "node:path";',
 			"",
 			"const provider = basename(process.argv[1]);",
@@ -391,6 +393,9 @@ export async function writeFakeProviderExecutable(params: {
 			"const outputLastMessagePath = outputLastMessageFlagIndex >= 0 ? args[outputLastMessageFlagIndex + 1] : undefined;",
 			'if (outputLastMessagePath && typeof response.lastMessage === "string") {',
 			"  writeFileSync(outputLastMessagePath, response.lastMessage);",
+			"}",
+			"if (typeof response.delayMs === 'number' && response.delayMs > 0) {",
+			"  await sleep(response.delayMs);",
 			"}",
 			"if (response.stderr) {",
 			"  process.stderr.write(response.stderr);",

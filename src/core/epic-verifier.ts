@@ -3,12 +3,18 @@ import { randomUUID } from "node:crypto";
 import type { z } from "zod";
 
 import {
+	type CallerHarnessConfigRecord,
 	loadRunConfig,
 	resolveConfiguredVerificationGates,
 	resolveRunTimeouts,
 } from "./config-schema";
 import { resolveVerificationGates } from "./gate-discovery";
 import { resolveProviderCwd } from "./git-repo";
+import {
+	type AttachedProgressEvent,
+	type CallerHarness,
+	createPrimitiveHeartbeatEmitter,
+} from "./heartbeat";
 import { assemblePrompt } from "./prompt-assembly";
 import {
 	createProviderAdapter,
@@ -17,16 +23,16 @@ import {
 	type ProviderStreamOutputPaths,
 } from "./provider-adapters";
 import {
-	RuntimeProgressTracker,
-	type RuntimeProgressPaths,
-} from "./runtime-progress";
-import {
 	aggregateEpicVerifierBatchOutcome,
-	epicVerifierResultSchema,
 	type CliError,
 	type EpicVerifierBatchResult,
 	type EpicVerifierResult,
+	epicVerifierResultSchema,
 } from "./result-contracts";
+import {
+	type RuntimeProgressPaths,
+	RuntimeProgressTracker,
+} from "./runtime-progress";
 import { inspectSpecPack } from "./spec-pack";
 
 export const epicVerifierProviderPayloadSchema = epicVerifierResultSchema
@@ -64,6 +70,7 @@ interface PreparedEpicContext {
 	timeoutMs: number;
 	startupTimeoutMs: number;
 	silenceTimeoutMs: number;
+	callerHarnessConfig?: CallerHarnessConfigRecord;
 }
 
 interface WorkflowFailure {
@@ -168,6 +175,7 @@ async function prepareEpicVerifyContext(input: {
 		startupTimeoutMs: resolveRunTimeouts(config).provider_startup_timeout_ms,
 		silenceTimeoutMs:
 			resolveRunTimeouts(config).epic_verifier_silence_timeout_ms,
+		callerHarnessConfig: config.caller_harness,
 	};
 }
 
@@ -311,6 +319,10 @@ export async function runEpicVerify(input: {
 	artifactPath?: string;
 	streamOutputPaths?: ProviderStreamOutputPaths;
 	runtimeProgressPaths?: RuntimeProgressPaths;
+	callerHarness?: CallerHarness;
+	heartbeatCadenceMinutes?: number;
+	disableHeartbeats?: boolean;
+	progressListener?: (event: AttachedProgressEvent) => void;
 }): Promise<EpicVerifyWorkflowResult> {
 	const context = await prepareEpicVerifyContext(input);
 	if ("errors" in context) {
@@ -342,119 +354,135 @@ export async function runEpicVerify(input: {
 			})
 		: undefined;
 
+	const heartbeat = progressTracker
+		? createPrimitiveHeartbeatEmitter({
+				command: "epic-verify",
+				config: context.callerHarnessConfig,
+				callerHarness: input.callerHarness,
+				heartbeatCadenceMinutes: input.heartbeatCadenceMinutes,
+				disableHeartbeats: input.disableHeartbeats,
+				progressListener: input.progressListener,
+				readSnapshot: () => progressTracker.getSnapshot(),
+			})
+		: null;
+	heartbeat?.start();
 	let completedVerifiers = 0;
-	const executions = await Promise.all(
-		context.verifiers.map(async (verifier, index) => {
-			const prompt = await assemblePrompt({
-				role: "epic_verifier",
-				reviewerLabel: verifier.label,
-				epicPath: context.paths.epicPath,
-				techDesignPath: context.paths.techDesignPath,
-				techDesignCompanionPaths: context.paths.techDesignCompanionPaths,
-				testPlanPath: context.paths.testPlanPath,
-				gateCommands: context.gateCommands,
-			});
-			await progressTracker?.recordEvent({
-				phase: `epic-verifier-${index + 1}`,
-				event: "verifier-started",
-				summary: `${verifier.label} started for epic verification.`,
-				metadata: {
-					verifierLabel: verifier.label,
-				},
-				patch: {
+	try {
+		const executions = await Promise.all(
+			context.verifiers.map(async (verifier, index) => {
+				const prompt = await assemblePrompt({
+					role: "epic_verifier",
+					reviewerLabel: verifier.label,
+					epicPath: context.paths.epicPath,
+					techDesignPath: context.paths.techDesignPath,
+					techDesignCompanionPaths: context.paths.techDesignCompanionPaths,
+					testPlanPath: context.paths.testPlanPath,
+					gateCommands: context.gateCommands,
+				});
+				await progressTracker?.recordEvent({
+					phase: `epic-verifier-${index + 1}`,
+					event: "verifier-started",
+					summary: `${verifier.label} started for epic verification.`,
+					metadata: {
+						verifierLabel: verifier.label,
+					},
+					patch: {
+						provider: verifier.provider,
+					},
+				});
+				const execution = await executeVerifier({
 					provider: verifier.provider,
-				},
-			});
-			const execution = await executeVerifier({
-				provider: verifier.provider,
-				cwd: context.providerCwd,
-				model: verifier.model,
-				reasoningEffort: verifier.reasoningEffort,
-				prompt: prompt.prompt,
-				env: input.env,
-				timeoutMs: context.timeoutMs,
-				startupTimeoutMs: context.startupTimeoutMs,
-				silenceTimeoutMs: context.silenceTimeoutMs,
-				streamOutputPaths: input.streamOutputPaths,
-				lifecycleCallback: (event) =>
-					progressTracker?.handleProviderLifecycle(event),
-			});
+					cwd: context.providerCwd,
+					model: verifier.model,
+					reasoningEffort: verifier.reasoningEffort,
+					prompt: prompt.prompt,
+					env: input.env,
+					timeoutMs: context.timeoutMs,
+					startupTimeoutMs: context.startupTimeoutMs,
+					silenceTimeoutMs: context.silenceTimeoutMs,
+					streamOutputPaths: input.streamOutputPaths,
+					lifecycleCallback: (event) =>
+						progressTracker?.handleProviderLifecycle(event),
+				});
 
-			if ("errors" in execution) {
-				return execution;
-			}
+				if ("errors" in execution) {
+					return execution;
+				}
 
-			completedVerifiers += 1;
-			await progressTracker?.recordEvent({
-				phase: `epic-verifier-${index + 1}`,
-				event: "verifier-completed",
-				summary: `${verifier.label} completed for epic verification.`,
-				metadata: {
-					verifierLabel: verifier.label,
-					gateResult: execution.payload.gateResult,
-				},
-				patch: {
-					provider: verifier.provider,
+				completedVerifiers += 1;
+				await progressTracker?.recordEvent({
+					phase: `epic-verifier-${index + 1}`,
+					event: "verifier-completed",
+					summary: `${verifier.label} completed for epic verification.`,
+					metadata: {
+						verifierLabel: verifier.label,
+						gateResult: execution.payload.gateResult,
+					},
+					patch: {
+						provider: verifier.provider,
+						verifiersCompleted: completedVerifiers,
+					},
+				});
+
+				return {
+					result: buildVerifierResult({
+						verifier,
+						payload: execution.payload,
+					}),
+				};
+			}),
+		);
+
+		const errors = executions.flatMap((execution) =>
+			"errors" in execution ? execution.errors : [],
+		);
+		const verifierResults = executions.flatMap((execution) =>
+			"result" in execution ? [execution.result] : [],
+		);
+		if (errors.length > 0) {
+			await progressTracker?.markFailed(
+				"epic-verify failed during provider execution.",
+				{
+					errors: errors.map((error) => error.code),
 					verifiersCompleted: completedVerifiers,
 				},
-			});
-
+			);
+			await progressTracker?.flush();
 			return {
-				result: buildVerifierResult({
-					verifier,
-					payload: execution.payload,
-				}),
+				outcome: "block",
+				result:
+					verifierResults.length > 0
+						? buildVerifierBatchResult({
+								outcome: "block",
+								verifierResults,
+							})
+						: undefined,
+				errors,
+				warnings: [],
 			};
-		}),
-	);
+		}
 
-	const errors = executions.flatMap((execution) =>
-		"errors" in execution ? execution.errors : [],
-	);
-	const verifierResults = executions.flatMap((execution) =>
-		"result" in execution ? [execution.result] : [],
-	);
-	if (errors.length > 0) {
-		await progressTracker?.markFailed(
-			"epic-verify failed during provider execution.",
+		const outcome = aggregateEpicVerifierBatchOutcome(verifierResults);
+
+		await progressTracker?.markCompleted(
+			`epic-verify completed with outcome ${outcome}.`,
 			{
-				errors: errors.map((error) => error.code),
+				outcome,
 				verifiersCompleted: completedVerifiers,
 			},
 		);
 		await progressTracker?.flush();
+
 		return {
-			outcome: "block",
-			result:
-				verifierResults.length > 0
-					? buildVerifierBatchResult({
-							outcome: "block",
-							verifierResults,
-						})
-					: undefined,
-			errors,
+			outcome,
+			result: buildVerifierBatchResult({
+				outcome,
+				verifierResults,
+			}),
+			errors: [],
 			warnings: [],
 		};
+	} finally {
+		heartbeat?.stop();
 	}
-
-	const outcome = aggregateEpicVerifierBatchOutcome(verifierResults);
-
-	await progressTracker?.markCompleted(
-		`epic-verify completed with outcome ${outcome}.`,
-		{
-			outcome,
-			verifiersCompleted: completedVerifiers,
-		},
-	);
-	await progressTracker?.flush();
-
-	return {
-		outcome,
-		result: buildVerifierBatchResult({
-			outcome,
-			verifierResults,
-		}),
-		errors: [],
-		warnings: [],
-	};
 }

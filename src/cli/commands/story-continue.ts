@@ -12,7 +12,9 @@ import {
 	createInvalidInvocationEnvelope,
 	emitCommandEnvelope,
 	emitPersistedCommandEnvelope,
+	providerHeartbeatArgs,
 	rejectUnknownCommandArgs,
+	resolvePrimitiveHeartbeatCliOptions,
 	resolveProviderArtifactOptions,
 } from "./shared.js";
 
@@ -67,6 +69,7 @@ export default defineCommand({
 			type: "string",
 			description: "Inline follow-up request text",
 		},
+		...providerHeartbeatArgs,
 		json: {
 			type: "boolean",
 			description: "Emit the structured JSON envelope on stdout",
@@ -114,6 +117,7 @@ export default defineCommand({
 				},
 				followupRequest,
 				configPath: args.config,
+				...resolvePrimitiveHeartbeatCliOptions(args),
 				artifactPath: artifactOptions.artifactPath,
 				streamOutputPaths: artifactOptions.streamOutputPaths,
 				runtimeProgressPaths: artifactOptions.runtimeProgressPaths,

@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 import type { z } from "zod";
 
 import {
+	type CallerHarnessConfigRecord,
 	loadRunConfig,
 	resolveConfiguredVerificationGates,
 	resolveRunTimeouts,
@@ -11,6 +12,11 @@ import {
 import { pathExists, pathReadable, readTextFile } from "./fs-utils";
 import { resolveVerificationGates } from "./gate-discovery";
 import { resolveProviderCwd } from "./git-repo";
+import {
+	type AttachedProgressEvent,
+	type CallerHarness,
+	createPrimitiveHeartbeatEmitter,
+} from "./heartbeat";
 import { assemblePrompt } from "./prompt-assembly";
 import {
 	createProviderAdapter,
@@ -19,18 +25,18 @@ import {
 	type ProviderStreamOutputPaths,
 } from "./provider-adapters";
 import {
-	RuntimeProgressTracker,
-	type RuntimeProgressPaths,
-} from "./runtime-progress";
-import {
+	type CliError,
 	cliResultEnvelopeSchema,
+	type EpicSynthesisResult,
+	type EpicVerifierResult,
 	epicSynthesisResultSchema,
 	epicVerifierBatchResultSchema,
 	epicVerifierResultSchema,
-	type CliError,
-	type EpicSynthesisResult,
-	type EpicVerifierResult,
 } from "./result-contracts";
+import {
+	type RuntimeProgressPaths,
+	RuntimeProgressTracker,
+} from "./runtime-progress";
 import { inspectSpecPack } from "./spec-pack";
 
 export const epicSynthesisProviderPayloadSchema = epicSynthesisResultSchema
@@ -62,6 +68,7 @@ interface PreparedSynthesisContext {
 	timeoutMs: number;
 	startupTimeoutMs: number;
 	silenceTimeoutMs: number;
+	callerHarnessConfig?: CallerHarnessConfigRecord;
 }
 
 export interface EpicSynthesisWorkflowResult {
@@ -308,6 +315,7 @@ async function prepareSynthesisContext(input: {
 		startupTimeoutMs: resolveRunTimeouts(config).provider_startup_timeout_ms,
 		silenceTimeoutMs:
 			resolveRunTimeouts(config).epic_synthesizer_silence_timeout_ms,
+		callerHarnessConfig: config.caller_harness,
 	};
 }
 
@@ -330,6 +338,10 @@ export async function runEpicSynthesize(input: {
 	artifactPath?: string;
 	streamOutputPaths?: ProviderStreamOutputPaths;
 	runtimeProgressPaths?: RuntimeProgressPaths;
+	callerHarness?: CallerHarness;
+	heartbeatCadenceMinutes?: number;
+	disableHeartbeats?: boolean;
+	progressListener?: (event: AttachedProgressEvent) => void;
 }): Promise<EpicSynthesisWorkflowResult> {
 	const context = await prepareSynthesisContext(input);
 	if ("errors" in context) {
@@ -359,86 +371,102 @@ export async function runEpicSynthesize(input: {
 			})
 		: undefined;
 
-	const prompt = await assemblePrompt({
-		role: "epic_synthesizer",
-		epicPath: context.paths.epicPath,
-		techDesignPath: context.paths.techDesignPath,
-		techDesignCompanionPaths: context.paths.techDesignCompanionPaths,
-		testPlanPath: context.paths.testPlanPath,
-		verifierReportPaths: context.verifierReportPaths,
-		gateCommands: context.gateCommands,
-	});
-	const adapter = createProviderAdapter(context.provider, {
-		env: input.env,
-	});
-	const execution = await adapter.execute({
-		prompt: prompt.prompt,
-		cwd: context.providerCwd,
-		model: context.model,
-		reasoningEffort: context.reasoningEffort,
-		timeoutMs: context.timeoutMs,
-		startupTimeoutMs: context.startupTimeoutMs,
-		silenceTimeoutMs: context.silenceTimeoutMs,
-		resultSchema: epicSynthesisProviderPayloadSchema,
-		streamOutputPaths: input.streamOutputPaths,
-		lifecycleCallback: (event: ProviderLifecycleEvent) =>
-			progressTracker?.handleProviderLifecycle(event),
-	});
+	const heartbeat = progressTracker
+		? createPrimitiveHeartbeatEmitter({
+				command: "epic-synthesize",
+				config: context.callerHarnessConfig,
+				callerHarness: input.callerHarness,
+				heartbeatCadenceMinutes: input.heartbeatCadenceMinutes,
+				disableHeartbeats: input.disableHeartbeats,
+				progressListener: input.progressListener,
+				readSnapshot: () => progressTracker.getSnapshot(),
+			})
+		: null;
+	heartbeat?.start();
+	try {
+		const prompt = await assemblePrompt({
+			role: "epic_synthesizer",
+			epicPath: context.paths.epicPath,
+			techDesignPath: context.paths.techDesignPath,
+			techDesignCompanionPaths: context.paths.techDesignCompanionPaths,
+			testPlanPath: context.paths.testPlanPath,
+			verifierReportPaths: context.verifierReportPaths,
+			gateCommands: context.gateCommands,
+		});
+		const adapter = createProviderAdapter(context.provider, {
+			env: input.env,
+		});
+		const execution = await adapter.execute({
+			prompt: prompt.prompt,
+			cwd: context.providerCwd,
+			model: context.model,
+			reasoningEffort: context.reasoningEffort,
+			timeoutMs: context.timeoutMs,
+			startupTimeoutMs: context.startupTimeoutMs,
+			silenceTimeoutMs: context.silenceTimeoutMs,
+			resultSchema: epicSynthesisProviderPayloadSchema,
+			streamOutputPaths: input.streamOutputPaths,
+			lifecycleCallback: (event: ProviderLifecycleEvent) =>
+				progressTracker?.handleProviderLifecycle(event),
+		});
 
-	if (execution.exitCode !== 0) {
-		await progressTracker?.markFailed(
-			"epic-synthesize failed during provider execution.",
-			{
-				errorCode: execution.errorCode,
-			},
-		);
-		await progressTracker?.flush();
-		return {
-			outcome: "blocked",
-			errors: [
-				executionFailureError({
-					provider: context.provider,
-					stderr: execution.stderr,
+		if (execution.exitCode !== 0) {
+			await progressTracker?.markFailed(
+				"epic-synthesize failed during provider execution.",
+				{
 					errorCode: execution.errorCode,
-				}),
-			],
-			warnings: [],
-		};
-	}
+				},
+			);
+			await progressTracker?.flush();
+			return {
+				outcome: "blocked",
+				errors: [
+					executionFailureError({
+						provider: context.provider,
+						stderr: execution.stderr,
+						errorCode: execution.errorCode,
+					}),
+				],
+				warnings: [],
+			};
+		}
 
-	if (execution.parseError || !execution.parsedResult) {
-		await progressTracker?.markFailed(
-			"epic-synthesize produced invalid provider output.",
+		if (execution.parseError || !execution.parsedResult) {
+			await progressTracker?.markFailed(
+				"epic-synthesize produced invalid provider output.",
+				{
+					parseError: execution.parseError,
+				},
+			);
+			await progressTracker?.flush();
+			return {
+				outcome: "blocked",
+				errors: [
+					blockedError(
+						"PROVIDER_OUTPUT_INVALID",
+						`Provider output was invalid for ${context.provider}.`,
+						execution.parseError,
+					),
+				],
+				warnings: [],
+			};
+		}
+
+		const result = buildSynthesisResult(execution.parsedResult);
+		await progressTracker?.markCompleted(
+			`epic-synthesize completed with outcome ${result.outcome}.`,
 			{
-				parseError: execution.parseError,
+				outcome: result.outcome,
 			},
 		);
 		await progressTracker?.flush();
 		return {
-			outcome: "blocked",
-			errors: [
-				blockedError(
-					"PROVIDER_OUTPUT_INVALID",
-					`Provider output was invalid for ${context.provider}.`,
-					execution.parseError,
-				),
-			],
+			outcome: result.outcome,
+			result,
+			errors: [],
 			warnings: [],
 		};
+	} finally {
+		heartbeat?.stop();
 	}
-
-	const result = buildSynthesisResult(execution.parsedResult);
-	await progressTracker?.markCompleted(
-		`epic-synthesize completed with outcome ${result.outcome}.`,
-		{
-			outcome: result.outcome,
-		},
-	);
-	await progressTracker?.flush();
-	return {
-		outcome: result.outcome,
-		result,
-		errors: [],
-		warnings: [],
-	};
 }

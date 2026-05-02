@@ -4,16 +4,16 @@ import { join, relative } from "node:path";
 import { describe, expect, test } from "vitest";
 
 import {
-	ROOT,
 	createImplementorSpecPack,
 	createRunConfig,
 	createSpecPack,
 	createTempDir,
 	createVerifierSpecPack,
 	parseJsonOutput,
+	ROOT,
+	runSourceCli,
 	writeFakeProviderExecutable,
 	writeRunConfig,
-	runSourceCli,
 	writeTextFile,
 } from "../../support/test-helpers";
 

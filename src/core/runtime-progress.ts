@@ -3,7 +3,7 @@ import { dirname } from "node:path";
 import { z } from "zod";
 
 import { writeAtomic } from "../infra/fs-atomic.js";
-import type { ProviderName, ProviderLifecycleEvent } from "./provider-adapters";
+import type { ProviderLifecycleEvent, ProviderName } from "./provider-adapters";
 import { appendFile, mkdir } from "./runtime-deps";
 
 const PROVIDER_OUTPUT_EVENT_INTERVAL_MS = 30_000;

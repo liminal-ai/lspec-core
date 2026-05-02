@@ -2,16 +2,15 @@ import { chmod, mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { describe, expect, test } from "vitest";
 import { z } from "zod";
-
+import { parseClaudeCodePayload } from "../../../src/core/provider-adapters/claude-code";
 import {
-	ROOT,
 	createSpecPack,
 	createTempDir,
+	ROOT,
 	readJsonLines,
 	writeFakeProviderExecutable,
 	writeTextFile,
 } from "../../support/test-helpers";
-import { parseClaudeCodePayload } from "../../../src/core/provider-adapters/claude-code";
 
 async function writeProviderBinary(params: {
 	dir: string;

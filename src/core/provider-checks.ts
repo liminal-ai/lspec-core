@@ -1,8 +1,8 @@
+import { filterEnv } from "../infra/env-allowlist.js";
 import type { ImplRunConfig, SecondaryHarness } from "./config-schema";
 import { resolveGitRepoRoot } from "./git-repo";
 import type { HarnessAvailability, ProviderMatrix } from "./result-contracts";
 import { getExecFileImplementation } from "./runtime-deps";
-import { filterEnv } from "../infra/env-allowlist.js";
 
 const DEFAULT_PROVIDER_CHECK_TIMEOUT_MS = 1_000;
 

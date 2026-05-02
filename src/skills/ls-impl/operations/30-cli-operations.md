@@ -175,10 +175,12 @@ Outcomes: `ready-for-closeout`, `needs-fixes`, `needs-more-verification`, `block
   - `progress/<artifact-base>.status.json` for the latest pollable snapshot
   - `progress/<artifact-base>.progress.jsonl` for append-only lifecycle events
   - `streams/<artifact-base>.stdout.log` and `.stderr.log` for raw provider output
+- Provider-backed primitive commands also emit fixed-cadence heartbeat summaries on `stderr` while they are still active. Those heartbeats never change the final JSON stdout contract.
 - Poll in this order when a long-running operation is still active:
   - read `status.json`
   - compare `updatedAt` and `lastOutputAt`
   - tail the stream logs when you need more detail
+- In Codex, keep the original exec session open and poll with empty input on the heartbeat cadence. In Claude Code, use Monitor when available or keep following the attached command output directly.
 - The runtime progress surface is CLI-owned and provider-agnostic. The same polling model works whether the secondary harness is Codex, Claude Code, or Copilot.
 - Treat these timing bands as reporting guidance only:
   - `healthy` — output or lifecycle update within 5 minutes

@@ -1,13 +1,12 @@
 import { basename } from "node:path";
-
+import { PromptInsertInvalidError } from "../sdk/errors/classes.js";
 import { pathExists, readTextFile } from "./fs-utils";
 import {
-	getEmbeddedPromptAssets,
 	type BasePromptId,
+	getEmbeddedPromptAssets,
 	type SnippetId,
 } from "./prompt-assets";
 import { stat } from "./runtime-deps";
-import { PromptInsertInvalidError } from "../sdk/errors/classes.js";
 
 const MAX_PUBLIC_INSERT_BYTES = 64 * 1024;
 

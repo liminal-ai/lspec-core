@@ -11,11 +11,35 @@ import {
 	createResultEnvelope,
 } from "../../core/result-contracts.js";
 import type { CliResultEnvelope } from "../../sdk/contracts/envelope.js";
+import type {
+	AttachedProgressEvent,
+	CallerHarness,
+} from "../../sdk/contracts/operations.js";
 import { InvalidInputError } from "../../sdk/errors/classes.js";
 import { mapStatusToExitCode, renderDefaultHumanSummary } from "../envelope.js";
-import { writeHuman, writeJson } from "../output.js";
+import { writeAttachedProgress, writeHuman, writeJson } from "../output.js";
 
 export { resolveCallerHeartbeatOptions } from "../../core/heartbeat.js";
+
+export const providerHeartbeatArgs = {
+	heartbeat: {
+		type: "boolean",
+		description:
+			"Enable attached heartbeat output; use --no-heartbeat to disable",
+	},
+	"caller-harness": {
+		type: "string",
+		description: "Caller host reading attached heartbeat output",
+	},
+	"heartbeat-cadence-minutes": {
+		type: "string",
+		description: "Override the primitive heartbeat cadence in minutes",
+	},
+	"disable-heartbeats": {
+		type: "boolean",
+		description: "Disable attached heartbeat output for this invocation",
+	},
+} as const;
 
 export interface ProviderArtifactOptions {
 	artifactPath: string;
@@ -123,6 +147,51 @@ export function rejectUnknownCommandArgs(
 
 		throw new InvalidInputError(`Unexpected positional argument: ${rawArg}`);
 	}
+}
+
+function parsePositiveInteger(
+	value: unknown,
+	flagName: string,
+): number | undefined {
+	if (typeof value === "undefined") {
+		return undefined;
+	}
+
+	if (typeof value !== "string" || value.trim().length === 0) {
+		throw new InvalidInputError(`${flagName} must be a positive integer.`);
+	}
+
+	const parsed = Number(value);
+	if (!Number.isInteger(parsed) || parsed <= 0) {
+		throw new InvalidInputError(`${flagName} must be a positive integer.`);
+	}
+
+	return parsed;
+}
+
+export function resolvePrimitiveHeartbeatCliOptions(args: {
+	heartbeat?: boolean;
+	"caller-harness"?: string;
+	"heartbeat-cadence-minutes"?: string;
+	"disable-heartbeats"?: boolean;
+}): {
+	callerHarness?: CallerHarness;
+	heartbeatCadenceMinutes?: number;
+	disableHeartbeats?: boolean;
+	progressListener: (event: AttachedProgressEvent) => void;
+} {
+	return {
+		callerHarness: args["caller-harness"] as CallerHarness | undefined,
+		heartbeatCadenceMinutes: parsePositiveInteger(
+			args["heartbeat-cadence-minutes"],
+			"--heartbeat-cadence-minutes",
+		),
+		disableHeartbeats:
+			args["disable-heartbeats"] === true || args.heartbeat === false,
+		progressListener: (event) => {
+			writeAttachedProgress(event);
+		},
+	};
 }
 
 export async function resolveCommandArtifactPath(input: {

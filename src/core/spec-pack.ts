@@ -2,7 +2,7 @@ import { join, resolve } from "node:path";
 
 import { pathExists, pathReadable } from "./fs-utils";
 import { resolveGitRepoRoot } from "./git-repo";
-import { inspectResultSchema, type InspectResult } from "./result-contracts";
+import { type InspectResult, inspectResultSchema } from "./result-contracts";
 import { readdirText, stat } from "./runtime-deps";
 import { resolveStoryOrder } from "./story-order";
 

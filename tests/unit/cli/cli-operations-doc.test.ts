@@ -1,5 +1,5 @@
-import { fileURLToPath } from "node:url";
 import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { expect, test } from "vitest";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");

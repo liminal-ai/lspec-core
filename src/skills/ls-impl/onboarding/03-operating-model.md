@@ -34,3 +34,9 @@ The CLI is intentionally stateless across calls so the orchestration lifecycle s
 Provider-backed CLI calls can run for a long time, and a backgrounded task can hang or stall without a clean completion signal. If you simply wait for the background job to finish, you can end up waiting indefinitely on a hung subprocess while the real evidence is already sitting in the runtime progress artifacts.
 
 That is why the runtime progress surface exists. When you background a provider-backed CLI call, use `status.json`, `updatedAt`, `lastOutputAt`, and the stream logs to keep watch on it rather than waiting blindly. The full polling procedure lives in `references/ls-impl-process-playbook.md`.
+
+Primitive provider-backed commands now emit heartbeat reminders on `stderr` while they are still running. Treat those reminders as prompts to keep monitoring the same live command instead of as final results.
+
+- In Codex, keep the original exec session open, poll it again with empty input, and do not final while the command still reports itself as running.
+- In Claude Code, use Monitor when it is available; otherwise keep following the attached command output directly.
+- The heartbeat cadence is fixed and summary-based. Do not expect one message for every provider stdout/stderr event.

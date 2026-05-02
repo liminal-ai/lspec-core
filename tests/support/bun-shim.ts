@@ -1,5 +1,5 @@
-import { readFile, writeFile } from "node:fs/promises";
 import { statSync } from "node:fs";
+import { readFile, writeFile } from "node:fs/promises";
 
 class BunFile {
 	constructor(private readonly path: string) {}

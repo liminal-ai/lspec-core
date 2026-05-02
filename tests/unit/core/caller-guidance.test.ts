@@ -1,9 +1,9 @@
 import { describe, expect, test } from "vitest";
 
 import {
+	callerGuidanceForHarness,
 	DEFAULT_PRIMITIVE_HEARTBEAT_CADENCE_MINUTES,
 	DEFAULT_STORY_HEARTBEAT_CADENCE_MINUTES,
-	callerGuidanceForHarness,
 	renderCallerGuidance,
 	resolveCallerHarnessConfig,
 } from "../../../src/core/caller-guidance";

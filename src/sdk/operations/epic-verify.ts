@@ -1,9 +1,9 @@
 import { runEpicVerify } from "../../core/epic-verifier.js";
 import { epicVerifierBatchResultSchema } from "../../core/result-contracts.js";
 import {
-	epicVerifyInputSchema,
 	type EpicVerifyInput,
 	type EpicVerifyResult,
+	epicVerifyInputSchema,
 } from "../contracts/operations.js";
 import {
 	buildUnexpectedEnvelope,
@@ -36,6 +36,10 @@ export async function epicVerify(
 				artifactPath,
 				streamOutputPaths: parsedInput.streamOutputPaths,
 				runtimeProgressPaths: parsedInput.runtimeProgressPaths,
+				callerHarness: parsedInput.callerHarness,
+				heartbeatCadenceMinutes: parsedInput.heartbeatCadenceMinutes,
+				disableHeartbeats: parsedInput.disableHeartbeats,
+				progressListener: parsedInput.progressListener,
 			});
 			return await finalizeEnvelope({
 				command: "epic-verify",

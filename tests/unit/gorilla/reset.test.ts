@@ -5,8 +5,8 @@ import { test } from "vitest";
 
 import { resetFixture } from "../../../gorilla/reset.js";
 import {
-	GORILLA_FIXTURE_ROOT,
 	expectFixtureMatchesBaseline,
+	GORILLA_FIXTURE_ROOT,
 	withFreshFixture,
 } from "./helpers";
 

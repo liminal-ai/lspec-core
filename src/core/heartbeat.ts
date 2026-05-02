@@ -1,14 +1,17 @@
 import { z } from "zod";
 
 import {
-	callerHarnessSchema,
-	resolveCallerHarnessConfig,
 	type CallerHarness,
 	type CallerHarnessConfigRecord,
+	callerHarnessSchema,
+	DEFAULT_PRIMITIVE_HEARTBEAT_CADENCE_MINUTES,
+	renderCallerGuidance,
+	resolveCallerHarnessConfig,
 } from "./caller-guidance.js";
+import { type RuntimeStatus, runtimeStatusSchema } from "./runtime-progress.js";
 
-export { callerHarnessSchema };
 export type { CallerHarness, CallerHarnessConfigRecord };
+export { callerHarnessSchema };
 
 export const nextPollRecommendationSchema = z.union([
 	z.string().min(1),
@@ -72,6 +75,20 @@ export interface ResolvedHeartbeatOptions {
 	storyHeartbeatCadenceMinutes: number;
 }
 
+export interface HeartbeatEmitter {
+	start(): void;
+	stop(): void;
+}
+
+const HEARTBEAT_TEST_INTERVAL_OVERRIDE_ENV =
+	"LBUILD_IMPL_HEARTBEAT_INTERVAL_MS";
+
+const runtimeSnapshotHeartbeatSchema = runtimeStatusSchema;
+
+type RuntimeSnapshotForHeartbeat = z.infer<
+	typeof runtimeSnapshotHeartbeatSchema
+>;
+
 export function resolveCallerHeartbeatOptions(input: {
 	callerHarness?: CallerHarness;
 	heartbeatCadenceMinutes?: number;
@@ -120,5 +137,170 @@ export function buildHeartbeatMessage(input: {
 		statusArtifact: input.statusArtifact,
 		nextPollRecommendation: input.nextPollRecommendation,
 		callerHarness: input.callerHarness,
+	});
+}
+
+function resolveHeartbeatCadenceMs(cadenceMinutes: number): number {
+	const override = process.env[HEARTBEAT_TEST_INTERVAL_OVERRIDE_ENV];
+	if (override) {
+		const parsed = Number(override);
+		if (Number.isFinite(parsed) && parsed > 0) {
+			return parsed;
+		}
+	}
+
+	return cadenceMinutes * 60_000;
+}
+
+function formatDuration(durationMs: number): string {
+	const totalSeconds = Math.max(0, Math.floor(durationMs / 1_000));
+	const hours = Math.floor(totalSeconds / 3_600);
+	const minutes = Math.floor((totalSeconds % 3_600) / 60);
+	const seconds = totalSeconds % 60;
+	const parts: string[] = [];
+
+	if (hours > 0) {
+		parts.push(`${hours}h`);
+	}
+	if (minutes > 0 || hours > 0) {
+		parts.push(`${minutes}m`);
+	}
+	parts.push(`${seconds}s`);
+
+	return parts.join(" ");
+}
+
+function formatElapsedSince(timestamp: string, now: number): string {
+	const parsed = Date.parse(timestamp);
+	if (Number.isNaN(parsed)) {
+		return "unknown";
+	}
+
+	return formatDuration(now - parsed);
+}
+
+function buildPrimitiveHeartbeatEvent(input: {
+	command: string;
+	callerHarness: CallerHarness;
+	cadenceMinutes: number;
+	snapshot: RuntimeSnapshotForHeartbeat;
+	now: number;
+}): AttachedProgressEvent {
+	const nextPollRecommendation = {
+		afterMinutes: input.cadenceMinutes,
+		action: renderCallerGuidance({
+			callerHarness: input.callerHarness,
+			command: input.command,
+			cadenceMinutes: input.cadenceMinutes,
+		}),
+	} as const;
+	const elapsedTime = formatElapsedSince(input.snapshot.startedAt, input.now);
+	const silenceSummary =
+		input.snapshot.lastOutputAt === null
+			? `No provider output yet after ${elapsedTime}.`
+			: `Silent for ${formatElapsedSince(input.snapshot.lastOutputAt, input.now)} since the last provider output.`;
+	const latestProgressSummary = input.snapshot.lastEventSummary.trim();
+	const summary = [
+		`${input.command} heartbeat after ${elapsedTime}.`,
+		`Phase: ${input.snapshot.phase}.`,
+		`Latest progress: ${latestProgressSummary}`,
+		silenceSummary,
+		`Status artifact: ${input.snapshot.progressPaths.statusPath}.`,
+		`Next: ${nextPollRecommendation.action}`,
+	].join(" ");
+
+	return attachedProgressEventSchema.parse({
+		type: "heartbeat",
+		command: input.command,
+		phase: input.snapshot.phase,
+		summary,
+		callerHarness: input.callerHarness,
+		elapsedTime,
+		lastOutputAt: input.snapshot.lastOutputAt,
+		statusArtifact: input.snapshot.progressPaths.statusPath,
+		nextPollRecommendation,
+	});
+}
+
+export function createHeartbeatEmitter(input: {
+	command: string;
+	callerHarness: CallerHarness;
+	cadenceMinutes: number;
+	readSnapshot: () => RuntimeStatus;
+	writeAttachedOutput: (event: AttachedProgressEvent) => void;
+}): HeartbeatEmitter {
+	let timer: ReturnType<typeof setInterval> | undefined;
+
+	return {
+		start() {
+			if (timer) {
+				return;
+			}
+
+			timer = setInterval(() => {
+				const snapshot = runtimeSnapshotHeartbeatSchema.parse(
+					input.readSnapshot(),
+				);
+				if (snapshot.status !== "running") {
+					return;
+				}
+
+				input.writeAttachedOutput(
+					buildPrimitiveHeartbeatEvent({
+						command: input.command,
+						callerHarness: input.callerHarness,
+						cadenceMinutes: input.cadenceMinutes,
+						snapshot,
+						now: Date.now(),
+					}),
+				);
+			}, resolveHeartbeatCadenceMs(input.cadenceMinutes));
+
+			timer.unref?.();
+		},
+		stop() {
+			if (!timer) {
+				return;
+			}
+
+			clearInterval(timer);
+			timer = undefined;
+		},
+	};
+}
+
+export function createPrimitiveHeartbeatEmitter(input: {
+	command: string;
+	config?: CallerHarnessConfigRecord;
+	callerHarness?: CallerHarness;
+	heartbeatCadenceMinutes?: number;
+	disableHeartbeats?: boolean;
+	progressListener?: (event: AttachedProgressEvent) => void;
+	readSnapshot: () => RuntimeStatus;
+}): HeartbeatEmitter | null {
+	if (!input.progressListener) {
+		return null;
+	}
+
+	const resolved = resolveCallerHeartbeatOptions({
+		callerHarness: input.callerHarness,
+		heartbeatCadenceMinutes: input.heartbeatCadenceMinutes,
+		disableHeartbeats: input.disableHeartbeats,
+		config: input.config,
+		operationKind: "primitive",
+	});
+	if (!resolved) {
+		return null;
+	}
+
+	return createHeartbeatEmitter({
+		command: input.command,
+		callerHarness: input.callerHarness ?? resolved.callerHarness,
+		cadenceMinutes:
+			input.heartbeatCadenceMinutes ??
+			resolved.heartbeatCadenceMinutes ??
+			DEFAULT_PRIMITIVE_HEARTBEAT_CADENCE_MINUTES,
+		readSnapshot: input.readSnapshot,
+		writeAttachedOutput: input.progressListener,
 	});
 }

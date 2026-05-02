@@ -3,12 +3,12 @@ import { expect, test } from "vitest";
 
 import { buildRuntimeProgressPaths } from "../../../src/core/artifact-writer";
 import {
-	ROOT,
 	createExternalSpecPack,
 	createRunConfig,
 	createSpecPack,
 	createTempDir,
 	parseJsonOutput,
+	ROOT,
 	readJsonLines,
 	runSourceCli,
 	writeFakeProviderExecutable,

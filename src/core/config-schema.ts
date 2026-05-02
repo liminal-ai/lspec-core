@@ -1,9 +1,8 @@
 import { resolve } from "node:path";
 import { z } from "zod";
-
+import { InvalidRunConfigError } from "../sdk/errors/classes.js";
 import { callerHarnessSchema } from "./caller-guidance.js";
 import { readTextFile, writeTextFile } from "./fs-utils";
-import { InvalidRunConfigError } from "../sdk/errors/classes.js";
 
 export const RUN_CONFIG_FILE_NAME = "impl-run.config.json";
 

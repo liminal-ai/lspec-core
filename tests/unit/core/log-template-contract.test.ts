@@ -1,5 +1,5 @@
-import { describe, expect, test } from "vitest";
 import { join } from "node:path";
+import { describe, expect, test } from "vitest";
 
 import { ensureTeamImplLog } from "../../../src/core/log-template";
 import { createTempDir, writeTextFile } from "../../support/test-helpers";

@@ -1,8 +1,8 @@
 import {
-	continuationHandleSchema,
-	providerIdSchema,
 	type ContinuationHandle as CoreContinuationHandle,
 	type ProviderId as CoreProviderId,
+	continuationHandleSchema,
+	providerIdSchema,
 } from "../../core/result-contracts.js";
 
 export { continuationHandleSchema, providerIdSchema };
